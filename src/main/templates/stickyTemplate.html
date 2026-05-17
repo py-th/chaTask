@@ -230,9 +230,9 @@
           if (statusSpan) statusSpan.innerText = text;
         });
 
-        // 监听日期选择器
-        electronAPI.on('show-date-picker', () => {
-          showDatePicker();
+        // 监听鼠标右键重复与提醒选择器，
+        electronAPI.on('show-repeat-remind-picker', () => {
+          showRepeatRemindPicker();
         });
 
         //监听截止期事件
@@ -249,6 +249,11 @@
         const popupDatePicker = document.getElementById('popupDatePicker');
         const popupConfirmBtn = document.getElementById('popupConfirmBtn');
         const popupCancelBtn = document.getElementById('popupCancelBtn');
+
+        // 显示提醒和重复设置器的函数,功能未完成
+        function showRepeatRemindPicker(){
+          console.log('显示提醒和重复设置器');
+        };
 
         // 显示日期选择器（定位在 dueDate 元素附近）
         function showDatePicker() {

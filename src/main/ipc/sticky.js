@@ -150,7 +150,7 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
         }
       },
       {
-        label: '🙈 2.隐藏',
+        label: '2.隐藏 🙈',
         click: () => {
           // 仅关闭便签窗口，不删除任务，不更新数据库
           const note = stickyManager.notes.get(noteId);
@@ -226,41 +226,48 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
         ]
       },
       {
-        label: '5.截止日期',
+        label: `5.重复&提醒`,
         click: () => {
-          // 发送消息给便签窗口，让它显示日期选择器
+          // 发送消息给便签窗口，让它显示重复提醒设置表单
           const note = stickyManager.notes.get(noteId);
           if (note && note.win && !note.win.isDestroyed()) {
-            note.win.webContents.send('show-date-picker');
+            note.win.webContents.send('show-repeat-remind-picker');
           }
         }
       },
       {
-        label: '6.背景颜色',
+        label: '6.加入时间轴',
         click: () => {
-          // 后续可扩展颜色选择器
-          console.log('设置背景颜色', taskId);
+          // 后续可扩展
+          console.log('字体格式设置', taskId);
         }
       },
       {
-        label: '7.格式',
+        label: '7.样式',
         submenu: [
           {
-            label: '加粗',
+            label: '字体',
             click: async () => {
               // 后续可扩展
               console.log('字体格式设置', taskId);
             }
           },
           {
-            label: '斜体',
+            label: '便签背景色',
             click: async () => {
-              // 后续可扩展
-              console.log('字体格式设置', taskId);
+               // 后续可扩展
+               console.log('字体格式设置', taskId);
             }
           },
           {
-            label: '下划线',
+            label: '便签透明度',
+            click: async () => {
+               // 后续可扩展
+               console.log('字体格式设置', taskId);
+            }
+          },
+          {
+            label: '文字加粗',
             click: async () => {
               // 后续可扩展
               console.log('字体格式设置', taskId);
@@ -272,30 +279,35 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
               // 后续可扩展
               console.log('字体格式设置', taskId);
             }
+          }          
+        ]
+      },
+      {
+        label: '8.皮肤模板',
+        submenu: [
+          {
+            label: '经典',
+            click: async () => {
+              // 后续可扩展
+              console.log('字体格式设置', taskId);
+            }
           },
           {
-            label: '文字背景色',
+            label: '简约',
             click: async () => {
                // 后续可扩展
                console.log('字体格式设置', taskId);
             }
           },
           {
-            label: '文字加大',
-            click: async () => {
-               // 后续可扩展
-               console.log('字体格式设置', taskId);
-            }
-          },
-          {
-            label: '文字减小',
+            label: '可爱',
             click: async () => {
               // 后续可扩展
               console.log('字体格式设置', taskId);
             }
           }
         ]
-      }
+      },
     ]);
     menu.popup();
   } catch (error) {
