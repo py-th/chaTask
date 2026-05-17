@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+    body { background:transparent; font-family:system-ui; width:100%; height: 100%; display:flex; overflow:hidden; }
+    
+    .sticky-container { 
+      background:transparent;
+      border-radius:12px;
+      backdrop-filter:blur(2px);
+      width:100%;
+      height: 100%;
+      display:flex; 
+      flex-direction:column; 
+      transition: all 0.2s ease;
+    }
+    
+    .content-area { display:flex; flex: 1; align-items:flex-start; padding:0px; gap:6px; margin-bottom:3px; }
+    .avatar-area { position: relative; flex-shrink:0; text-align:center; }
+    .avatar-area img { display:block; pointer-events: none;-webkit-user-drag: none;}
+    .status-icon { display:none; position: absolute; bottom: 0px; left: 13px; background: transparent; border-radius: 50%; width: 20px; height: 20px; align-items: center; justify-content: center; font-size: 12px; box-shadow:0 1px 2px rgba(0,0,0,0.2); z-index: 1; }
+    .task-text { flex:1; align-items:center; font-size:14px; line-height:1.4; white-space:pre-wrap; word-wrap:break-word; outline:none; background:{{priorityColor}}; border-radius:8px; padding:4px 8px; min-height:45px; cursor:text;margin-right:3px; box-shadow: 0 2px 3px rgba(0,0,0,0.2); }
+    .task-text:focus { background:rgba(255,255,200,0.8); }
+    
+    .toolbar {
+      display: inline-flex;
+      justify-content: flex-start;
+      gap: 5px;
+      font-size: 12px;
+      padding: 5px;
+      border-radius:8px;
+      background: transparent;
+      visibility: hidden;
+      opacity: 0;
+      transition: visibility 0.2s, opacity 0.2s;
+      margin: 0 3px 3px auto;
+    }
+    
+    .info-item { display:flex; gap:4px;}
+    .clickable { cursor:pointer; text-decoration:underline; color:#0066cc;}
+    .clickable:hover { color:#003366; }
+    .datePickerPopup {
+      display: none;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow:0 2px 5px rgba(0,0,0,0.2);
+      z-index: 2;
+      width: 200px;
+      background: {{priorityColor}};
+      backdrop-filter: blur(4px);
+      font-size: 12px;
+    }
+    
+    /* 正常悬浮显示工具栏 */
+    .sticky-container:hover .toolbar {
+      visibility: visible;
+      background: {{priorityColor}};
+      opacity: 1;
+    }
+    
+    /* 折叠模式：隐藏内容，只保留头像区域 */
+    .sticky-container.folded-mode {
+        overflow: hidden;
+        width: 45px;
+        height: 45px;
+        background: transparent;
+      }
+    .sticky-container.folded-mode .content-area {
+        justify-content: center;
+        align-items: center;
+      }
+      /* 折叠模式下，禁止显示工具栏 */
+      .sticky-container.folded-mode .task-text,
+      .sticky-container.folded-mode .datePickerPopup,
+      .sticky-container.folded-mode .toolbar {
+        display: none !important;
+      }
+       /* 折叠模式下，显示头像和状态 */ 
+      .sticky-container.folded-mode .avatar-area {
+        margin: 0;
+      }
+      .sticky-container.folded-mode .status-icon {
+        display: flex !important;
+      }
+  </style>
+</head>
+<body>
+  <div class="sticky-container">
+    <div class="content-area">
+      <div class="avatar-area">{{avatarImg}}<div class="status-icon">{{statusIcon}}</div></div>
+      <div class="task-text" id="taskText">{{content}}</div>
+    </div>
+    <div class="toolbar">
+      <div class="info-item"><span>👤:</span><span id="contactName">{{senderName}}</span></div>
+      <div class="info-item"><span>📅:</span><span id="dueDate" class="clickable" data-due-date="{{dueDate}}">{{dueDateText}}</span></div>
+      <div class="info-item"><span>📌状态:</span><span id="taskStatus" class="clickable">{{statusText}}</span></div>
+    </div>
+    <!-- 日期选择器弹窗 -->
+    <div class="datePickerPopup" id="datePickerPopup">
+      <div style="margin-bottom: 10px;">选择截止日期</div>
+      <input type="date" id="popupDatePicker" style="width: 100%; padding: 6px; margin-bottom: 10px;border-radius:5px;" />
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button id="popupConfirmBtn">确认</button>
+        <button id="popupCancelBtn">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const electronAPI = window.electronAPI;
+      if (!electronAPI) {
+        console.error('electronAPI not found!');
+        return;
+      }
+      console.log('Sticky note script loaded');
+      const noteId = {{noteId}};
+      const taskId = "{{taskId}}";
+      
+      // --- 拖拽逻辑 ---
+      const taskTextDiv = document.getElementById('taskText');
+
+      let isDragging = false;
+      // 发送鼠标在窗口内的相对位置
+      document.addEventListener('mousedown', (e) => {
+          if (e.button === 2) {
+              return; // 只有右键被排除
+          }
+          
+          isDragging = true;
+        
+          // e.clientX 是相对于窗口左上角的
+          // e.screenX 是相对于屏幕左上角的
+          // 我们需要发送 e.clientX 和 e.clientY 给主进程用于计算偏移
+          electronAPI.send('start-sticky-drag', noteId, e.clientX, e.clientY);
+      });
+
+      // 鼠标移动
+      document.addEventListener('mousemove', (e) => {
+          if (!isDragging) return;
+          // 发送 e.screenX (鼠标在屏幕上的绝对位置)
+          electronAPI.send('sticky-drag-move', noteId, e.screenX, e.screenY);
+      });
+
+      // 鼠标松开
+      document.addEventListener('mouseup', () => {
+          isDragging = false;
+          electronAPI.send('sticky-drag-end', noteId); // 清理状态
+      });
+
+        // 双击编辑 (阻止冒泡，防止触发拖拽)
+        taskTextDiv.addEventListener('dblclick', (e) => {
+            e.stopPropagation(); // 关键：阻止事件冒泡到 document，防止 isDragging 变为 true
+            if (taskTextDiv.getAttribute('contenteditable') !== 'true') {
+                taskTextDiv.setAttribute('contenteditable', 'true');
+                taskTextDiv.focus();
+                // 光标定位到末尾
+                const range = document.createRange();
+                const sel = window.getSelection();
+                range.selectNodeContents(taskTextDiv);
+                range.collapse(false);
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        });
+        // 失去焦点后保存任务
+        taskTextDiv.addEventListener('blur', () => {
+          if (taskTextDiv.getAttribute('contenteditable') === 'true') {
+            const newContent = taskTextDiv.innerText;
+            electronAPI.send('update-note-content', { id: noteId, content: newContent, taskId });
+            taskTextDiv.removeAttribute('contenteditable');
+          }
+        });
+        //控制双击文本时拖动窗口事件冒泡
+        taskTextDiv.addEventListener('mousedown', (e) => {
+          if (taskTextDiv.getAttribute('contenteditable') === 'true') e.stopPropagation();
+        });
+        // --- 右键菜单 ---
+        document.body.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          electronAPI.send('show-note-context-menu', { noteId, taskId });
+        });
+
+        // --- IPC 通信监听 ---
+        const container = document.querySelector('.sticky-container');
+        // 监听折叠指令
+        electronAPI.on('fold-note', () => {
+          container.classList.add('folded-mode');
+          console.log('已折叠');
+        });
+
+        // 监听展开指令
+        electronAPI.on('unfold-note', () => {
+          container.classList.remove('folded-mode');
+          console.log('已展开');
+        });
+        //监听优先级
+        electronAPI.on('update-priority', (event, priority) => {
+          console.log('update-priority received:', priority);
+          let color = '';
+          if (priority === 'high') color = '#ffcccc';
+          else if (priority === 'medium') color = '#cce5ff';
+          else if (priority === 'low') color = '#ccffcc';
+          else color = 'rgba(255,249,196,0.95)';
+          const taskDiv = document.querySelector('.task-text');
+          if (taskDiv) taskDiv.style.backgroundColor = color;
+          const toolbarDiv = document.querySelector('.toolbar');
+          if (toolbarDiv) toolbarDiv.style.backgroundColor = color;
+          const datePickerPopup = document.querySelector('.datePickerPopup');
+          if (datePickerPopup) datePickerPopup.style.backgroundColor = color;
+          const avatarImg = document.querySelector('.avatar-area img');
+          if (avatarImg) avatarImg.style.border = '2px solid ' + color;
+        });
+
+        // 监听状态事件的监听通信
+        electronAPI.on('update-status', (event, status) => {
+          console.log('update-status received:', status);
+          let icon = '', text = '';
+          if (status === 'completed') { icon = '✅'; text = '完成'; }
+          else if (status === 'in_progress') { icon = '⏳'; text = '进行中'; }
+          else if (status === 'pending') { icon = '⏰'; text = '待办'; }
+          else if (status === 'overdue') { icon = '⚠️'; text = '逾期'; }
+          else { text = '待办'; }
+          const statusDiv = document.querySelector('.status-icon');
+          if (statusDiv) statusDiv.innerText = icon;
+          const statusSpan = document.getElementById('taskStatus');
+          if (statusSpan) statusSpan.innerText = text;
+        });
+
+        // 监听日期选择器
+        electronAPI.on('show-date-picker', () => {
+          showDatePicker();
+        });
+
+        //监听截止期事件
+        electronAPI.on('update-due-date', (event, newDate) => {
+          const dueDateSpan = document.getElementById('dueDate');
+          if (dueDateSpan) {
+            const formattedDate = newDate ? new Date(newDate).toLocaleDateString() : '未设置';
+            dueDateSpan.innerText = formattedDate;
+          }
+        });
+
+        // 获取日期选择器元素
+        const datePickerPopup = document.getElementById('datePickerPopup');
+        const popupDatePicker = document.getElementById('popupDatePicker');
+        const popupConfirmBtn = document.getElementById('popupConfirmBtn');
+        const popupCancelBtn = document.getElementById('popupCancelBtn');
+
+        // 显示日期选择器（定位在 dueDate 元素附近）
+        function showDatePicker() {
+          const dueDateSpan = document.getElementById('dueDate');
+          const rect = dueDateSpan.getBoundingClientRect();
+          datePickerPopup.style.left = rect.left + 'px';
+          datePickerPopup.style.top = (rect.bottom + 5) + 'px';
+          datePickerPopup.style.display = 'block';
+          // 设置当前值为已有的截止日期（如果有）
+          const currentDate = dueDateSpan.innerText;
+          if (currentDate !== '未设置') {
+            // 尝试解析日期，格式为本地化字符串，可能需要转换，简单起见留空
+            // 更好的做法：从 task 中获取原始 due_date 值，但前端没有存储，可以存储一个 data 属性
+          }
+          // 从 task 中获取原始 due_date（我们可以在生成 HTML 时把原始日期存到 data 属性中）
+          const originalDueDate = dueDateSpan.getAttribute('data-due-date') || '';
+          if (originalDueDate) { 
+            popupDatePicker.value = originalDueDate;
+          } else {
+           popupDatePicker.value = '';
+          }
+        }
+
+        // 隐藏日期选择器
+        function hideDatePicker() {
+          datePickerPopup.style.display = 'none';
+        }
+
+        // 确认选择
+        popupConfirmBtn.addEventListener('click', () => {
+          const selectedDate = popupDatePicker.value;
+          if (selectedDate) {
+            electronAPI.send('set-due-date', { noteId, taskId, date: selectedDate });
+          }
+          hideDatePicker();
+        });
+
+        popupCancelBtn.addEventListener('click', hideDatePicker);
+
+        // 点击 dueDate 显示日期选择器
+        document.getElementById('dueDate').addEventListener('click', (e) => {
+          e.stopPropagation();
+          showDatePicker();
+        });
+
+        // 点击页面其他地方关闭日期选择器（可选）
+        document.addEventListener('click', (e) => {
+          if (!datePickerPopup.contains(e.target) && e.target.id !== 'dueDate') {
+            hideDatePicker();
+          }
+        });
+        
+        document.getElementById('taskStatus').addEventListener('click', () => {
+          electronAPI.send('set-status', { noteId, taskId });
+        });
+      })();
+  </script>
+</body>
+</html>

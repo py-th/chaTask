@@ -1,0 +1,242 @@
+<!--src\main\templates\screenshot-overlay.html-->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>截图覆盖层</title>
+  <style>
+    html, body {
+      margin:0;
+      padding:0;
+      width:100%;
+      height:100%;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+
+    #mask {
+      position: fixed;
+      inset:0;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 1;
+    }
+
+    #hole {
+      position: absolute;
+      z-index: 2;
+      border: 2px solid #409eff;
+      background-repeat: no-repeat;
+      pointer-events: none;
+      display: none;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45); /* ✅ 用阴影模拟变暗效果 */
+    }
+  </style>
+</head>
+<body>
+  <div id="mask"></div>
+  <div id="hole"></div>
+
+  <script>
+    let startX, startY;
+    let isSelecting = false;
+    const dpr = window.devicePixelRatio || 1;
+
+    // ✅ 定义全局函数
+    window.initOverlay = function(base64Image) {
+      console.log('初始化覆盖层...');
+      const hole = document.getElementById('hole');
+      hole.style.backgroundImage = `url(${base64Image})`;
+      console.log('✅ 覆盖层背景设置完成');
+    };
+
+    document.addEventListener('mousedown', (e) => {
+      isSelecting = true;
+      startX = Math.round(e.clientX * dpr);
+      startY = Math.round(e.clientY * dpr);
+
+      const hole = document.getElementById('hole');
+      hole.style.display = 'block';
+      hole.style.left = e.clientX + 'px';
+      hole.style.top = e.clientY + 'px';
+      hole.style.width = '0px';
+      hole.style.height = '0px';
+      // ✅ 关键：背景位置要减去起始点
+      hole.style.backgroundPosition = `-${e.clientX}px -${e.clientY}px`;
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isSelecting) return;
+
+      const currentX = Math.round(e.clientX * dpr);
+      const currentY = Math.round(e.clientY * dpr);
+
+      const left = Math.min(currentX, startX);
+      const top = Math.min(currentY, startY);
+      const width = Math.abs(currentX - startX);
+      const height = Math.abs(currentY - startY);
+
+      const hole = document.getElementById('hole');
+      // ✅ 使用 clientX/clientY（CSS像素）设置位置和大小
+      hole.style.left = (left / dpr) + 'px';
+      hole.style.top = (top / dpr) + 'px';
+      hole.style.width = (width / dpr) + 'px';
+      hole.style.height = (height / dpr) + 'px';
+      // ✅ 背景位置也要用 CSS 像素
+      hole.style.backgroundPosition = `-${left/dpr}px -${top/dpr}px`;
+    });
+
+    document.addEventListener('mouseup', (e) => {
+      if (!isSelecting) return;
+      isSelecting = false;
+
+      const endX = Math.round(e.clientX * dpr);
+      const endY = Math.round(e.clientY * dpr);
+
+      const region = {
+        x: Math.min(startX, endX),
+        y: Math.min(startY, endY),
+        width: Math.abs(endX - startX),
+        height: Math.abs(endY - startY)
+      };
+
+      console.log('发送截图区域:', region);
+
+      if (window.electronAPI && window.electronAPI.finishScreenshot) {
+        window.electronAPI.finishScreenshot(region);
+      } else {
+        console.error('electronAPI.finishScreenshot 不存在');
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (window.electronAPI && window.electronAPI.cancelScreenshot) {
+          window.electronAPI.cancelScreenshot();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
+
+<!-- 勉强可用的代码
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>截图覆盖层</title>
+  <style>
+    html, body {
+      margin:0;
+      padding:0;
+      width:100%;
+      height:100%;
+      overflow: hidden;
+      cursor: crosshair;
+    }
+
+    #mask {
+      position: fixed;
+      inset:0;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 1;
+    }
+
+    #hole {
+      position: absolute;
+      z-index: 2;
+      border: 2px solid #409eff;
+      background-repeat: no-repeat;
+      pointer-events: none;
+      display: none;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45); /* ✅ 用阴影模拟变暗效果 */
+    }
+  </style>
+</head>
+<body>
+  <div id="mask"></div>
+  <div id="hole"></div>
+
+  <script>
+    let startX, startY;
+    let isSelecting = false;
+    const dpr = window.devicePixelRatio || 1;
+
+    // ✅ 定义全局函数
+    window.initOverlay = function(base64Image) {
+      console.log('初始化覆盖层...');
+      const hole = document.getElementById('hole');
+      hole.style.backgroundImage = `url(${base64Image})`;
+      console.log('✅ 覆盖层背景设置完成');
+    };
+
+    document.addEventListener('mousedown', (e) => {
+      isSelecting = true;
+      startX = Math.round(e.clientX * dpr);
+      startY = Math.round(e.clientY * dpr);
+
+      const hole = document.getElementById('hole');
+      hole.style.display = 'block';
+      hole.style.left = e.clientX + 'px';
+      hole.style.top = e.clientY + 'px';
+      hole.style.width = '0px';
+      hole.style.height = '0px';
+      // ✅ 关键：背景位置要减去起始点
+      hole.style.backgroundPosition = `-${e.clientX}px -${e.clientY}px`;
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isSelecting) return;
+
+      const currentX = Math.round(e.clientX * dpr);
+      const currentY = Math.round(e.clientY * dpr);
+
+      const left = Math.min(currentX, startX);
+      const top = Math.min(currentY, startY);
+      const width = Math.abs(currentX - startX);
+      const height = Math.abs(currentY - startY);
+
+      const hole = document.getElementById('hole');
+      // ✅ 使用 clientX/clientY（CSS像素）设置位置和大小
+      hole.style.left = (left / dpr) + 'px';
+      hole.style.top = (top / dpr) + 'px';
+      hole.style.width = (width / dpr) + 'px';
+      hole.style.height = (height / dpr) + 'px';
+      // ✅ 背景位置也要用 CSS 像素
+      hole.style.backgroundPosition = `-${left/dpr}px -${top/dpr}px`;
+    });
+
+    document.addEventListener('mouseup', (e) => {
+      if (!isSelecting) return;
+      isSelecting = false;
+
+      const endX = Math.round(e.clientX * dpr);
+      const endY = Math.round(e.clientY * dpr);
+
+      const region = {
+        x: Math.min(startX, endX),
+        y: Math.min(startY, endY),
+        width: Math.abs(endX - startX),
+        height: Math.abs(endY - startY)
+      };
+
+      console.log('发送截图区域:', region);
+
+      if (window.electronAPI && window.electronAPI.finishScreenshot) {
+        window.electronAPI.finishScreenshot(region);
+      } else {
+        console.error('electronAPI.finishScreenshot 不存在');
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (window.electronAPI && window.electronAPI.cancelScreenshot) {
+          window.electronAPI.cancelScreenshot();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
+-->
