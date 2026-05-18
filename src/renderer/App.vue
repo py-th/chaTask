@@ -2,12 +2,19 @@
   <div style="padding: 20px;">
     <h1>📌 智能任务便签 (双模型驱动)</h1>
     <p>✅ 截取单条消息，AI自动识别头像、文字、发送者和日期</p>
-    <p>💡 快捷键 <kbd>Ctrl+Alt+S</kbd> 触发智能截图</p>
-    <p>💡 备选：系统截图 <kbd>Win+Shift+S</kbd> 后监听剪贴板</p>
+    <p>💡 快捷键 <kbd>Ctrl+Alt+S</kbd> 触发智能截图，备选：系统截图 <kbd>Win+Shift+S</kbd> 后监听剪贴板</p>
 
     <div v-if="processing" style="color: #2196F3; margin: 10px 0;">
       ⏳ AI模型分析中（双模型并行识别：头像/文本 + 发送者/日期）...
     </div>
+
+    <div style="padding: 5px;">
+      <span> 任务看板：<kbd>任务查询</kbd> <kbd>任务分类统计</kbd> <kbd>任务明细（crud）</kbd> </span><br>
+      <span> 桌面便签：<kbd>普通任务</kbd> <kbd>时间轴任务</kbd> </span><br>
+      <span> 工具箱：<kbd>任务日历</kbd> <kbd>桌面倒计时</kbd> <kbd>番茄时钟</kbd></span><br>
+      <span> 设置：<kbd>全局基础设置</kbd> <kbd>便签设置</kbd> <kbd>OCR设置</kbd> <kbd>其它设置</kbd></span>
+    </div>
+
 
     <!-- 截图预览：保留原始检测数量展示 -->
     <fieldset v-if="latestScreenshot" style="margin: 20px 0; border: 1px solid #ccc; padding: 10px;">
