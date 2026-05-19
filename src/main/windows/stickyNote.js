@@ -152,82 +152,117 @@ class StickyNoteManager {
   }
 
   // 贴边隐藏核心逻辑（改进版）
+   // 获取窗口当前所在显示器的工作区（考虑多显示器）
+  getCurrentDisplayWorkArea(win) {
+    const bounds = win.getBounds();
+    const displays = screen.getAllDisplays();
+    // 找到包含窗口中心点的显示器
+    const centerX = bounds.x + bounds.width / 2;
+    const centerY = bounds.y + bounds.height / 2;
+    const display = displays.find(d => 
+      centerX >= d.bounds.x && centerX <= d.bounds.x + d.bounds.width &&
+      centerY >= d.bounds.y && centerY <= d.bounds.y + d.bounds.height
+    ) || screen.getPrimaryDisplay();
+    return display.workArea;
+  }
+
+   // 改进后的贴边检测
   checkEdgeSnap(win, id) {
     const bounds = win.getBounds();
-    const displayWorkArea = screen.getPrimaryDisplay().workArea;
-    const threshold = 10; // 触发贴边的阈值（像素）
+    const workArea = this.getCurrentDisplayWorkArea(win);
+    const threshold = 10;
     const note = this.notes.get(id);
     if (!note) return;
 
+    let snapEdge = null;
     let newX = bounds.x;
     let newY = bounds.y;
-    let shouldSnap = false;
 
     // 检测顶部贴边
     if (bounds.y <= threshold) {
       newY = 0;
-      shouldSnap = true;
+      snapEdge = 'top';
     }
-    // 检测右侧贴边
-    if (bounds.x + bounds.width >= displayWorkArea.width - threshold) {
-      newX = displayWorkArea.width - bounds.width;
-      shouldSnap = true;
+    // 检测右侧贴边（优先级高于左侧，可根据需求调整顺序）
+    else if (bounds.x + bounds.width >= workArea.width - threshold) {
+      newX = workArea.width - bounds.width;
+      snapEdge = 'right';
     }
     // 检测左侧贴边
-    if (bounds.x <= threshold) {
+    else if (bounds.x <= threshold) {
       newX = 0;
-      shouldSnap = true;
+      snapEdge = 'left';
     }
 
-    // 如果触发了贴边
-    if (shouldSnap) {
-      // 移动窗口到贴边位置（仅当位置变化时）
+    // 如果需要贴边且当前未折叠，则折叠
+    if (snapEdge && !note.isFolded) {
+      // 先微调位置（使窗口精确贴边）
       if (newX !== bounds.x || newY !== bounds.y) {
         win.setPosition(newX, newY);
       }
-      // 如果当前未折叠，则折叠
-      if (!note.isFolded) {
-        this.foldNote(win, id);
-      }
-    } else {
-      // 没有贴边，且当前是折叠状态，则展开
-      if (note.isFolded) {
-        this.unfoldNote(win, id);
-      }
+      this.foldNote(win, id, snapEdge);
+    } 
+    // 如果未贴边且当前已折叠，则展开
+    else if (!snapEdge && note.isFolded) {
+      this.unfoldNote(win, id);
     }
   }
 
-  // 折叠便签：缩小窗口，只显示头像
-  foldNote(win, id) {
+  // 折叠便签，增加 edge 参数（'left'/'right'/'top'）
+  foldNote(win, id, edge) {
     const note = this.notes.get(id);
     if (!note || note.isFolded) return;
 
-    // 保存当前的原始尺寸，以便恢复
-    note.originalBounds = { width: win.getBounds().width, height: win.getBounds().height };  
-    // 设置折叠后的尺寸（仅头像大小）
+    // 保存原始位置和尺寸
+    const currentBounds = win.getBounds();
+    note.originalBounds = {
+      x: currentBounds.x,
+      y: currentBounds.y,
+      width: currentBounds.width,
+      height: currentBounds.height
+    };
+
     const foldedSize = 45; // 与头像大小匹配
-    win.setBounds({ width: foldedSize, height: foldedSize });  
-    // 通知前端进入“折叠模式”（隐藏内容区域）
-    win.webContents.send('fold-note');  
+    let newX = currentBounds.x;
+    let newY = currentBounds.y;
+
+    // 根据贴边方向调整折叠后的位置，使折叠窗口仍贴边
+    if (edge === 'right') {
+      const workArea = this.getCurrentDisplayWorkArea(win);
+      newX = workArea.width - foldedSize;
+    } else if (edge === 'left') {
+      newX = 0;
+    } else if (edge === 'top') {
+      newY = 0;
+    }
+
+    // 设置折叠后的尺寸和位置
+    win.setBounds({ width: foldedSize, height: foldedSize, x: newX, y: newY });
+    // 通知前端进入折叠模式
+    win.webContents.send('fold-note');
     note.isFolded = true;
+    note.snapEdge = edge; // 记录贴边方向，供展开时使用（可选）
   }
 
-  // 展开便签：恢复原始尺寸
+  // 展开便签，恢复原始位置和尺寸
   unfoldNote(win, id) {
     const note = this.notes.get(id);
-    if (!note || !note.isFolded) return;
+    if (!note || !note.isFolded || !note.originalBounds) return;
 
-    // 恢复原始尺寸
-    if (note.originalBounds) {
-      win.setBounds({ 
-        width: note.originalBounds.width, 
-        height: note.originalBounds.height 
-      });
-    }
-    
-    // 通知前端进入“正常模式”
+    // 恢复原始位置和尺寸
+    win.setBounds({
+      x: note.originalBounds.x,
+      y: note.originalBounds.y,
+      width: note.originalBounds.width,
+      height: note.originalBounds.height
+    });
+
+    // 通知前端进入正常模式
     win.webContents.send('unfold-note');
     note.isFolded = false;
+    note.snapEdge = null;
+    // 清空保存的原始数据（可选）
+    // note.originalBounds = null;
   }
 
   // 删除便签
