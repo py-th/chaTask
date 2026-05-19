@@ -1,3 +1,4 @@
+// src\renderer\App.vue
 <template>
   <div style="padding: 20px;">
     <h1>📌 智能任务便签 (双模型驱动)</h1>

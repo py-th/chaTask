@@ -8,18 +8,20 @@ class StickyNoteManager {
     this.notes = new Map();
     this.nextId = 1;
     this.templatePath = path.join(__dirname, '../templates/stickyTemplate.html');
+    this.scriptPath = path.join(__dirname, '../templates/stickyScript.js');
   }
 
   // 读取并填充 HTML 模板
   generateHTML(task, id) {
     try {
       let template = fs.readFileSync(this.templatePath, 'utf8');
+      const scriptContent = fs.readFileSync(this.scriptPath, 'utf8');
       
       // 转义函数
       const escapeHtml = (str) => {
         if (!str) return '';
         return str.replace(/[&<>"'/]/g, (tag) => {
-          const escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;' };
+          const escapeMap = { '&': '&amp;', '<': '&gt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;' };
           return escapeMap[tag] || tag;
         });
       };
@@ -84,6 +86,9 @@ class StickyNoteManager {
       for (const [placeholder, value] of Object.entries(replacements)) {
         template = template.replace(new RegExp(placeholder, 'g'), value);
       }
+
+      // 将外部脚本引用替换为内联脚本
+      template = template.replace('<script src="stickyScript.js"></script>', `<script>${scriptContent}</script>`);
 
       return template;
     } catch (error) {
