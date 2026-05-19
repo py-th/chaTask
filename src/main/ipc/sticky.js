@@ -63,7 +63,7 @@ function registerStickyHandlers(stickyManager) {
   });
 
   ipcMain.on('set-priority', async (event, { noteId, taskId }) => {
-    const menu = stickyMenu.buildPriorityMenu(taskId);
+    const menu = stickyMenu.buildPriorityMenu(noteId, taskId);
     menu.popup();
   });
 
@@ -76,7 +76,7 @@ function registerStickyHandlers(stickyManager) {
   });
 
   ipcMain.on('set-status', async (event, { noteId, taskId }) => {
-    const menu = stickyMenu.buildStatusMenu(taskId);
+    const menu = stickyMenu.buildStatusMenu(noteId, taskId);
     menu.popup();
   });
 
@@ -85,7 +85,7 @@ function registerStickyHandlers(stickyManager) {
       const task = await getTaskById(taskId);
       if (!task) throw new Error('Task not found');
       const isCurrentlyPinned = task.is_pinned === 1;
-      const menu = stickyMenu.buildContextMenu(taskId, isCurrentlyPinned);
+      const menu = stickyMenu.buildContextMenu(noteId, taskId, isCurrentlyPinned);
       menu.popup();
     } catch (error) {
       console.error('生成右键菜单失败:', error);

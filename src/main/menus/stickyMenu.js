@@ -6,7 +6,7 @@ class StickyMenu {
     this.stickyManager = stickyManager;
   }
 
-  buildContextMenu(taskId, isPinned) {
+  buildContextMenu(noteId, taskId, isPinned) {
     const pinLabel = isPinned ? '取消置顶' : '置顶';
 
     return Menu.buildFromTemplate([
@@ -14,7 +14,7 @@ class StickyMenu {
         label: pinLabel,
         click: async () => {
           const newPinnedState = !isPinned;
-          const note = this.stickyManager.notes.get(taskId);
+          const note = this.stickyManager.notes.get(noteId);
           if (note && !note.win.isDestroyed()) {
             note.win.setAlwaysOnTop(newPinnedState);
           }
@@ -42,17 +42,17 @@ class StickyMenu {
       { type: 'separator' },
       {
         label: '优先级',
-        submenu: this._buildPrioritySubmenu(taskId)
+        submenu: this._buildPrioritySubmenu(noteId, taskId)
       },
       {
         label: '状态',
-        submenu: this._buildStatusSubmenu(taskId)
+        submenu: this._buildStatusSubmenu(noteId, taskId)
       },
       { type: 'separator' },
       {
         label: '重复&提醒',
         click: () => {
-          const note = this.stickyManager.notes.get(taskId);
+          const note = this.stickyManager.notes.get(noteId);
           if (note && note.win && !note.win.isDestroyed()) {
             note.win.webContents.send('show-repeat-remind-picker');
           }
@@ -126,39 +126,39 @@ class StickyMenu {
     ]);
   }
 
-  _buildPrioritySubmenu(taskId) {
+  _buildPrioritySubmenu(noteId, taskId) {
     return [
       {
         label: '高',
         click: async () => {
           await updateTask(taskId, { priority: 'high' });
-          this._notifyNote(taskId, 'update-priority', 'high');
+          this._notifyNote(noteId, 'update-priority', 'high');
         }
       },
       {
         label: '中',
         click: async () => {
           await updateTask(taskId, { priority: 'medium' });
-          this._notifyNote(taskId, 'update-priority', 'medium');
+          this._notifyNote(noteId, 'update-priority', 'medium');
         }
       },
       {
         label: '低',
         click: async () => {
           await updateTask(taskId, { priority: 'low' });
-          this._notifyNote(taskId, 'update-priority', 'low');
+          this._notifyNote(noteId, 'update-priority', 'low');
         }
       }
     ];
   }
 
-  _buildStatusSubmenu(taskId) {
+  _buildStatusSubmenu(noteId, taskId) {
     return [
       {
         label: '完成',
         click: async () => {
           await updateTask(taskId, { status: 'completed', is_show_desk: 0 });
-          const note = this.stickyManager.notes.get(taskId);
+          const note = this.stickyManager.notes.get(noteId);
           if (note && note.win && !note.win.isDestroyed()) {
             note.win.close();
           }
@@ -168,21 +168,21 @@ class StickyMenu {
         label: '进行中',
         click: async () => {
           await updateTask(taskId, { status: 'in_progress', is_show_desk: 1 });
-          this._notifyNote(taskId, 'update-status', 'in_progress');
+          this._notifyNote(noteId, 'update-status', 'in_progress');
         }
       },
       {
         label: '待办',
         click: async () => {
           await updateTask(taskId, { status: 'pending', is_show_desk: 1 });
-          this._notifyNote(taskId, 'update-status', 'pending');
+          this._notifyNote(noteId, 'update-status', 'pending');
         }
       },
       {
         label: '逾期',
         click: async () => {
           await updateTask(taskId, { status: 'overdue', is_show_desk: 1 });
-          this._notifyNote(taskId, 'update-status', 'overdue');
+          this._notifyNote(noteId, 'update-status', 'overdue');
         }
       }
     ];
@@ -195,12 +195,12 @@ class StickyMenu {
     }
   }
 
-  buildPriorityMenu(taskId) {
-    return Menu.buildFromTemplate(this._buildPrioritySubmenu(taskId));
+  buildPriorityMenu(noteId, taskId) {
+    return Menu.buildFromTemplate(this._buildPrioritySubmenu(noteId, taskId));
   }
 
-  buildStatusMenu(taskId) {
-    return Menu.buildFromTemplate(this._buildStatusSubmenu(taskId));
+  buildStatusMenu(noteId, taskId) {
+    return Menu.buildFromTemplate(this._buildStatusSubmenu(noteId, taskId));
   }
 }
 
