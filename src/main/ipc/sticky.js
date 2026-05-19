@@ -8,36 +8,34 @@ function registerStickyHandlers(stickyManager) {
 
   let currentDraggingNoteId = null;
 
-  ipcMain.on('start-sticky-drag', (event, noteId, startX, startY) => {
-    currentDraggingNoteId = noteId;
+  ipcMain.on('start-sticky-drag', (event, noteId, startScreenX, startScreenY) => {
     const note = stickyManager.notes.get(noteId);
     if (!note || note.win.isDestroyed()) return;
 
-    const [winX, winY] = note.win.getPosition();
-    if (!global.dragState) global.dragState = new Map();
-    global.dragState[noteId] = { startX, startY, winX, winY };
-    
+    // 可能触发展开（内部会同步改变窗口位置）
     stickyManager.startDrag(noteId);
-  });
 
-  ipcMain.on('sticky-drag-move', (event, noteId, screenX, screenY) => {
-    if (!global.dragState || !global.dragState[noteId]) return;
-    const state = global.dragState[noteId];
+    // 重新获取展开后的窗口位置
+    const [winX, winY] = note.win.getPosition();
+    if (!global.dragState) global.dragState = {};
+    global.dragState[noteId] = { startScreenX, startScreenY, winX, winY };
+});
+
+ipcMain.on('sticky-drag-move', (event, noteId, screenX, screenY) => {
+    const state = global.dragState?.[noteId];
+    if (!state) return;
     const note = stickyManager.notes.get(noteId);
     if (!note || note.win.isDestroyed()) return;
-    const newX = screenX - state.startX;
-    const newY = screenY - state.startY;
-    note.win.setPosition(newX, newY);
-  });
 
-  ipcMain.on('sticky-drag-end', (event, noteId) => {
-    if (global.dragState) {
-      delete global.dragState[noteId];
-    }
-    currentDraggingNoteId = null;
-    
+    const newX = screenX - state.startScreenX + state.winX;
+    const newY = screenY - state.startScreenY + state.winY;
+    note.win.setPosition(newX, newY);
+});
+
+ipcMain.on('sticky-drag-end', (event, noteId) => {
+    if (global.dragState) delete global.dragState[noteId];
     stickyManager.endDrag(noteId);
-  });
+});
 
   ipcMain.handle('create-sticky-note', async (event, { content, avatar, taskId }) => {
     const task = await getTaskById(taskId);

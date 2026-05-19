@@ -274,24 +274,20 @@ class StickyNoteManager {
     const note = this.notes.get(id);
     if (!note || !note.isFolded || !note.originalBounds) return;
 
-    // 第一步：先通知前端移除 folded-mode，让CSS准备好展开状态
-    // 此时窗口还是45x45，但内容已经可见（只是被裁剪）
-    win.webContents.send('unfold-note');
-
-    // 第二步：延迟一帧后恢复窗口尺寸
-    // 使用 setImmediate 确保CSS已经应用
-    setImmediate(() => {
-      win.setBounds({
+    // 第一步：立即恢复窗口到原始尺寸和位置（此时前端仍处于折叠模式，内容隐藏）
+    win.setBounds({
         x: note.originalBounds.x,
         y: note.originalBounds.y,
         width: note.originalBounds.width,
         height: note.originalBounds.height
-      });
-      
-      note.isFolded = false;
-      note.snapEdge = null;
     });
-  }
+
+    // 第二步：通知前端移除 folded-mode，显示内容
+    win.webContents.send('unfold-note');
+
+    note.isFolded = false;
+    note.snapEdge = null;
+}
 
   // 删除便签
   deleteNote(id) {

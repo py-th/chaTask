@@ -21,7 +21,8 @@
   document.addEventListener('mousedown', (e) => {
     if (e.button === 2) return;
     isDragging = true;
-    electronAPI.send('start-sticky-drag', noteId, e.clientX, e.clientY);
+    // 使用 screenX/screenY 而不是 clientX/clientY
+    electronAPI.send('start-sticky-drag', noteId, e.screenX, e.screenY);
   });
 
   document.addEventListener('mousemove', (e) => {
