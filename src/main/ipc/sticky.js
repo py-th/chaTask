@@ -16,6 +16,8 @@ function registerStickyHandlers(stickyManager) {
     const [winX, winY] = note.win.getPosition();
     if (!global.dragState) global.dragState = new Map();
     global.dragState[noteId] = { startX, startY, winX, winY };
+    
+    stickyManager.startDrag(noteId);
   });
 
   ipcMain.on('sticky-drag-move', (event, noteId, screenX, screenY) => {
@@ -33,6 +35,8 @@ function registerStickyHandlers(stickyManager) {
       delete global.dragState[noteId];
     }
     currentDraggingNoteId = null;
+    
+    stickyManager.endDrag(noteId);
   });
 
   ipcMain.handle('create-sticky-note', async (event, { content, avatar, taskId }) => {

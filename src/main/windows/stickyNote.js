@@ -132,9 +132,15 @@ class StickyNoteManager {
     });
 
     win.on('closed', () => this.notes.delete(id));
-    win.on('move', () => this.checkEdgeSnap(win, id));
 
-    this.notes.set(id, { win, taskId: task.id, isFolded: false, originalBounds: null });
+    this.notes.set(id, { 
+      win, 
+      taskId: task.id, 
+      isFolded: false, 
+      originalBounds: null,
+      snapEdge: null,
+      isDragging: false
+    });
     return id;
   }
 
@@ -151,12 +157,9 @@ class StickyNoteManager {
     }
   }
 
-  // 贴边隐藏核心逻辑（改进版）
-   // 获取窗口当前所在显示器的工作区（考虑多显示器）
   getCurrentDisplayWorkArea(win) {
     const bounds = win.getBounds();
     const displays = screen.getAllDisplays();
-    // 找到包含窗口中心点的显示器
     const centerX = bounds.x + bounds.width / 2;
     const centerY = bounds.y + bounds.height / 2;
     const display = displays.find(d => 
@@ -166,43 +169,68 @@ class StickyNoteManager {
     return display.workArea;
   }
 
-   // 改进后的贴边检测
+  startDrag(id) {
+    const note = this.notes.get(id);
+    if (note) {
+      note.isDragging = true;
+      if (note.isFolded) {
+        this.unfoldNote(note.win, id);
+      }
+    }
+  }
+
+  endDrag(id) {
+    const note = this.notes.get(id);
+    if (note) {
+      note.isDragging = false;
+      setTimeout(() => {
+        this.checkEdgeSnap(note.win, id);
+      }, 100);
+    }
+  }
+
   checkEdgeSnap(win, id) {
     const bounds = win.getBounds();
     const workArea = this.getCurrentDisplayWorkArea(win);
     const threshold = 10;
+    const rightThreshold = 5;
     const note = this.notes.get(id);
-    if (!note) return;
+    if (!note || note.isDragging) return;
 
     let snapEdge = null;
     let newX = bounds.x;
     let newY = bounds.y;
 
-    // 检测顶部贴边
+    // 检测顶部贴边（实时检测）
     if (bounds.y <= threshold) {
       newY = 0;
       snapEdge = 'top';
     }
-    // 检测右侧贴边（优先级高于左侧，可根据需求调整顺序）
-    else if (bounds.x + bounds.width >= workArea.width - threshold) {
-      newX = workArea.width - bounds.width;
-      snapEdge = 'right';
-    }
-    // 检测左侧贴边
+    // 检测左侧贴边（实时检测）
     else if (bounds.x <= threshold) {
       newX = 0;
       snapEdge = 'left';
     }
+    // 检测右侧贴边（拖动结束后检测）
+    else if (!note.isDragging) {
+      const rightEdge = bounds.x + bounds.width;
+      const isNearEdge = rightEdge >= workArea.width - rightThreshold;
+      const isOutside = rightEdge > workArea.width;
+      
+      if (isNearEdge || isOutside) {
+        snapEdge = 'right';
+      }
+    }
 
-    // 如果需要贴边且当前未折叠，则折叠
     if (snapEdge && !note.isFolded) {
-      // 先微调位置（使窗口精确贴边）
+      if (snapEdge === 'right') {
+        newX = workArea.width - bounds.width;
+      }
       if (newX !== bounds.x || newY !== bounds.y) {
         win.setPosition(newX, newY);
       }
       this.foldNote(win, id, snapEdge);
     } 
-    // 如果未贴边且当前已折叠，则展开
     else if (!snapEdge && note.isFolded) {
       this.unfoldNote(win, id);
     }
