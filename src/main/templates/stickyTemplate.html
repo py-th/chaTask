@@ -60,27 +60,22 @@
       opacity: 1;
     }
     
-    .sticky-container.folded-mode {
-        overflow: hidden;
-        width: 45px;
-        height: 45px;
-        background: transparent;
-      }
+    /* 折叠状态：隐藏所有非头像内容 */
+    .sticky-container.folded-mode .task-text,
+    .sticky-container.folded-mode .datePickerPopup,
+    .sticky-container.folded-mode .toolbar {
+      display: none !important;
+    }
     .sticky-container.folded-mode .content-area {
-        justify-content: center;
-        align-items: center;
-      }
-      .sticky-container.folded-mode .task-text,
-      .sticky-container.folded-mode .datePickerPopup,
-      .sticky-container.folded-mode .toolbar {
-        display: none !important;
-      }
-      .sticky-container.folded-mode .avatar-area {
-        margin: 0;
-      }
-      .sticky-container.folded-mode .status-icon {
-        display: flex !important;
-      }
+      justify-content: center;
+      align-items: center;
+    }
+    .sticky-container.folded-mode .avatar-area {
+      margin: 0;
+    }
+    .sticky-container.folded-mode .status-icon {
+      display: flex !important;
+    }
   </style>
 </head>
 <body>

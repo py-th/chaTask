@@ -193,7 +193,6 @@ class StickyNoteManager {
     const bounds = win.getBounds();
     const workArea = this.getCurrentDisplayWorkArea(win);
     const threshold = 10;
-    const rightThreshold = 5;
     const note = this.notes.get(id);
     if (!note || note.isDragging) return;
 
@@ -201,31 +200,29 @@ class StickyNoteManager {
     let newX = bounds.x;
     let newY = bounds.y;
 
-    // 检测顶部贴边（实时检测）
+    // 检测顶部贴边（松开鼠标后检测）
     if (bounds.y <= threshold) {
       newY = 0;
       snapEdge = 'top';
     }
-    // 检测左侧贴边（实时检测）
+    // 检测左侧贴边（松开鼠标后检测）
     else if (bounds.x <= threshold) {
       newX = 0;
       snapEdge = 'left';
     }
-    // 检测右侧贴边（拖动结束后检测）
-    else if (!note.isDragging) {
+    // 检测右侧贴边（松开鼠标后检测）
+    else {
       const rightEdge = bounds.x + bounds.width;
-      const isNearEdge = rightEdge >= workArea.width - rightThreshold;
+      const isNearEdge = rightEdge >= workArea.width - threshold;
       const isOutside = rightEdge > workArea.width;
       
       if (isNearEdge || isOutside) {
         snapEdge = 'right';
+        newX = workArea.width - bounds.width;
       }
     }
 
     if (snapEdge && !note.isFolded) {
-      if (snapEdge === 'right') {
-        newX = workArea.width - bounds.width;
-      }
       if (newX !== bounds.x || newY !== bounds.y) {
         win.setPosition(newX, newY);
       }
@@ -277,20 +274,23 @@ class StickyNoteManager {
     const note = this.notes.get(id);
     if (!note || !note.isFolded || !note.originalBounds) return;
 
-    // 恢复原始位置和尺寸
-    win.setBounds({
-      x: note.originalBounds.x,
-      y: note.originalBounds.y,
-      width: note.originalBounds.width,
-      height: note.originalBounds.height
-    });
-
-    // 通知前端进入正常模式
+    // 第一步：先通知前端移除 folded-mode，让CSS准备好展开状态
+    // 此时窗口还是45x45，但内容已经可见（只是被裁剪）
     win.webContents.send('unfold-note');
-    note.isFolded = false;
-    note.snapEdge = null;
-    // 清空保存的原始数据（可选）
-    // note.originalBounds = null;
+
+    // 第二步：延迟一帧后恢复窗口尺寸
+    // 使用 setImmediate 确保CSS已经应用
+    setImmediate(() => {
+      win.setBounds({
+        x: note.originalBounds.x,
+        y: note.originalBounds.y,
+        width: note.originalBounds.width,
+        height: note.originalBounds.height
+      });
+      
+      note.isFolded = false;
+      note.snapEdge = null;
+    });
   }
 
   // 删除便签
