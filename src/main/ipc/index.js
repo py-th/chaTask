@@ -8,7 +8,7 @@ function registerIpcHandlers(mainWindow, stickyManager, yoloService, screenshotU
   registerScreenshotIpc(mainWindow, screenshotUtils);
   registerTaskHandlers();
   registerContactHandlers();
-  registerStickyHandlers(stickyManager);
+  registerStickyHandlers(stickyManager, screenshotUtils);
 }
 
 module.exports = { registerIpcHandlers };

@@ -3,8 +3,8 @@ const { ipcMain } = require('electron');
 const { updateTask, getTaskById } = require('../../database/repositories/taskRepository');
 const { StickyMenu } = require('../menus');
 
-function registerStickyHandlers(stickyManager) {
-  const stickyMenu = new StickyMenu(stickyManager);
+function registerStickyHandlers(stickyManager, screenshotUtils) {
+  const stickyMenu = new StickyMenu(stickyManager, screenshotUtils);
 
   let currentDraggingNoteId = null;
 

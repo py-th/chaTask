@@ -33,9 +33,24 @@ db.exec(`
     tags TEXT,                              -- 标签 JSON 数组
     attachments TEXT,                       -- 附件 JSON 数组
     is_completed INTEGER DEFAULT 0,         -- 是否完成 (兼容旧字段) (0/1)
-    is_archived INTEGER DEFAULT 0           -- 是否归档 (0/1)
+    is_archived INTEGER DEFAULT 0,          -- 是否归档 (0/1)
+    is_deleted INTEGER DEFAULT 0            -- 是否删除（回收站）(0/1)
   )
 `);
+
+// 列迁移：检查并添加 is_deleted 列（兼容旧数据库）
+try {
+  const tableInfo = db.prepare("PRAGMA table_info(tasks)").all();
+  const hasIsDeleted = tableInfo.some(col => col.name === 'is_deleted');
+  
+  if (!hasIsDeleted) {
+    console.log('[db] 迁移：添加 is_deleted 列到 tasks 表');
+    db.exec(`ALTER TABLE tasks ADD COLUMN is_deleted INTEGER DEFAULT 0`);
+    console.log('[db] 迁移完成：is_deleted 列已添加');
+  }
+} catch (err) {
+  console.error('[db] 列迁移失败:', err.message);
+}
 
 // 联系人表
 db.exec(`

@@ -1,9 +1,10 @@
-const { Menu } = require('electron');
+const { Menu, dialog } = require('electron');
 const { updateTask } = require('../../database/repositories/taskRepository');
 
 class StickyMenu {
-  constructor(stickyManager) {
+  constructor(stickyManager, screenshotUtils) {
     this.stickyManager = stickyManager;
+    this.screenshotUtils = screenshotUtils;
   }
 
   buildContextMenu(noteId, taskId, isPinned) {
@@ -23,6 +24,15 @@ class StickyMenu {
       },
       { type: 'separator' },
       {
+        label: '截取任务',
+        click: async () => {
+          if (this.screenshotUtils) {
+            await this.screenshotUtils.startDoubleScreenshot();
+          }
+        }
+      },
+      { type: 'separator' },
+      {
         label: '隐藏 🙈',
         click: (_, win) => {
           if (win && !win.isDestroyed()) {
@@ -33,9 +43,23 @@ class StickyMenu {
       {
         label: '删除便签',
         click: async (_, win) => {
-          await updateTask(taskId, { is_show_desk: 0 });
-          if (win && !win.isDestroyed()) {
-            win.close();
+          const result = await dialog.showMessageBox(win, {
+            type: 'question',
+            buttons: ['取消', '删除'],
+            defaultId: 0,
+            cancelId: 0,
+            title: '确认删除',
+            message: '确定要删除这个任务吗？',
+            detail: '删除后任务将移动到回收站，您可以在回收站中恢复。'
+          });
+          
+          // 用户点击"删除"（索引1）
+          if (result.response === 1) {
+            // 标记为删除（移动到回收站）
+            await updateTask(taskId, { is_deleted: 1, is_show_desk: 0 });
+            if (win && !win.isDestroyed()) {
+              win.close();
+            }
           }
         }
       },
@@ -48,7 +72,6 @@ class StickyMenu {
         label: '状态',
         submenu: this._buildStatusSubmenu(noteId, taskId)
       },
-      { type: 'separator' },
       {
         label: '重复&提醒',
         click: () => {
@@ -58,6 +81,7 @@ class StickyMenu {
           }
         }
       },
+      { type: 'separator' },
       {
         label: '样式',
         submenu: [
@@ -68,13 +92,13 @@ class StickyMenu {
             }
           },
           {
-            label: '便签背景色',
+            label: '背景色',
             click: () => {
               console.log('便签背景色设置', taskId);
             }
           },
           {
-            label: '便签透明度',
+            label: '透明度',
             click: () => {
               console.log('便签透明度设置', taskId);
             }
@@ -204,4 +228,4 @@ class StickyMenu {
   }
 }
 
-module.exports = StickyMenu;
+module.exports = { StickyMenu };

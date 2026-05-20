@@ -36,10 +36,18 @@ function insertTask(task) {
     task.isArchived ? 1 : 0
   );
 }
-// 获取所有未归档任务（新结构）
+// 获取所有未删除未归档任务（新结构）
 function getAllTasks() {
   const stmt = db.prepare(`
-    SELECT * FROM tasks WHERE is_archived = 0 ORDER BY created_at DESC
+    SELECT * FROM tasks WHERE is_archived = 0 AND is_deleted = 0 ORDER BY created_at DESC
+  `);
+  return stmt.all();
+}
+
+// 获取回收站任务
+function getDeletedTasks() {
+  const stmt = db.prepare(`
+    SELECT * FROM tasks WHERE is_deleted = 1 ORDER BY created_at DESC
   `);
   return stmt.all();
 }
@@ -61,4 +69,4 @@ function getTaskById(id) {
   return stmt.get(id);
 }
 
-module.exports = { insertTask, getAllTasks, updateTask, getTaskById };
+module.exports = { insertTask, getAllTasks, getDeletedTasks, updateTask, getTaskById };

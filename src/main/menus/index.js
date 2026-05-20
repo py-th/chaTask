@@ -1,4 +1,4 @@
-const StickyMenu = require('./stickyMenu');
+const { StickyMenu } = require('./stickyMenu');
 
 module.exports = {
   StickyMenu
