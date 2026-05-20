@@ -1,12 +1,13 @@
 // src/main/services/reminderService.js
 const { BrowserWindow, screen } = require('electron');
 const path = require('path');
-const { 
-  getAllEnabledRules, 
-  createReminderLog, 
+const {
+  getAllEnabledRules,
+  createReminderLog,
   updateReminderLog,
   getPendingReminderLogs,
-  getLatestReminderLog
+  getLatestReminderLog,
+  deleteReminderLogsByTaskId
 } = require('../../database/repositories/reminderRepository');
 const { updateTask } = require('../../database/repositories/taskRepository');
 
@@ -14,22 +15,21 @@ class ReminderService {
   constructor(stickyManager) {
     this.stickyManager = stickyManager;
     this.checkInterval = null;
-    this.activeReminders = new Map(); // taskId -> { timer, rule, nextTime }
     this.popupWindows = new Map(); // taskId -> BrowserWindow
   }
 
   // 启动提醒调度器
   start() {
     if (this.checkInterval) return;
-    
+
     // 每分钟检查一次
     this.checkInterval = setInterval(() => {
       this.checkReminders();
     }, 60000);
-    
+
     // 立即检查一次
     this.checkReminders();
-    
+
     console.log('[ReminderService] 提醒调度器已启动');
   }
 
@@ -39,15 +39,13 @@ class ReminderService {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
     }
-    
-    // 清除所有活动提醒
-    for (const reminder of this.activeReminders.values()) {
-      if (reminder.timer) {
-        clearTimeout(reminder.timer);
-      }
+
+    // 关闭所有弹窗
+    for (const win of this.popupWindows.values()) {
+      if (!win.isDestroyed()) win.close();
     }
-    this.activeReminders.clear();
-    
+    this.popupWindows.clear();
+
     console.log('[ReminderService] 提醒调度器已停止');
   }
 
@@ -56,14 +54,24 @@ class ReminderService {
     try {
       const rules = getAllEnabledRules();
       const now = new Date();
-      
+
       for (const rule of rules) {
         const nextTime = this.calculateNextReminder(rule);
         if (!nextTime) continue;
-        
+
+        // 检查是否已经有相同时间的 pending 提醒记录
+        const pendingLogs = getPendingReminderLogs(rule.task_id);
+        const hasPendingForThisTime = pendingLogs.some(log => {
+          const logTime = new Date(log.scheduled_time);
+          return Math.abs(logTime.getTime() - nextTime.getTime()) < 60000;
+        });
+
+        // 如果已经有这个时间的 pending 记录，跳过（防止重复触发）
+        if (hasPendingForThisTime) continue;
+
         // 如果下次提醒时间在1分钟内，触发提醒
         const diffMs = nextTime.getTime() - now.getTime();
-        if (diffMs > 0 && diffMs <= 60000) {
+        if (diffMs <= 60000) {
           this.triggerReminder(rule, nextTime);
         }
       }
@@ -75,7 +83,6 @@ class ReminderService {
   // 解析日期字符串为本地时间（避免UTC偏移问题）
   parseDateLocal(dateStr) {
     if (!dateStr) return null;
-    // 处理 YYYY-MM-DD 格式
     const parts = dateStr.split('-');
     if (parts.length === 3) {
       return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
@@ -124,8 +131,8 @@ class ReminderService {
         const config = rule.repeat_config ? JSON.parse(rule.repeat_config) : {};
         const weekdays = config.weekdays || [1]; // 默认周一
 
-        // 从今天开始找下一个匹配的星期
-        for (let i = 0; i < 7; i++) {
+        // 从今天开始找下一个匹配的星期（最多找14天，跨周）
+        for (let i = 0; i < 14; i++) {
           const checkDate = new Date(today);
           checkDate.setDate(checkDate.getDate() + i);
           const dayOfWeek = checkDate.getDay() || 7; // 周日=7
@@ -153,8 +160,8 @@ class ReminderService {
         const config = rule.repeat_config ? JSON.parse(rule.repeat_config) : {};
         const monthDays = config.monthDays || [1]; // 默认每月1号
 
-        // 从本月开始找
-        for (let monthOffset = 0; monthOffset < 12; monthOffset++) {
+        // 从本月开始找（最多找24个月）
+        for (let monthOffset = 0; monthOffset < 24; monthOffset++) {
           const checkDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
 
           for (const day of monthDays.sort((a, b) => a - b)) {
@@ -201,10 +208,6 @@ class ReminderService {
   async triggerReminder(rule, scheduledTime) {
     const taskId = rule.task_id;
 
-    // 检查是否已经有待处理的提醒
-    const pendingLogs = getPendingReminderLogs(taskId);
-    if (pendingLogs.length > 0) return; // 已有待处理提醒，不重复创建
-
     // 创建提醒记录
     createReminderLog({
       ruleId: rule.id,
@@ -238,8 +241,8 @@ class ReminderService {
     const primaryDisplay = screen.getPrimaryDisplay();
     const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
-    const popupWidth = 460;
-    const popupHeight = 520;
+    const popupWidth = 400;
+    const popupHeight = 500;
     const x = Math.round((screenWidth - popupWidth) / 2);
     const y = Math.round((screenHeight - popupHeight) / 2);
 
@@ -289,35 +292,25 @@ class ReminderService {
   startAvatarBlink(taskId) {
     const note = this.findNoteByTaskId(taskId);
     if (!note || !note.win || note.win.isDestroyed()) return;
-    
-    // 发送开始闪烁命令
+
     note.win.webContents.send('start-avatar-blink');
-    
-    // 记录活动提醒
-    this.activeReminders.set(taskId, {
-      rule: note,
-      startTime: new Date()
-    });
   }
 
   // 停止头像闪烁
   stopAvatarBlink(taskId) {
     const note = this.findNoteByTaskId(taskId);
     if (!note || !note.win || note.win.isDestroyed()) return;
-    
+
     note.win.webContents.send('stop-avatar-blink');
-    
-    // 从活动提醒中移除
-    this.activeReminders.delete(taskId);
   }
 
   // 处理提醒结果
   async handleReminderAction(taskId, action, data = {}) {
     const pendingLogs = getPendingReminderLogs(taskId);
     if (pendingLogs.length === 0) return;
-    
+
     const latestLog = pendingLogs[0];
-    
+
     switch (action) {
       case 'complete': {
         // 标记任务完成
@@ -349,30 +342,31 @@ class ReminderService {
 
       case 'snooze': {
         // 延时提醒
-        const snoozeMinutes = data.minutes || 10;
+        const snoozeMinutes = data.minutes || 2;
         const snoozeTime = new Date();
         snoozeTime.setMinutes(snoozeTime.getMinutes() + snoozeMinutes);
 
-        // 更新提醒记录
+        // 更新当前提醒记录为 snoozed
         updateReminderLog(latestLog.id, {
           status: 'snoozed',
           snooze_minutes: snoozeMinutes,
           triggered_at: new Date().toISOString()
         });
 
-        // 创建新的延时提醒记录
+        // 创建新的延时提醒记录（pending 状态）
         createReminderLog({
           ruleId: latestLog.rule_id,
           taskId: taskId,
           scheduledTime: snoozeTime.toISOString(),
-          triggeredAt: snoozeTime.toISOString(),
+          triggeredAt: new Date().toISOString(),
           status: 'pending'
         });
 
         // 关闭弹窗
         this.closePopupWindow(taskId);
 
-        // 继续闪烁（保持闪烁状态）
+        // 停止闪烁（延时后到新时间会再次触发）
+        this.stopAvatarBlink(taskId);
         break;
       }
 
@@ -390,13 +384,15 @@ class ReminderService {
         this.closePopupWindow(taskId);
         break;
       }
-      
+
       case 'reconfig': {
-        // 重新设置（停止当前提醒，让用户重新配置）
-        updateReminderLog(latestLog.id, {
-          status: 'dismissed',
-          triggered_at: new Date().toISOString()
-        });
+        // 重新设置：将所有 pending 记录标记为 dismissed
+        for (const log of pendingLogs) {
+          updateReminderLog(log.id, {
+            status: 'dismissed',
+            triggered_at: new Date().toISOString()
+          });
+        }
 
         // 停止闪烁
         this.stopAvatarBlink(taskId);
@@ -439,10 +435,10 @@ class ReminderService {
   getNextReminderText(rule) {
     const nextTime = this.calculateNextReminder(rule);
     if (!nextTime) return null;
-    
+
     const now = new Date();
     const diffDays = Math.floor((nextTime.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     let dateText;
     if (diffDays === 0) {
       dateText = '今天';
@@ -453,9 +449,9 @@ class ReminderService {
     } else {
       dateText = `${nextTime.getMonth() + 1}月${nextTime.getDate()}日`;
     }
-    
+
     const timeText = `${String(nextTime.getHours()).padStart(2, '0')}:${String(nextTime.getMinutes()).padStart(2, '0')}`;
-    
+
     switch (rule.repeat_type) {
       case 'once':
         return `单次 ${dateText} ${timeText}`;

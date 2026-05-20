@@ -553,6 +553,57 @@
       });
       
       updateUIByType('once');
+      
+      // 监听加载已有规则数据
+      window.electronAPI.on('load-reminder-data', (event, data) => {
+        if (data.repeatType) {
+          document.getElementById('repeatType').value = data.repeatType;
+          updateUIByType(data.repeatType);
+        }
+        if (data.reminderTime) {
+          document.getElementById('reminderTime').value = data.reminderTime;
+        }
+        if (data.startDate) {
+          document.getElementById('startDate').value = data.startDate;
+        }
+        if (data.endDate) {
+          document.getElementById('endType').value = 'date';
+          document.getElementById('endDateRow').classList.remove('hidden');
+          document.getElementById('endDate').value = data.endDate;
+        }
+        if (data.advanceMinutes !== undefined) {
+          document.getElementById('advanceReminder').value = data.advanceMinutes;
+        }
+        if (data.reminderWay) {
+          document.getElementById('reminderWay').value = data.reminderWay;
+        }
+        
+        // 设置提醒开关
+        reminderEnabled = data.reminderEnabled || false;
+        document.getElementById('reminderToggle').classList.toggle('active', reminderEnabled);
+        
+        // 加载重复配置
+        if (data.repeatConfig) {
+          if (data.repeatType === 'weekly' && data.repeatConfig.weekdays) {
+            selectedWeekdays = data.repeatConfig.weekdays;
+            document.querySelectorAll('.weekday-btn').forEach(btn => {
+              const day = parseInt(btn.dataset.day);
+              btn.classList.toggle('selected', selectedWeekdays.includes(day));
+            });
+          }
+          if (data.repeatType === 'monthly' && data.repeatConfig.monthDays) {
+            selectedMonthDays = data.repeatConfig.monthDays;
+            renderMonthDays();
+          }
+        }
+        
+        // 加载自选日期
+        if (data.customDates) {
+          selectedDates = data.customDates;
+          renderCalendar();
+          renderCustomDateList();
+        }
+      });
     }
     
     // 根据类型更新UI

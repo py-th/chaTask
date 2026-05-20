@@ -78,6 +78,12 @@ function deleteReminderRulesByTaskId(taskId) {
   return stmt.run(taskId);
 }
 
+// 删除任务的所有提醒记录
+function deleteReminderLogsByTaskId(taskId) {
+  const stmt = db.prepare('DELETE FROM reminder_logs WHERE task_id = ?');
+  return stmt.run(taskId);
+}
+
 // 创建提醒记录
 function createReminderLog(log) {
   const stmt = db.prepare(`
@@ -135,6 +141,7 @@ module.exports = {
   getAllEnabledRules,
   deleteReminderRule,
   deleteReminderRulesByTaskId,
+  deleteReminderLogsByTaskId,
   createReminderLog,
   updateReminderLog,
   getPendingReminderLogs,
