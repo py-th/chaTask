@@ -3,65 +3,96 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; user-select:none;}
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background:transparent;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-
-    .popup-box {
-      background: white;
-      border-radius: 16px;
-      padding: 24px;
-      width: 420px;
-      max-width: 90vw;
-      max-height: 90vh;
-      overflow-y: auto;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-      animation: popupSlideIn 0.3s ease;
-      cursor: default;
-    }
-
-    .popup-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #eee;
-      cursor: move;
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
       user-select: none;
     }
 
-    .popup-icon {
-      font-size: 36px;
-      animation: bellRing 1s ease-in-out infinite;
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: transparent;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+    }
+
+    .dialog-container {
+      width: 100%;
+      height: 100vh;
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .dialog-header {
+      background: #FFC107;
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
       cursor: move;
+      -webkit-app-region: drag;
     }
 
-    .popup-title {
-      font-size: 20px;
+    .popup-icon {
+      font-size: 32px;
+      animation: bellRing 1s ease-in-out infinite;
+      cursor: default;
+    }
+
+    .dialog-title-wrap {
+      flex: 1;
+    }
+
+    .dialog-title {
+      font-size: 16px;
       font-weight: 600;
-      color: #333;
     }
 
-    .popup-time {
+    .dialog-time {
       font-size: 13px;
-      color: #999;
+      opacity: 0.9;
       margin-top: 2px;
+    }
+
+    .dialog-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: background 0.2s;
+      -webkit-app-region: no-drag;
+    }
+
+    .dialog-close:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    .dialog-body {
+      padding: 16px;
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
     }
 
     .popup-content {
       background: #f8f9fa;
       border-radius: 12px;
       padding: 16px;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
 
     .popup-content-label {
@@ -100,10 +131,12 @@
       color: #666;
     }
 
-    .popup-actions {
+    .dialog-footer {
       display: flex;
       flex-direction: column;
       gap: 8px;
+      padding: 12px 16px;
+      border-top: 1px solid #eee;
     }
 
     .popup-btn {
@@ -119,11 +152,12 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
+      -webkit-app-region: no-drag;
     }
 
     .popup-btn:hover {
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
     .popup-btn.complete {
@@ -164,25 +198,28 @@
   </style>
 </head>
 <body>
-  <div class="popup-box" id="popupBox">
-    <div class="popup-header" id="popupHeader">
+  <div class="dialog-container">
+    <div class="dialog-header" id="popupHeader">
       <span class="popup-icon" id="popupIcon">🔔</span>
-      <div>
-        <div class="popup-title">任务提醒</div>
-        <div class="popup-time" id="popupTime"></div>
+      <div class="dialog-title-wrap">
+        <div class="dialog-title">任务提醒</div>
+        <div class="dialog-time" id="popupTime"></div>
+      </div>
+      <button class="dialog-close" onclick="handleAction('dismiss')">×</button>
+    </div>
+
+    <div class="dialog-body">
+      <div class="popup-content">
+        <div class="popup-content-label">任务内容</div>
+        <div class="popup-content-text" id="popupTaskContent"></div>
+        <div class="popup-sender" id="popupSender" style="display: none;">
+          <img class="popup-sender-avatar" id="popupSenderAvatar" src="" alt="">
+          <span class="popup-sender-name" id="popupSenderName"></span>
+        </div>
       </div>
     </div>
 
-    <div class="popup-content">
-      <div class="popup-content-label">任务内容</div>
-      <div class="popup-content-text" id="popupTaskContent"></div>
-      <div class="popup-sender" id="popupSender" style="display: none;">
-        <img class="popup-sender-avatar" id="popupSenderAvatar" src="" alt="">
-        <span class="popup-sender-name" id="popupSenderName"></span>
-      </div>
-    </div>
-
-    <div class="popup-actions">
+    <div class="dialog-footer">
       <button class="popup-btn complete" onclick="handleAction('complete')">
         <span>✅</span> 标记完成
       </button>
@@ -232,57 +269,6 @@
       });
       window.close();
     }
-
-    // 弹窗拖动功能
-    (function setupDrag() {
-      const popupBox = document.getElementById('popupBox');
-      const popupHeader = document.getElementById('popupHeader');
-      const popupIcon = document.getElementById('popupIcon');
-      if (!popupBox || !popupHeader) return;
-
-      let isDragging = false;
-      let startX, startY, initialLeft, initialTop;
-
-      function onMouseDown(e) {
-        // 如果点击的是按钮，不触发拖动
-        if (e.target.tagName === 'BUTTON') return;
-
-        isDragging = true;
-        startX = e.screenX;
-        startY = e.screenY;
-
-        const rect = popupBox.getBoundingClientRect();
-        initialLeft = rect.left;
-        initialTop = rect.top;
-
-        // 改为 fixed 定位以便拖动
-        popupBox.style.position = 'fixed';
-        popupBox.style.left = initialLeft + 'px';
-        popupBox.style.top = initialTop + 'px';
-        popupBox.style.margin = '0';
-        popupBox.style.transform = 'none';
-      }
-
-      function onMouseMove(e) {
-        if (!isDragging) return;
-
-        const dx = e.screenX - startX;
-        const dy = e.screenY - startY;
-
-        popupBox.style.left = (initialLeft + dx) + 'px';
-        popupBox.style.top = (initialTop + dy) + 'px';
-      }
-
-      function onMouseUp() {
-        isDragging = false;
-      }
-
-      popupHeader.addEventListener('mousedown', onMouseDown);
-      popupIcon.addEventListener('mousedown', onMouseDown);
-
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', onMouseUp);
-    })();
   </script>
 </body>
 </html>
