@@ -28,28 +28,96 @@
       </div>
     </fieldset>
 
-    <div v-if="tasks.length === 0" style="color: gray; margin-top: 20px;">暂无任务，试试截图吧~</div>
-    <div v-else class="task-list">
-      <div v-for="task in tasks" :key="task.id" class="task-item">
-        <img :src="task.sender_avatar || defaultAvatar" class="avatar" />
-        <div class="task-content">
-          <div class="task-text">
-            <strong :style="{ color: task.direction === 'sent' ? '#4CAF50' : '#2196F3' }">
-              {{ task.sender_name || '未知' }} {{ task.direction === 'sent' ? '(我)' : '' }}
-            </strong>: {{ task.content }}
-          </div>
-          <div class="task-meta">
-            <span>📌 {{ formatTime(task.source_time || task.created_at) }}</span>
-            <span>置信度: {{ (task.confidence * 100).toFixed(0) }}% </span>
-            <span>创建: {{ (task.created_at) }} </span>
-            <span>发送: {{ (task.source_time) }} </span>
-            <span>截止: {{ (task.due_date) }} </span>
-            <span>提醒: {{ (task.reminder_time) }} </span>
-            <span>优先级: {{ (task.priority) }} </span>
-            <span>状态: {{ (task.status) }} </span>
+    <!-- 任务列表标签页 -->
+    <div class="task-tabs">
+      <div class="tab-headers">
+        <button 
+          v-for="tab in tabs" 
+          :key="tab.key"
+          :class="['tab-btn', { active: currentTab === tab.key }]"
+          @click="switchTab(tab.key)"
+        >
+          {{ tab.label }}
+          <span class="tab-count">({{ getTaskCount(tab.key) }})</span>
+        </button>
+      </div>
+      
+      <!-- 正常任务列表 -->
+      <div v-if="currentTab === 'normal'" class="tab-content">
+        <div v-if="normalTasks.length === 0" class="empty-state">暂无正常任务，试试截图吧~</div>
+        <div v-else class="task-list">
+          <div v-for="task in normalTasks" :key="task.id" class="task-item">
+            <img :src="task.sender_avatar || defaultAvatar" class="avatar" />
+            <div class="task-content">
+              <div class="task-text">
+                <strong :style="{ color: task.direction === 'sent' ? '#4CAF50' : '#2196F3' }">
+                  {{ task.sender_name || '未知' }} {{ task.direction === 'sent' ? '(我)' : '' }}
+                </strong>: {{ task.content }}
+              </div>
+              <div class="task-meta">
+                <span>📌 {{ formatTime(task.source_time || task.created_at) }}</span>
+                <span>置信度: {{ (task.confidence * 100).toFixed(0) }}% </span>
+                <span>创建: {{ (task.created_at) }} </span>
+                <span>发送: {{ (task.source_time) }} </span>
+                <span>截止: {{ (task.due_date) }} </span>
+                <span>提醒: {{ (task.reminder_time) }} </span>
+                <span>优先级: {{ (task.priority) }} </span>
+                <span>状态: {{ (task.status) }} </span>
+              </div>
+            </div>
+            <button @click="createStickyFromTask(task)" class="sticky-btn">📌 便签</button>
           </div>
         </div>
-        <button @click="createStickyFromTask(task)" class="sticky-btn">📌 便签</button>
+      </div>
+      
+      <!-- 已完成任务列表 -->
+      <div v-if="currentTab === 'completed'" class="tab-content">
+        <div v-if="completedTasks.length === 0" class="empty-state">暂无已完成任务</div>
+        <div v-else class="task-list">
+          <div v-for="task in completedTasks" :key="task.id" class="task-item">
+            <img :src="task.sender_avatar || defaultAvatar" class="avatar" />
+            <div class="task-content">
+              <div class="task-text">
+                <strong :style="{ color: task.direction === 'sent' ? '#4CAF50' : '#2196F3' }">
+                  {{ task.sender_name || '未知' }} {{ task.direction === 'sent' ? '(我)' : '' }}
+                </strong>: {{ task.content }}
+              </div>
+              <div class="task-meta">
+                <span>📌 {{ formatTime(task.source_time || task.created_at) }}</span>
+                <span>创建: {{ (task.created_at) }} </span>
+                <span>发送: {{ (task.source_time) }} </span>
+                <span>截止: {{ (task.due_date) }} </span>
+                <span>优先级: {{ (task.priority) }} </span>
+                <span>状态: {{ (task.status) }} </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 已删除任务列表 -->
+      <div v-if="currentTab === 'deleted'" class="tab-content">
+        <div v-if="deletedTasks.length === 0" class="empty-state">回收站为空</div>
+        <div v-else class="task-list">
+          <div v-for="task in deletedTasks" :key="task.id" class="task-item deleted-task">
+            <img :src="task.sender_avatar || defaultAvatar" class="avatar" />
+            <div class="task-content">
+              <div class="task-text">
+                <strong :style="{ color: task.direction === 'sent' ? '#4CAF50' : '#2196F3' }">
+                  {{ task.sender_name || '未知' }} {{ task.direction === 'sent' ? '(我)' : '' }}
+                </strong>: {{ task.content }}
+              </div>
+              <div class="task-meta">
+                <span>📌 {{ formatTime(task.source_time || task.created_at) }}</span>
+                <span>创建: {{ (task.created_at) }} </span>
+                <span>发送: {{ (task.source_time) }} </span>
+                <span>截止: {{ (task.due_date) }} </span>
+                <span>优先级: {{ (task.priority) }} </span>
+                <span>状态: {{ (task.status) }} </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -86,7 +154,19 @@ import { v4 as uuidv4 } from 'uuid';
 
 // ⭐ 默认头像（灰色圆形 + 用户图标）
 const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='45' height='45' viewBox='0 0 45 45'%3E%3Ccircle cx='22.5' cy='22.5' r='22.5' fill='%23e8e8e8'/%3E%3Ccircle cx='22.5' cy='16.5' r='7' fill='none' stroke='%23888' stroke-width='2.5'/%3E%3Cpath d='M8 37.5Q22.5 26 37 37.5' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E";
-const tasks = ref([])
+
+// 标签页配置
+const tabs = [
+  { key: 'normal', label: '正常任务' },
+  { key: 'completed', label: '已完成' },
+  { key: 'deleted', label: '回收站' }
+]
+
+const currentTab = ref('normal')
+const normalTasks = ref([])
+const completedTasks = ref([])
+const deletedTasks = ref([])
+
 const latestScreenshot = ref(null)
 const lastResult = ref(null)
 const processing = ref(false)
@@ -98,8 +178,48 @@ const manualName = ref('')
 let unsubscribeClipboard = null
 let unsubscribeIntegrated = null
 
-async function loadTasks() {
-  tasks.value = await window.electronAPI.getAllTasks()
+// 切换标签页
+function switchTab(tabKey) {
+  currentTab.value = tabKey
+  loadTasksByTab(tabKey)
+}
+
+// 获取任务数量
+function getTaskCount(tabKey) {
+  switch (tabKey) {
+    case 'normal': return normalTasks.value.length
+    case 'completed': return completedTasks.value.length
+    case 'deleted': return deletedTasks.value.length
+    default: return 0
+  }
+}
+
+// 根据标签页加载任务
+async function loadTasksByTab(tabKey) {
+  try {
+    switch (tabKey) {
+      case 'normal':
+        normalTasks.value = await window.electronAPI.getAllTasks()
+        break
+      case 'completed':
+        completedTasks.value = await window.electronAPI.getCompletedTasks()
+        break
+      case 'deleted':
+        deletedTasks.value = await window.electronAPI.getDeletedTasks()
+        break
+    }
+  } catch (err) {
+    console.error(`加载${tabKey}任务失败:`, err)
+  }
+}
+
+// 加载所有任务（初始化）
+async function loadAllTasks() {
+  await Promise.all([
+    loadTasksByTab('normal'),
+    loadTasksByTab('completed'),
+    loadTasksByTab('deleted')
+  ])
 }
 
 function formatTime(dateStr) {
@@ -193,7 +313,7 @@ async function createTask(senderName, avatarBase64, displayContent, confidence, 
   
   try {
     await window.electronAPI.saveTask(task);
-    await loadTasks();
+    await loadAllTasks();
     if (avatarBase64) {
       await window.electronAPI.createStickyNote({ 
         content: displayContent, 
@@ -250,7 +370,7 @@ function createStickyFromTask(task) {
 }
 
 onMounted(() => {
-  loadTasks()
+  loadAllTasks()
   
   unsubscribeIntegrated = window.electronAPI.onIntegratedExtractionResult((data) => {
     processing.value = true
@@ -280,28 +400,114 @@ onUnmounted(() => {
   min-width:400px; max-width:600px;
   box-shadow:0 2px 10px rgba(0,0,0,0.3); 
 }
+
+/* 标签页样式 */
+.task-tabs {
+  margin-top: 20px;
+}
+
+.tab-headers {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid #e0e0e0;
+  margin-bottom: 16px;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #666;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  color: #333;
+  background: #f5f5f5;
+}
+
+.tab-btn.active {
+  color: #2196F3;
+  border-bottom-color: #2196F3;
+  font-weight: 600;
+}
+
+.tab-count {
+  font-size: 12px;
+  color: #999;
+  margin-left: 4px;
+}
+
+.tab-content {
+  min-height: 200px;
+}
+
+.empty-state {
+  color: gray;
+  text-align: center;
+  padding: 40px;
+  font-size: 14px;
+}
+
 .task-list { 
-  margin-top:20px; max-height:500px; overflow-y:auto; 
+  margin-top: 10px; 
+  max-height: 500px; 
+  overflow-y: auto; 
 }
+
 .task-item { 
-  display:flex; align-items:start;
-  border-bottom:1px solid #eee; padding:12px; gap:12px; 
+  display: flex; 
+  align-items: start;
+  border-bottom: 1px solid #eee; 
+  padding: 12px; 
+  gap: 12px; 
 }
+
+.task-item.deleted-task {
+  opacity: 0.7;
+  background: #fafafa;
+}
+
 .avatar { 
-  width:40px; height:40px; border-radius:50%; object-fit:cover; 
+  width: 40px; 
+  height: 40px; 
+  border-radius: 50%; 
+  object-fit: cover; 
   border: 2px solid #e0e0e0;
 }
-.task-content { flex:1; }
-.task-text { margin-bottom:4px; line-height: 1.5; }
+
+.task-content { 
+  flex: 1; 
+}
+
+.task-text { 
+  margin-bottom: 4px; 
+  line-height: 1.5; 
+}
+
 .task-meta { 
-  font-size:12px; color:gray; display:block; gap:12px; 
+  font-size: 12px; 
+  color: gray; 
+  display: block; 
+  gap: 12px; 
 }
+
 .sticky-btn { 
-  background:#ffb74d; border:none; border-radius:4px; 
-  padding:6px 12px; cursor:pointer; 
+  background: #ffb74d; 
+  border: none; 
+  border-radius: 4px; 
+  padding: 6px 12px; 
+  cursor: pointer; 
 }
+
 kbd { 
-  background:#f7f7f7; border:1px solid #ccc; 
-  border-radius:3px; padding:2px 5px; 
+  background: #f7f7f7; 
+  border: 1px solid #ccc; 
+  border-radius: 3px; 
+  padding: 2px 5px; 
 }
 </style>

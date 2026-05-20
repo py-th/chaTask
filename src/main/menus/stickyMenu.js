@@ -41,7 +41,7 @@ class StickyMenu {
         }
       },
       {
-        label: '删除便签',
+        label: '删除',
         click: async (_, win) => {
           const result = await dialog.showMessageBox(win, {
             type: 'question',
@@ -181,11 +181,21 @@ class StickyMenu {
       {
         label: '完成',
         click: async () => {
-          await updateTask(taskId, { status: 'completed', is_show_desk: 0 });
-          const note = this.stickyManager.notes.get(noteId);
-          if (note && note.win && !note.win.isDestroyed()) {
-            note.win.close();
-          }
+          // 更新任务状态为已完成，并标记 is_completed=1
+          await updateTask(taskId, { 
+            status: 'completed', 
+            is_completed: 1,
+            is_show_desk: 0 
+          });
+          // 通知前端更新状态显示
+          this._notifyNote(noteId, 'update-status', 'completed');
+          // 延迟关闭窗口，让用户看到状态变化
+          setTimeout(() => {
+            const note = this.stickyManager.notes.get(noteId);
+            if (note && note.win && !note.win.isDestroyed()) {
+              note.win.close();
+            }
+          }, 500);
         }
       },
       {
