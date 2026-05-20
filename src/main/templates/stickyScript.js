@@ -15,6 +15,8 @@
   const popupDatePicker = document.getElementById('popupDatePicker');
   const popupConfirmBtn = document.getElementById('popupConfirmBtn');
   const popupCancelBtn = document.getElementById('popupCancelBtn');
+  const reminderInfo = document.getElementById('reminderInfo');
+  const avatarImg = document.querySelector('.avatar-area img');
 
   let isDragging = false;
 
@@ -120,8 +122,46 @@
     }
   });
 
+  // 显示下次提醒信息
+  electronAPI.on('update-reminder-info', (event, text) => {
+    if (reminderInfo) {
+      if (text) {
+        reminderInfo.textContent = text;
+        reminderInfo.classList.remove('hidden');
+      } else {
+        reminderInfo.classList.add('hidden');
+      }
+    }
+  });
+
+  // 开始头像闪烁
+  electronAPI.on('start-avatar-blink', () => {
+    if (avatarImg) {
+      avatarImg.classList.add('avatar-blink');
+    }
+  });
+
+  // 停止头像闪烁
+  electronAPI.on('stop-avatar-blink', () => {
+    if (avatarImg) {
+      avatarImg.classList.remove('avatar-blink');
+    }
+  });
+
+  // 处理提醒动作（从独立弹窗回调）
+  electronAPI.on('reminder-action-callback', (event, action) => {
+    console.log('提醒动作回调:', action);
+    // 如果标记完成或忽略，停止闪烁
+    if (action === 'complete' || action === 'dismiss') {
+      if (avatarImg) {
+        avatarImg.classList.remove('avatar-blink');
+      }
+    }
+  });
+
   function showRepeatRemindPicker() {
     console.log('显示提醒和重复设置器');
+    electronAPI.send('open-reminder-dialog', { noteId, taskId });
   }
 
   function showDatePicker() {

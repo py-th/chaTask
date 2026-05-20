@@ -55,14 +55,16 @@
                 </strong>: {{ task.content }}
               </div>
               <div class="task-meta">
-                <span>📌 {{ formatTime(task.source_time || task.created_at) }}</span>
-                <span>置信度: {{ (task.confidence * 100).toFixed(0) }}% </span>
-                <span>创建: {{ (task.created_at) }} </span>
-                <span>发送: {{ (task.source_time) }} </span>
-                <span>截止: {{ (task.due_date) }} </span>
-                <span>提醒: {{ (task.reminder_time) }} </span>
-                <span>优先级: {{ (task.priority) }} </span>
-                <span>状态: {{ (task.status) }} </span>
+                <span>📌 {{ formatTime(task.source_time || task.created_at) }}|</span>
+                <span>置信度: {{ (task.confidence * 100).toFixed(0) }}% |</span>
+                <span>创建: {{ (task.created_at) }} |</span>
+                <span>发送: {{ (task.source_time) }} |</span>
+                <span>截止: {{ (task.due_date) }} |</span>
+                <span>提醒: {{ (task.reminder_time) }} |</span>
+                <span>优先级: {{ (task.priority) }} |</span>
+                <span>状态: {{ (task.status) }} |</span>
+                <span>显示在桌面: {{ (task.is_show_desk === 1) ? '是' : '否' }} |</span>
+                <span>是否置顶: {{ (task.is_pinned === 1) ? '是' : '否' }} |</span>
               </div>
             </div>
             <button @click="createStickyFromTask(task)" class="sticky-btn">📌 便签</button>
@@ -362,10 +364,12 @@ function skipCurrentMessage() {
   }
 }
 
-function createStickyFromTask(task) {
+async function createStickyFromTask(task) {
   const content = `[${task.sender_name || '未知'}] ${task.content}`
   if (task.sender_avatar) {
-    window.electronAPI.createStickyNote({ content, avatar: task.sender_avatar, taskId: task.id })
+    await window.electronAPI.createStickyNote({ content, avatar: task.sender_avatar, taskId: task.id })
+    // 标记为显示在桌面
+    await window.electronAPI.updateTask(task.id, { is_show_desk: 1 })
   }
 }
 

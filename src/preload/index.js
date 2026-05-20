@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // 任务数据库
   saveTask: (task) => ipcRenderer.invoke('save-task', task),
+  updateTask: (id, updates) => ipcRenderer.invoke('update-task', { id, updates }),
   getAllTasks: () => ipcRenderer.invoke('get-all-tasks'),
   getCompletedTasks: () => ipcRenderer.invoke('get-completed-tasks'),
   getDeletedTasks: () => ipcRenderer.invoke('get-deleted-tasks'),

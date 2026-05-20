@@ -2,13 +2,16 @@
 const { BrowserWindow, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { getReminderRuleByTaskId } = require('../../database/repositories/reminderRepository');
+const { updateTask } = require('../../database/repositories/taskRepository');
 
 class StickyNoteManager {
-  constructor() {
+  constructor(reminderService) {
     this.notes = new Map();
     this.nextId = 1;
     this.templatePath = path.join(__dirname, '../templates/stickyTemplate.html');
     this.scriptPath = path.join(__dirname, '../templates/stickyScript.js');
+    this.reminderService = reminderService;
   }
 
   // 读取并填充 HTML 模板
@@ -103,6 +106,8 @@ class StickyNoteManager {
     const win = new BrowserWindow({
       width: 300,
       height: 60,
+      x: task.position_x || undefined,
+      y: task.position_y || undefined,
       alwaysOnTop: task.is_pinned === 1,
       frame: false,
       transparent: true,
@@ -120,7 +125,7 @@ class StickyNoteManager {
     const html = this.generateHTML(task, id);
     win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
 
-    win.webContents.on('did-finish-load', () => {
+    win.webContents.on('did-finish-load', async () => {
       win.webContents.executeJavaScript(`
         const body = document.body;
         const resizeObserver = new ResizeObserver(() => {
@@ -129,6 +134,27 @@ class StickyNoteManager {
         });
         resizeObserver.observe(body);
       `);
+
+      // 加载提醒信息显示
+      console.log(`[StickyNote] did-finish-load, taskId=${task.id}, reminderService=${!!this.reminderService}`);
+      if (this.reminderService) {
+        try {
+          const rule = getReminderRuleByTaskId(task.id);
+          console.log(`[StickyNote] 查询提醒规则: taskId=${task.id}, rule=${!!rule}`);
+          if (rule) {
+            console.log(`[StickyNote] 规则详情: repeat_type=${rule.repeat_type}, reminder_time=${rule.reminder_time}, start_date=${rule.start_date}, end_date=${rule.end_date}`);
+            const nextText = this.reminderService.getNextReminderText(rule);
+            console.log(`[StickyNote] 下次提醒文本: ${nextText}`);
+            if (nextText) {
+              win.webContents.send('update-reminder-info', nextText);
+            }
+          }
+        } catch (err) {
+          console.error('[StickyNote] 加载提醒信息失败:', err);
+        }
+      } else {
+        console.log('[StickyNote] reminderService 未设置，跳过提醒信息加载');
+      }
     });
 
     win.on('closed', () => this.notes.delete(id));
@@ -183,9 +209,22 @@ class StickyNoteManager {
     const note = this.notes.get(id);
     if (note) {
       note.isDragging = false;
+      // 保存位置到数据库
+      this.saveNotePosition(note);
       setTimeout(() => {
         this.checkEdgeSnap(note.win, id);
       }, 100);
+    }
+  }
+
+  // 保存便签位置到数据库
+  saveNotePosition(note) {
+    if (!note || !note.win || note.win.isDestroyed()) return;
+    const [x, y] = note.win.getPosition();
+    try {
+      updateTask(note.taskId, { position_x: x, position_y: y });
+    } catch (err) {
+      console.error('[StickyNote] 保存位置失败:', err);
     }
   }
 

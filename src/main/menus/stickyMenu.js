@@ -34,7 +34,8 @@ class StickyMenu {
       { type: 'separator' },
       {
         label: '隐藏 🙈',
-        click: (_, win) => {
+        click: async (_, win) => {
+          await updateTask(taskId, { is_show_desk: 0 });
           if (win && !win.isDestroyed()) {
             win.close();
           }

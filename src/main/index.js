@@ -9,6 +9,8 @@ const { registerIpcHandlers } = require('./ipc');
 const ScreenshotUtils = require('./services/screenshotService');
 const { integrateExtractionResults } = require('./services/integrationService');
 const { initOCR } = require('./services/ocrService');
+const ReminderService = require('./services/reminderService');
+const { getDeskTasks } = require('../database/repositories/taskRepository');
 
 let mainWindow = null;
 let clipboardWatcher = null;
@@ -16,6 +18,7 @@ let yoloService = null;
 let stickyManager = null;
 let screenshotUtils = null;
 let yoloSenderDateService = null;
+let reminderService = null;
 
 app.whenReady().then(async () => {
   mainWindow = createMainWindow();
@@ -24,7 +27,27 @@ app.whenReady().then(async () => {
   // ✅ 第1步：先注册所有基础 IPC（确保 get-all-tasks 等一定可用）
   screenshotUtils = new ScreenshotUtils();
   stickyManager = new StickyNoteManager();
-  registerIpcHandlers(mainWindow, stickyManager, yoloService, screenshotUtils, yoloSenderDateService);
+  
+  // 初始化提醒服务
+  reminderService = new ReminderService(stickyManager);
+  reminderService.start();
+  console.log('[main] 提醒服务已启动');
+
+  // 将提醒服务注入到 StickyNoteManager
+  stickyManager.reminderService = reminderService;
+
+  registerIpcHandlers(mainWindow, stickyManager, yoloService, screenshotUtils, yoloSenderDateService, reminderService);
+
+  // 恢复桌面便签（重启后自动显示之前未完成的桌面任务）
+  try {
+    const deskTasks = getDeskTasks();
+    console.log(`[main] 恢复桌面便签: ${deskTasks.length} 个任务`);
+    for (const task of deskTasks) {
+      stickyManager.createNote(task);
+    }
+  } catch (err) {
+    console.error('[main] 恢复桌面便签失败:', err);
+  }
   console.log('[main] 基础 IPC 处理器注册完成');
 
   // ✅ 第2步：预加载 OCR（失败不阻塞）
@@ -128,6 +151,7 @@ app.on('window-all-closed', () => {
   if (yoloService) yoloService.terminate();
   if (yoloSenderDateService) yoloSenderDateService.terminate();
   if (screenshotUtils) screenshotUtils.closeOverlay();
+  if (reminderService) reminderService.stop();
   if (process.platform !== 'darwin') app.quit();
 });
 //释放全局快捷键

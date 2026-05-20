@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select:none;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: transparent;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .dialog-container {
+      width: 100%;
+      height: 100vh;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .dialog-header {
+      background: #FFC107;
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: move;
+      -webkit-app-region: drag;
+    }
+    
+    .dialog-header * {
+      -webkit-app-region: no-drag;
+    }
+    
+    .dialog-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .dialog-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    
+    .dialog-close:hover {
+      background: rgba(255,255,255,0.2);
+    }
+    
+    .dialog-body {
+      padding: 16px;
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    
+    .form-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 10px;
+    }
+    
+    .form-label {
+      font-size: 14px;
+      color: #666;
+      min-width: 80px;
+      flex-shrink: 0;
+    }
+    
+    .form-control {
+      flex: 1;
+    }
+    
+    select, input[type="time"], input[type="date"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      background: white;
+      cursor: pointer;
+    }
+    
+    select:focus, input:focus {
+      outline: none;
+      border-color: #FFC107;
+    }
+    
+    /* 提醒开关 */
+    .reminder-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .toggle-switch {
+      position: relative;
+      width: 50px;
+      height: 26px;
+      background: #ccc;
+      border-radius: 13px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    
+    .toggle-switch.active {
+      background: #FFC107;
+    }
+    
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 22px;
+      height: 22px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.3s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .toggle-switch.active::after {
+      transform: translateX(24px);
+    }
+    
+    .toggle-label {
+      font-size: 14px;
+      color: #666;
+    }
+    
+    /* 日历 */
+    .calendar-section {
+      margin: 12px 0;
+      padding: 12px;
+      background: #fafafa;
+      border-radius: 6px;
+    }
+    
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    
+    .calendar-nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .calendar-nav button {
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    
+    .calendar-nav button:hover {
+      background: #eee;
+    }
+    
+    .calendar-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    .back-to-today {
+      font-size: 13px;
+      color: #2196F3;
+      cursor: pointer;
+      background: none;
+      border: none;
+    }
+    
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      text-align: center;
+    }
+    
+    .calendar-weekday {
+      font-size: 12px;
+      color: #999;
+      padding: 6px 0;
+    }
+    
+    .calendar-day {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 50%;
+      transition: all 0.2s;
+      position: relative;
+    }
+    
+    .calendar-day:hover {
+      background: #e3f2fd;
+    }
+    
+    .calendar-day.selected {
+      background: #FFC107;
+      color: white;
+    }
+    
+    .calendar-day.today {
+      border: 2px solid #FFC107;
+    }
+    
+    .calendar-day.other-month {
+      color: #ccc;
+    }
+    
+    /* 星期选择 */
+    .weekday-selector {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      margin: 10px 0;
+    }
+    
+    .weekday-btn {
+      padding: 8px 4px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+      font-size: 13px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    
+    .weekday-btn:hover {
+      border-color: #FFC107;
+    }
+    
+    .weekday-btn.selected {
+      background: #FFC107;
+      color: white;
+      border-color: #FFC107;
+    }
+    
+    /* 月份选择 */
+    .month-selector {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+      margin: 10px 0;
+    }
+    
+    .month-btn {
+      padding: 8px 4px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+      font-size: 12px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    
+    .month-btn:hover {
+      border-color: #FFC107;
+    }
+    
+    .month-btn.selected {
+      background: #FFC107;
+      color: white;
+      border-color: #FFC107;
+    }
+    
+    /* 日期选择器 */
+    .date-list {
+      max-height: 150px;
+      overflow-y: auto;
+      margin: 10px 0;
+    }
+    
+    .date-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      background: #e3f2fd;
+      border-radius: 12px;
+      font-size: 13px;
+      margin: 4px;
+      cursor: pointer;
+    }
+    
+    .date-tag:hover {
+      background: #bbdefb;
+    }
+    
+    .date-tag .remove {
+      font-size: 16px;
+      line-height: 1;
+    }
+    
+    .add-date-btn {
+      padding: 6px 12px;
+      background: #f5f5f5;
+      border: 1px dashed #ccc;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #666;
+      transition: all 0.2s;
+    }
+    
+    .add-date-btn:hover {
+      border-color: #FFC107;
+      color: #FFC107;
+    }
+    
+    /* 底部按钮 */
+    .dialog-footer {
+      display: flex;
+      gap: 10px;
+      padding: 12px 16px;
+      border-top: 1px solid #eee;
+    }
+    
+    .btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-delete {
+      background: #e0e0e0;
+      color: #666;
+    }
+    
+    .btn-delete:hover {
+      background: #d0d0d0;
+    }
+    
+    .btn-confirm {
+      background: #FFC107;
+      color: white;
+      font-weight: 600;
+    }
+    
+    .btn-confirm:hover {
+      background: #FFB300;
+    }
+    
+    /* 隐藏 */
+    .hidden {
+      display: none !important;
+    }
+    
+    .section-title {
+      font-size: 13px;
+      color: #999;
+      text-align: center;
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="dialog-container">
+    <div class="dialog-header">
+      <span class="dialog-title">重复与提醒</span>
+      <button class="dialog-close" onclick="closeDialog()">×</button>
+    </div>
+    
+    <div class="dialog-body">
+      <!-- 重复模式和提醒开关 -->
+      <div class="form-row">
+        <div class="form-control">
+          <select id="repeatType">
+            <option value="once">单次</option>
+            <option value="daily">每天</option>
+            <option value="weekly">每周</option>
+            <option value="monthly">每月</option>
+            <option value="custom">自选日期</option>
+          </select>
+        </div>
+        <div class="reminder-toggle">
+          <span class="toggle-label">提醒</span>
+          <div class="toggle-switch" id="reminderToggle" onclick="toggleReminder()"></div>
+        </div>
+      </div>
+      
+      <!-- 日历区域 -->
+      <div class="calendar-section">
+        <div class="calendar-header">
+          <div class="calendar-nav">
+            <button onclick="changeMonth(-1)">‹</button>
+            <span class="calendar-title" id="calendarTitle">2026年5月</span>
+            <button onclick="changeMonth(1)">›</button>
+          </div>
+          <button class="back-to-today" onclick="goToToday()">返回今天</button>
+        </div>
+        
+        <div class="calendar-grid" id="calendarGrid">
+          <!-- 动态生成 -->
+        </div>
+      </div>
+      
+      <!-- 每周选择 -->
+      <div id="weeklySection" class="hidden">
+        <div class="section-title">选择每周的哪几天重复</div>
+        <div class="weekday-selector">
+          <div class="weekday-btn" data-day="1" onclick="toggleWeekday(this)">周一</div>
+          <div class="weekday-btn" data-day="2" onclick="toggleWeekday(this)">周二</div>
+          <div class="weekday-btn" data-day="3" onclick="toggleWeekday(this)">周三</div>
+          <div class="weekday-btn" data-day="4" onclick="toggleWeekday(this)">周四</div>
+          <div class="weekday-btn" data-day="5" onclick="toggleWeekday(this)">周五</div>
+          <div class="weekday-btn" data-day="6" onclick="toggleWeekday(this)">周六</div>
+          <div class="weekday-btn" data-day="7" onclick="toggleWeekday(this)">周日</div>
+        </div>
+      </div>
+      
+      <!-- 每月选择 -->
+      <div id="monthlySection" class="hidden">
+        <div class="section-title">选择每月的哪几天重复</div>
+        <div class="calendar-grid" id="monthDayGrid">
+          <!-- 动态生成1-31 -->
+        </div>
+      </div>
+      
+      <!-- 自选日期 -->
+      <div id="customSection" class="hidden">
+        <div class="section-title">已选择的日期</div>
+        <div class="date-list" id="customDateList">
+          <!-- 动态生成 -->
+        </div>
+      </div>
+      
+      <!-- 开始/结束日期 -->
+      <div class="form-row">
+        <span class="form-label">开始重复:</span>
+        <div class="form-control">
+          <input type="date" id="startDate">
+        </div>
+      </div>
+      
+      <div class="form-row">
+        <span class="form-label">结束重复:</span>
+        <div class="form-control">
+          <select id="endType">
+            <option value="never">永不结束</option>
+            <option value="date">指定日期</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="form-row hidden" id="endDateRow">
+        <span class="form-label"></span>
+        <div class="form-control">
+          <input type="date" id="endDate">
+        </div>
+      </div>
+      
+      <!-- 提醒时间 -->
+      <div class="form-row">
+        <span class="form-label">提醒时间:</span>
+        <div class="form-control">
+          <input type="time" id="reminderTime" value="09:00">
+        </div>
+      </div>
+      
+      <!-- 提前提醒 -->
+      <div class="form-row">
+        <span class="form-label">提前提醒:</span>
+        <div class="form-control">
+          <select id="advanceReminder">
+            <option value="0">准时提醒</option>
+            <option value="5">提前5分钟</option>
+            <option value="10">提前10分钟</option>
+            <option value="15">提前15分钟</option>
+            <option value="30">提前30分钟</option>
+            <option value="60">提前1小时</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- 提醒方式 -->
+      <div class="form-row">
+        <span class="form-label">提醒方式:</span>
+        <div class="form-control">
+          <select id="reminderWay">
+            <option value="popup">弹窗</option>
+            <option value="sound">声音</option>
+            <option value="silent">静默</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    
+    <div class="dialog-footer">
+      <button class="btn btn-delete" onclick="deleteReminder()">删除</button>
+      <button class="btn btn-confirm" onclick="saveReminder()">确定</button>
+    </div>
+  </div>
+  
+  <script>
+    // 状态
+    let currentDate = new Date();
+    let selectedDates = [];
+    let selectedWeekdays = [];
+    let selectedMonthDays = [];
+    let reminderEnabled = false;
+    
+    // 初始化
+    function init() {
+      renderCalendar();
+      renderMonthDays();
+      document.getElementById('startDate').value = formatDate(new Date());
+      
+      // 监听重复类型变化
+      document.getElementById('repeatType').addEventListener('change', function() {
+        updateUIByType(this.value);
+      });
+      
+      // 监听结束类型变化
+      document.getElementById('endType').addEventListener('change', function() {
+        document.getElementById('endDateRow').classList.toggle('hidden', this.value !== 'date');
+      });
+      
+      updateUIByType('once');
+    }
+    
+    // 根据类型更新UI
+    function updateUIByType(type) {
+      document.getElementById('weeklySection').classList.toggle('hidden', type !== 'weekly');
+      document.getElementById('monthlySection').classList.toggle('hidden', type !== 'monthly');
+      document.getElementById('customSection').classList.toggle('hidden', type !== 'custom');
+    }
+    
+    // 渲染日历
+    function renderCalendar() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      
+      document.getElementById('calendarTitle').textContent = `${year}年${month + 1}月`;
+      
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startDayOfWeek = firstDay.getDay() || 7; // 周一=1, 周日=7
+      
+      const grid = document.getElementById('calendarGrid');
+      grid.innerHTML = '';
+      
+      // 星期标题
+      const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
+      weekdays.forEach(day => {
+        const div = document.createElement('div');
+        div.className = 'calendar-weekday';
+        div.textContent = day;
+        grid.appendChild(div);
+      });
+      
+      // 空白
+      for (let i = 1; i < startDayOfWeek; i++) {
+        const div = document.createElement('div');
+        grid.appendChild(div);
+      }
+      
+      // 日期
+      const today = new Date();
+      for (let day = 1; day <= lastDay.getDate(); day++) {
+        const div = document.createElement('div');
+        div.className = 'calendar-day';
+        div.textContent = day;
+        
+        const dateStr = formatDate(new Date(year, month, day));
+        
+        // 今天
+        if (year === today.getFullYear() && month === today.getMonth() && day === today.getDate()) {
+          div.classList.add('today');
+        }
+        
+        // 选中
+        if (selectedDates.includes(dateStr)) {
+          div.classList.add('selected');
+        }
+        
+        div.onclick = () => toggleDate(dateStr, div);
+        grid.appendChild(div);
+      }
+    }
+    
+    // 渲染每月日期选择
+    function renderMonthDays() {
+      const grid = document.getElementById('monthDayGrid');
+      if (!grid) return;
+      
+      grid.innerHTML = '';
+      for (let day = 1; day <= 31; day++) {
+        const div = document.createElement('div');
+        div.className = 'calendar-day';
+        div.textContent = day;
+        div.style.fontSize = '13px';
+        
+        if (selectedMonthDays.includes(day)) {
+          div.classList.add('selected');
+        }
+        
+        div.onclick = () => toggleMonthDay(day, div);
+        grid.appendChild(div);
+      }
+    }
+    
+    // 切换日期选择
+    function toggleDate(dateStr, element) {
+      const index = selectedDates.indexOf(dateStr);
+      if (index > -1) {
+        selectedDates.splice(index, 1);
+        element.classList.remove('selected');
+      } else {
+        selectedDates.push(dateStr);
+        element.classList.add('selected');
+      }
+      renderCustomDateList();
+    }
+    
+    // 切换星期选择
+    function toggleWeekday(element) {
+      const day = parseInt(element.dataset.day);
+      const index = selectedWeekdays.indexOf(day);
+      
+      if (index > -1) {
+        selectedWeekdays.splice(index, 1);
+        element.classList.remove('selected');
+      } else {
+        selectedWeekdays.push(day);
+        element.classList.add('selected');
+      }
+    }
+    
+    // 切换每月日期选择
+    function toggleMonthDay(day, element) {
+      const index = selectedMonthDays.indexOf(day);
+      
+      if (index > -1) {
+        selectedMonthDays.splice(index, 1);
+        element.classList.remove('selected');
+      } else {
+        selectedMonthDays.push(day);
+        element.classList.add('selected');
+      }
+    }
+    
+    // 渲染自选日期列表
+    function renderCustomDateList() {
+      const list = document.getElementById('customDateList');
+      if (!list) return;
+      
+      list.innerHTML = '';
+      selectedDates.sort().forEach(date => {
+        const tag = document.createElement('div');
+        tag.className = 'date-tag';
+        tag.innerHTML = `${date} <span class="remove" onclick="removeDate('${date}')">×</span>`;
+        list.appendChild(tag);
+      });
+      
+      if (selectedDates.length === 0) {
+        list.innerHTML = '<span style="color: #999; font-size: 13px;">请在日历中选择日期</span>';
+      }
+    }
+    
+    // 移除日期
+    function removeDate(date) {
+      const index = selectedDates.indexOf(date);
+      if (index > -1) {
+        selectedDates.splice(index, 1);
+        renderCalendar();
+        renderCustomDateList();
+      }
+    }
+    
+    // 切换月份
+    function changeMonth(delta) {
+      currentDate.setMonth(currentDate.getMonth() + delta);
+      renderCalendar();
+    }
+    
+    // 返回今天
+    function goToToday() {
+      currentDate = new Date();
+      renderCalendar();
+    }
+    
+    // 切换提醒开关
+    function toggleReminder() {
+      reminderEnabled = !reminderEnabled;
+      document.getElementById('reminderToggle').classList.toggle('active', reminderEnabled);
+    }
+    
+    // 格式化日期
+    function formatDate(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+    
+    // 保存
+    function saveReminder() {
+      const repeatType = document.getElementById('repeatType').value;
+      const reminderTime = document.getElementById('reminderTime').value;
+      const startDate = document.getElementById('startDate').value;
+      const endType = document.getElementById('endType').value;
+      const endDate = endType === 'date' ? document.getElementById('endDate').value : null;
+      const advanceMinutes = parseInt(document.getElementById('advanceReminder').value);
+      const reminderWay = document.getElementById('reminderWay').value;
+      
+      let repeatConfig = null;
+      let customDates = null;
+      
+      switch (repeatType) {
+        case 'weekly':
+          repeatConfig = { weekdays: selectedWeekdays.sort((a, b) => a - b) };
+          break;
+        case 'monthly':
+          repeatConfig = { monthDays: selectedMonthDays.sort((a, b) => a - b) };
+          break;
+        case 'custom':
+          customDates = selectedDates;
+          break;
+      }
+      
+      window.electronAPI.send('save-reminder-rule', {
+        repeatType,
+        reminderTime,
+        startDate,
+        endDate,
+        advanceMinutes,
+        reminderWay,
+        reminderEnabled,
+        repeatConfig,
+        customDates
+      });
+      
+      closeDialog();
+    }
+    
+    // 删除
+    function deleteReminder() {
+      window.electronAPI.send('delete-reminder-rule');
+      closeDialog();
+    }
+    
+    // 关闭
+    function closeDialog() {
+      window.electronAPI.send('close-reminder-dialog');
+    }
+    
+    // 初始化
+    init();
+  </script>
+</body>
+</html>

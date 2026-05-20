@@ -1,12 +1,15 @@
 // src/main/ipc/task.js
 const { ipcMain } = require('electron');
-const { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, getTaskById } = require('../../database/repositories/taskRepository');
+const { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, getTaskById, updateTask } = require('../../database/repositories/taskRepository');
 
 function registerTaskHandlers() {
   ipcMain.handle('save-task', (event, task) => insertTask(task));
   ipcMain.handle('get-all-tasks', () => getAllTasks());
   ipcMain.handle('get-completed-tasks', () => getCompletedTasks());
   ipcMain.handle('get-deleted-tasks', () => getDeletedTasks());
+  
+  // 更新任务
+  ipcMain.handle('update-task', (event, { id, updates }) => updateTask(id, updates));
   
   // 1. 添加：获取单个任务详情
   ipcMain.handle('get-task-detail', async (event, taskId) => {

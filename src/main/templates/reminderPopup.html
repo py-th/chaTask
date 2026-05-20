@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; user-select:none;}
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background:transparent;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .popup-box {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      width: 420px;
+      max-width: 90vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: popupSlideIn 0.3s ease;
+      cursor: default;
+    }
+
+    .popup-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #eee;
+      cursor: move;
+      user-select: none;
+    }
+
+    .popup-icon {
+      font-size: 36px;
+      animation: bellRing 1s ease-in-out infinite;
+      cursor: move;
+    }
+
+    .popup-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .popup-time {
+      font-size: 13px;
+      color: #999;
+      margin-top: 2px;
+    }
+
+    .popup-content {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+
+    .popup-content-label {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .popup-content-text {
+      font-size: 15px;
+      color: #333;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    .popup-sender {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed #ddd;
+    }
+
+    .popup-sender-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .popup-sender-name {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .popup-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .popup-btn {
+      padding: 12px 16px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .popup-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .popup-btn.complete {
+      background: #4CAF50;
+      color: white;
+    }
+
+    .popup-btn.snooze {
+      background: #FF9800;
+      color: white;
+    }
+
+    .popup-btn.reconfig {
+      background: #2196F3;
+      color: white;
+    }
+
+    .popup-btn.dismiss {
+      background: #f0f0f0;
+      color: #666;
+    }
+
+    @keyframes popupSlideIn {
+      from { opacity: 0; transform: translateY(-30px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes bellRing {
+      0%, 100% { transform: rotate(0deg); }
+      10% { transform: rotate(15deg); }
+      20% { transform: rotate(-15deg); }
+      30% { transform: rotate(10deg); }
+      40% { transform: rotate(-10deg); }
+      50% { transform: rotate(5deg); }
+      60% { transform: rotate(-5deg); }
+      70% { transform: rotate(0deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="popup-box" id="popupBox">
+    <div class="popup-header" id="popupHeader">
+      <span class="popup-icon" id="popupIcon">🔔</span>
+      <div>
+        <div class="popup-title">任务提醒</div>
+        <div class="popup-time" id="popupTime"></div>
+      </div>
+    </div>
+
+    <div class="popup-content">
+      <div class="popup-content-label">任务内容</div>
+      <div class="popup-content-text" id="popupTaskContent"></div>
+      <div class="popup-sender" id="popupSender" style="display: none;">
+        <img class="popup-sender-avatar" id="popupSenderAvatar" src="" alt="">
+        <span class="popup-sender-name" id="popupSenderName"></span>
+      </div>
+    </div>
+
+    <div class="popup-actions">
+      <button class="popup-btn complete" onclick="handleAction('complete')">
+        <span>✅</span> 标记完成
+      </button>
+      <button class="popup-btn snooze" onclick="handleAction('snooze')">
+        <span>⏳</span> 延时10分钟
+      </button>
+      <button class="popup-btn reconfig" onclick="handleAction('reconfig')">
+        <span>⚙️</span> 重新设置
+      </button>
+      <button class="popup-btn dismiss" onclick="handleAction('dismiss')">
+        <span>❌</span> 忽略
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+
+    let currentTaskId = null;
+    let currentNoteId = null;
+
+    ipcRenderer.on('show-reminder-popup', (event, data) => {
+      currentTaskId = data.taskId;
+      currentNoteId = data.noteId;
+
+      document.getElementById('popupTaskContent').textContent = data.taskContent || '无内容';
+      document.getElementById('popupTime').textContent = data.scheduledTime
+        ? new Date(data.scheduledTime).toLocaleString()
+        : '';
+
+      if (data.senderName) {
+        document.getElementById('popupSender').style.display = 'flex';
+        document.getElementById('popupSenderName').textContent = data.senderName;
+        if (data.senderAvatar) {
+          document.getElementById('popupSenderAvatar').src = data.senderAvatar;
+        } else {
+          document.getElementById('popupSenderAvatar').style.display = 'none';
+        }
+      }
+    });
+
+    function handleAction(action) {
+      ipcRenderer.send('reminder-action', {
+        taskId: currentTaskId,
+        action: action,
+        noteId: currentNoteId
+      });
+      window.close();
+    }
+
+    // 弹窗拖动功能
+    (function setupDrag() {
+      const popupBox = document.getElementById('popupBox');
+      const popupHeader = document.getElementById('popupHeader');
+      const popupIcon = document.getElementById('popupIcon');
+      if (!popupBox || !popupHeader) return;
+
+      let isDragging = false;
+      let startX, startY, initialLeft, initialTop;
+
+      function onMouseDown(e) {
+        // 如果点击的是按钮，不触发拖动
+        if (e.target.tagName === 'BUTTON') return;
+
+        isDragging = true;
+        startX = e.screenX;
+        startY = e.screenY;
+
+        const rect = popupBox.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+
+        // 改为 fixed 定位以便拖动
+        popupBox.style.position = 'fixed';
+        popupBox.style.left = initialLeft + 'px';
+        popupBox.style.top = initialTop + 'px';
+        popupBox.style.margin = '0';
+        popupBox.style.transform = 'none';
+      }
+
+      function onMouseMove(e) {
+        if (!isDragging) return;
+
+        const dx = e.screenX - startX;
+        const dy = e.screenY - startY;
+
+        popupBox.style.left = (initialLeft + dx) + 'px';
+        popupBox.style.top = (initialTop + dy) + 'px';
+      }
+
+      function onMouseUp() {
+        isDragging = false;
+      }
+
+      popupHeader.addEventListener('mousedown', onMouseDown);
+      popupIcon.addEventListener('mousedown', onMouseDown);
+
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    })();
+  </script>
+</body>
+</html>

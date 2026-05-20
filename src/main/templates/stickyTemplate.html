@@ -76,6 +76,30 @@
     .sticky-container.folded-mode .status-icon {
       display: flex !important;
     }
+    
+    /* 头像闪烁动画 */
+    @keyframes avatarBlink {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.3; transform: scale(1.1); }
+    }
+    
+    .avatar-blink {
+      animation: avatarBlink 1s ease-in-out infinite;
+    }
+    
+    /* 提醒信息样式 */
+    .reminder-info {
+      font-size: 11px;
+      color: #FF9800;
+      background: rgba(255, 152, 0, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .reminder-info.hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -88,6 +112,7 @@
       <div class="info-item"><span>👤:</span><span id="contactName">{{senderName}}</span></div>
       <div class="info-item"><span>📅:</span><span id="dueDate" class="clickable" data-due-date="{{dueDate}}">{{dueDateText}}</span></div>
       <div class="info-item"><span>📌状态:</span><span id="taskStatus" class="clickable">{{statusText}}</span></div>
+      <div class="info-item reminder-info hidden" id="reminderInfo"></div>
     </div>
     <div class="datePickerPopup" id="datePickerPopup">
       <div style="margin-bottom: 10px;">选择截止日期</div>

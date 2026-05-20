@@ -1,12 +1,15 @@
 // src/main/ipc/sticky.js
-const { ipcMain } = require('electron');
+const { ipcMain, BrowserWindow } = require('electron');
 const { updateTask, getTaskById } = require('../../database/repositories/taskRepository');
+const { saveReminderRule, deleteReminderRulesByTaskId, getReminderRuleByTaskId } = require('../../database/repositories/reminderRepository');
 const { StickyMenu } = require('../menus');
+const path = require('path');
 
-function registerStickyHandlers(stickyManager, screenshotUtils) {
+function registerStickyHandlers(stickyManager, screenshotUtils, reminderService) {
   const stickyMenu = new StickyMenu(stickyManager, screenshotUtils);
 
   let currentDraggingNoteId = null;
+  let reminderDialogWindows = new Map(); // taskId -> dialogWindow
 
   ipcMain.on('start-sticky-drag', (event, noteId, startScreenX, startScreenY) => {
     const note = stickyManager.notes.get(noteId);
@@ -105,6 +108,209 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
   });
 
   ipcMain.on('resize-sticky', (event, { id, height }) => stickyManager.resizeNote(id, height));
+
+  // ========== 提醒功能 IPC ==========
+  
+  // 打开提醒设置对话框
+  ipcMain.on('open-reminder-dialog', async (event, { noteId, taskId }) => {
+    // 如果已经有对话框打开，先关闭
+    if (reminderDialogWindows.has(taskId)) {
+      const existingWin = reminderDialogWindows.get(taskId);
+      if (!existingWin.isDestroyed()) {
+        existingWin.close();
+      }
+      reminderDialogWindows.delete(taskId);
+    }
+    
+    // 获取现有规则
+    const existingRule = getReminderRuleByTaskId(taskId);
+    
+    // 创建对话框窗口
+    const dialogWin = new BrowserWindow({
+      width: 400,
+      height: 580,
+      frame: false,
+      transparent: true,
+      resizable: false,
+      alwaysOnTop: true,
+      movable: true,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, '../../preload/index.js')
+      }
+    });
+    
+    // 加载对话框HTML
+    const dialogPath = path.join(__dirname, '../templates/repeatRemindDialog.html');
+    dialogWin.loadFile(dialogPath);
+    
+    // 保存窗口引用
+    reminderDialogWindows.set(taskId, dialogWin);
+    
+    // 窗口关闭时清理
+    dialogWin.on('closed', () => {
+      reminderDialogWindows.delete(taskId);
+    });
+    
+    // 等待加载完成后发送现有数据
+    dialogWin.webContents.on('did-finish-load', () => {
+      if (existingRule) {
+        dialogWin.webContents.send('load-reminder-data', {
+          repeatType: existingRule.repeat_type,
+          reminderTime: existingRule.reminder_time,
+          startDate: existingRule.start_date,
+          endDate: existingRule.end_date,
+          advanceMinutes: existingRule.advance_minutes,
+          reminderWay: existingRule.reminder_way,
+          reminderEnabled: existingRule.is_enabled === 1,
+          repeatConfig: existingRule.repeat_config ? JSON.parse(existingRule.repeat_config) : null,
+          customDates: existingRule.custom_dates ? JSON.parse(existingRule.custom_dates) : null
+        });
+      }
+    });
+    
+    // 保存当前taskId和noteId到窗口，供后续使用
+    dialogWin.taskId = taskId;
+    dialogWin.noteId = noteId;
+  });
+  
+  // 保存提醒规则
+  ipcMain.on('save-reminder-rule', async (event, data) => {
+    // 找到对应的dialog窗口
+    let targetTaskId = null;
+    let targetNoteId = null;
+    
+    for (const [taskId, win] of reminderDialogWindows.entries()) {
+      if (win.webContents === event.sender) {
+        targetTaskId = taskId;
+        targetNoteId = win.noteId;
+        break;
+      }
+    }
+    
+    if (!targetTaskId) {
+      console.error('找不到对应的任务ID');
+      return;
+    }
+    
+    try {
+      // 保存规则到数据库
+      const ruleId = saveReminderRule({
+        taskId: targetTaskId,
+        repeatType: data.repeatType,
+        repeatConfig: data.repeatConfig,
+        customDates: data.customDates,
+        reminderTime: data.reminderTime,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        advanceMinutes: data.advanceMinutes,
+        reminderWay: data.reminderWay,
+        isEnabled: data.reminderEnabled
+      });
+      
+      // 更新任务的提醒开关
+      await updateTask(targetTaskId, { 
+        reminder_enabled: data.reminderEnabled ? 1 : 0,
+        reminder_rule_id: ruleId
+      });
+      
+      // 更新便签上的提醒信息显示
+      if (reminderService && data.reminderEnabled) {
+        const rule = getReminderRuleByTaskId(targetTaskId);
+        if (rule) {
+          const nextText = reminderService.getNextReminderText(rule);
+          const note = stickyManager.notes.get(targetNoteId);
+          if (note && note.win && !note.win.isDestroyed()) {
+            note.win.webContents.send('update-reminder-info', nextText);
+          }
+        }
+      }
+      
+      // 关闭对话框
+      const dialogWin = reminderDialogWindows.get(targetTaskId);
+      if (dialogWin && !dialogWin.isDestroyed()) {
+        dialogWin.close();
+        reminderDialogWindows.delete(targetTaskId);
+      }
+      
+      console.log('[Reminder] 提醒规则已保存:', ruleId);
+    } catch (err) {
+      console.error('[Reminder] 保存提醒规则失败:', err);
+    }
+  });
+  
+  // 删除提醒规则
+  ipcMain.on('delete-reminder-rule', async (event) => {
+    let targetTaskId = null;
+    let targetNoteId = null;
+    
+    for (const [taskId, win] of reminderDialogWindows.entries()) {
+      if (win.webContents === event.sender) {
+        targetTaskId = taskId;
+        targetNoteId = win.noteId;
+        break;
+      }
+    }
+    
+    if (!targetTaskId) return;
+    
+    try {
+      // 删除数据库中的规则
+      deleteReminderRulesByTaskId(targetTaskId);
+      
+      // 更新任务
+      await updateTask(targetTaskId, { 
+        reminder_enabled: 0,
+        reminder_rule_id: null
+      });
+      
+      // 清除便签上的提醒显示
+      const note = stickyManager.notes.get(targetNoteId);
+      if (note && note.win && !note.win.isDestroyed()) {
+        note.win.webContents.send('update-reminder-info', null);
+      }
+      
+      // 关闭对话框
+      const dialogWin = reminderDialogWindows.get(targetTaskId);
+      if (dialogWin && !dialogWin.isDestroyed()) {
+        dialogWin.close();
+        reminderDialogWindows.delete(targetTaskId);
+      }
+      
+      console.log('[Reminder] 提醒规则已删除');
+    } catch (err) {
+      console.error('[Reminder] 删除提醒规则失败:', err);
+    }
+  });
+  
+  // 关闭提醒对话框
+  ipcMain.on('close-reminder-dialog', (event) => {
+    for (const [taskId, win] of reminderDialogWindows.entries()) {
+      if (win.webContents === event.sender) {
+        if (!win.isDestroyed()) {
+          win.close();
+        }
+        reminderDialogWindows.delete(taskId);
+        break;
+      }
+    }
+  });
+  
+  // 处理提醒动作
+  ipcMain.on('reminder-action', async (event, { taskId, action, noteId }) => {
+    if (reminderService) {
+      await reminderService.handleReminderAction(taskId, action);
+    }
+
+    // 通知便签停止闪烁（complete/dismiss 时）
+    if (action === 'complete' || action === 'dismiss') {
+      const note = stickyManager.notes.get(noteId);
+      if (note && note.win && !note.win.isDestroyed()) {
+        note.win.webContents.send('stop-avatar-blink');
+      }
+    }
+  });
 }
 
 module.exports = { registerStickyHandlers };

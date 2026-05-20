@@ -38,19 +38,69 @@ db.exec(`
   )
 `);
 
-// 列迁移：检查并添加 is_deleted 列（兼容旧数据库）
+// 列迁移：检查并添加新列（兼容旧数据库）
 try {
   const tableInfo = db.prepare("PRAGMA table_info(tasks)").all();
-  const hasIsDeleted = tableInfo.some(col => col.name === 'is_deleted');
+  const columns = tableInfo.map(col => col.name);
   
-  if (!hasIsDeleted) {
+  // 添加 is_deleted 列
+  if (!columns.includes('is_deleted')) {
     console.log('[db] 迁移：添加 is_deleted 列到 tasks 表');
     db.exec(`ALTER TABLE tasks ADD COLUMN is_deleted INTEGER DEFAULT 0`);
     console.log('[db] 迁移完成：is_deleted 列已添加');
   }
+  
+  // 添加 reminder_enabled 列（提醒开关）
+  if (!columns.includes('reminder_enabled')) {
+    console.log('[db] 迁移：添加 reminder_enabled 列到 tasks 表');
+    db.exec(`ALTER TABLE tasks ADD COLUMN reminder_enabled INTEGER DEFAULT 0`);
+    console.log('[db] 迁移完成：reminder_enabled 列已添加');
+  }
+  
+  // 添加 reminder_rule_id 列（关联提醒规则）
+  if (!columns.includes('reminder_rule_id')) {
+    console.log('[db] 迁移：添加 reminder_rule_id 列到 tasks 表');
+    db.exec(`ALTER TABLE tasks ADD COLUMN reminder_rule_id TEXT`);
+    console.log('[db] 迁移完成：reminder_rule_id 列已添加');
+  }
 } catch (err) {
   console.error('[db] 列迁移失败:', err.message);
 }
+
+// 提醒规则表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS reminder_rules (
+    id TEXT PRIMARY KEY,                    -- UUID 唯一标识
+    task_id TEXT NOT NULL,                  -- 关联任务ID
+    repeat_type TEXT DEFAULT 'once',        -- 重复类型: once/daily/weekly/monthly/custom
+    repeat_config TEXT,                     -- 重复配置 JSON（每周哪几天、每月哪几天等）
+    custom_dates TEXT,                      -- 自选日期列表 JSON 数组
+    reminder_time TEXT,                     -- 提醒时间 HH:MM
+    start_date TEXT,                        -- 开始日期
+    end_date TEXT,                          -- 结束日期（NULL表示永不结束）
+    advance_minutes INTEGER DEFAULT 0,      -- 提前提醒分钟数
+    reminder_way TEXT DEFAULT 'popup',      -- 提醒方式: popup/sound/silent
+    is_enabled INTEGER DEFAULT 1,           -- 是否启用 (0/1)
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+  )
+`);
+
+// 提醒记录表（记录每次提醒触发）
+db.exec(`
+  CREATE TABLE IF NOT EXISTS reminder_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    rule_id TEXT NOT NULL,                  -- 关联规则ID
+    task_id TEXT NOT NULL,                  -- 关联任务ID
+    scheduled_time TEXT,                    -- 计划提醒时间
+    triggered_at TEXT,                      -- 实际触发时间
+    status TEXT DEFAULT 'pending',          -- 状态: pending/dismissed/snoozed/completed
+    snooze_minutes INTEGER,                 -- 延时分钟数
+    FOREIGN KEY (rule_id) REFERENCES reminder_rules(id) ON DELETE CASCADE,
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+  )
+`);
 
 // 联系人表
 db.exec(`

@@ -63,6 +63,16 @@ function getDeletedTasks() {
   `);
   return stmt.all();
 }
+
+// 获取需要显示在桌面的任务
+function getDeskTasks() {
+  const stmt = db.prepare(`
+    SELECT * FROM tasks 
+    WHERE is_show_desk = 1 AND is_deleted = 0 AND is_completed = 0
+    ORDER BY created_at DESC
+  `);
+  return stmt.all();
+}
 // 更新任务
 function updateTask(id, updates) {
   const fields = [];
@@ -81,4 +91,4 @@ function getTaskById(id) {
   return stmt.get(id);
 }
 
-module.exports = { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, updateTask, getTaskById };
+module.exports = { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, getDeskTasks, updateTask, getTaskById };
