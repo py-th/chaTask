@@ -121,29 +121,101 @@ app.whenReady().then(async () => {
     }
   });
 
-  // ✅ 第6步：启动剪贴板监听（备选方案）
-  clipboardWatcher = startClipboardWatcher(async (imgBuffer) => {
-    if (!yoloService) {
-      console.log('[clipboard] YOLO 服务未初始化，忽略剪贴板截图');
-      return;
-    }
-    const result = await yoloService.extract(imgBuffer);
-    if (result.success && result.messages.length > 0) {
-      mainWindow.webContents.send('screenshot-extracted', {
-        base64: imgBuffer.toString('base64'),
-        result: result
-      });
-    } else {
-      console.log('[clipboard] 不是有效的聊天截图，忽略');
-    }
+  // ✅ 第6步：根据配置决定截图模式（两种方式互斥）
+  const config = require('./config');
+  const screenshotMode = config.screenshot ? config.screenshot.mode : 'shortcut';
+
+  if (screenshotMode === 'clipboard') {
+    // 剪贴板模式：启用剪贴板监听，禁用快捷键
+    console.log('[main] 启用系统截图+剪贴板监听模式');
+    const { computeImageHash } = require('./utils/hash');
+    const { matchContact } = require('./services/contactMatcher');
+    const db = require('../database/db');
+    clipboardWatcher = startClipboardWatcher(async (imgBuffer) => {
+      if (!yoloService) {
+        console.log('[clipboard] YOLO 服务未初始化，忽略剪贴板截图');
+        return;
+      }
+      const result = await yoloService.extract(imgBuffer);
+      if (result.success && result.messages.length > 0) {
+        // 剪贴板模式只有单张截图，无法识别发送者/日期
+        // 但可以通过头像匹配联系人数据库，匹配成功则自动创建任务
+        const contacts = db.prepare('SELECT * FROM contacts').all();
+        const integratedMessages = [];
+        for (const msg of result.messages) {
+          let avatarHash = null;
+          let avatarBuffer = null;
+          if (msg.avatarBase64) {
+            try {
+              avatarBuffer = Buffer.from(
+                msg.avatarBase64.replace(/^data:image\/\w+;base64,/, ''),
+                'base64'
+              );
+              avatarHash = await computeImageHash(avatarBuffer);
+            } catch (e) {
+              console.warn('[clipboard] 计算头像哈希失败:', e.message);
+            }
+          }
+          // 尝试通过头像匹配联系人（无发送者名称，传null）
+          const matchResult = await matchContact(avatarBuffer, avatarHash, null, contacts);
+          integratedMessages.push({
+            text: msg.text,
+            avatarBase64: msg.avatarBase64,
+            avatarHash: avatarHash,
+            senderName: matchResult.senderName,
+            sourceTime: new Date().toISOString(),
+            confidence: msg.confidence,
+            direction: msg.direction,
+            isNewContact: matchResult.isNewContact,
+            senderRegion: null,
+            dateRegion: null,
+            dateText: null,
+            senderConfidence: 0,
+            dateConfidence: 0,
+            matchReason: matchResult.reason
+          });
+        }
+        mainWindow.webContents.send('integrated-extraction-result', {
+          success: true,
+          messages: integratedMessages,
+          localImageBase64: imgBuffer.toString('base64'),
+          screenshotInfo: { windowName: 'Clipboard', region: null },
+          rawDetections: result.rawDetections || { avatars: 0, texts: 0 },
+          rawResults: {
+            avatarText: {
+              success: true,
+              messageCount: result.messages.length,
+              rawDetections: result.rawDetections || { avatars: 0, texts: 0 }
+            },
+            senderDate: {
+              success: false,
+              senderCount: 0,
+              dateCount: 0
+            }
+          }
+        });
+      } else {
+        console.log('[clipboard] 不是有效的聊天截图，忽略');
+      }
+    }, config.screenshot.clipboardInterval || 1000);
+  } else {
+    // 快捷键模式：启用快捷键，禁用剪贴板监听
+    console.log('[main] 启用快捷键截图模式 (Ctrl+Alt+S)');
+  }
+
+  // 提供截图配置给渲染进程
+  ipcMain.handle('get-screenshot-config', () => {
+    return { mode: screenshotMode };
   });
 
-  // ✅ 第7步：注册全局快捷键
-  globalShortcut.register('CommandOrControl+Alt+S', () => {
-    if (screenshotUtils) {
-      screenshotUtils.startDoubleScreenshot();
-    }
-  });
+  // ✅ 第7步：仅在快捷键模式下注册全局快捷键
+  if (screenshotMode === 'shortcut') {
+    globalShortcut.register('CommandOrControl+Alt+S', () => {
+      if (screenshotUtils) {
+        screenshotUtils.startDoubleScreenshot();
+      }
+    });
+  }
 });
 
 app.on('window-all-closed', () => {

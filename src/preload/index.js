@@ -43,13 +43,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('show-name-capture-guide', callback)
   },
   
+  // 获取截图配置
+  getScreenshotConfig: () => ipcRenderer.invoke('get-screenshot-config'),
+
   // 剪贴板截图（备选方案）
   onNewScreenshot: (callback) => {
     const listener = (event, base64) => callback(base64)
     ipcRenderer.on('new-screenshot', listener)
     return () => ipcRenderer.removeListener('new-screenshot', listener)
   },
-  
+
   // YOLO提取结果（剪贴板方案）
   onScreenshotExtracted: (callback) => {
     const listener = (event, data) => callback(data)

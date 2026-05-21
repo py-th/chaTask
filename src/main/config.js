@@ -34,8 +34,13 @@ module.exports = {
       timeout: 10000,        // 超时时间(ms)
     }
   },
-  // 剪贴板轮询间隔（毫秒）
-  clipboardInterval: 1000,
+  // 截图方式配置
+  screenshot: {
+    // 截图方式: 'shortcut' = 快捷键截图(Ctrl+Alt+S), 'clipboard' = 系统截图+剪贴板监听(Win+Shift+S)
+    mode: 'shortcut',
+    // 剪贴板轮询间隔（毫秒）
+    clipboardInterval: 1000,
+  },
   // 头像匹配阈值（汉明距离）
   avatarMatchThreshold: 10,
   //时间日期格式匹配

@@ -177,7 +177,6 @@ const pendingMessages = ref([])
 const showNameDialog = ref(false)
 const manualName = ref('')
 
-let unsubscribeClipboard = null
 let unsubscribeIntegrated = null
 
 // 切换标签页
@@ -268,36 +267,6 @@ async function onIntegratedExtractionResult(data) {
   }
 }
 
-// 剪贴板截图（备选方案）
-async function onScreenshotExtracted(data) {
-  const { base64, result } = data
-  processing.value = false
-  latestScreenshot.value = `data:image/png;base64,${base64}`
-  
-  if (!result.success || !result.messages || result.messages.length === 0) {
-    console.warn('剪贴板截图未识别到有效消息:', result.reason || '未知错误')
-    return
-  }
-  
-  for (const message of result.messages) {
-    pendingMessages.value.push({
-      text: message.text,
-      avatarBase64: message.avatarBase64,
-      avatarHash: message.avatarHash,
-      sourceTime: new Date().toISOString(),
-      isNewContact: true,
-      senderName: null,
-      dateText: null,
-      confidence: message.confidence,
-      direction: message.direction
-    })
-    if (!showNameDialog.value) {
-      showNameDialog.value = true
-      manualName.value = ''
-    }
-  }
-}
-
 async function createTask(senderName, avatarBase64, displayContent, confidence, direction, sourceTime) {
   const task = {
     id: uuidv4(),
@@ -373,22 +342,26 @@ async function createStickyFromTask(task) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   loadAllTasks()
-  
+
   unsubscribeIntegrated = window.electronAPI.onIntegratedExtractionResult((data) => {
     processing.value = true
     onIntegratedExtractionResult(data)
   })
 
-  unsubscribeClipboard = window.electronAPI.onScreenshotExtracted((data) => {
-    processing.value = true
-    onScreenshotExtracted(data)
-  })
+  // 获取截图方式配置
+  try {
+    const screenshotConfig = await window.electronAPI.getScreenshotConfig()
+    if (screenshotConfig && screenshotConfig.mode === 'clipboard') {
+      // 可以在这里添加提示逻辑，如果需要显示提示
+    }
+  } catch (err) {
+    console.error('获取截图配置失败:', err)
+  }
 })
 
 onUnmounted(() => {
-  if (unsubscribeClipboard) unsubscribeClipboard()
   if (unsubscribeIntegrated) unsubscribeIntegrated()
 })
 </script>
