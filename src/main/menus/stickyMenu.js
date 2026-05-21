@@ -173,6 +173,13 @@ class StickyMenu {
           await updateTask(taskId, { priority: 'low' });
           this._notifyNote(noteId, 'update-priority', 'low');
         }
+      },
+      {
+        label: '无',
+        click: async () => {
+          await updateTask(taskId, { priority: 'none' });
+          this._notifyNote(noteId, 'update-priority', 'none');
+        }
       }
     ];
   }

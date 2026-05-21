@@ -23,7 +23,7 @@ function insertTask(task) {
     createdAt,
     task.dueDate || null,
     task.reminderTime || null,
-    task.priority || 'medium',
+    task.priority || 'none',
     task.status || 'active',
     task.color || null,
     task.isPinned ? 1 : 0,

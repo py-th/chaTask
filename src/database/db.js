@@ -23,7 +23,7 @@ db.exec(`
     created_at TEXT DEFAULT CURRENT_TIMESTAMP, -- 任务创建时间
     due_date TEXT,                          -- 截止日期
     reminder_time TEXT,                     -- 提醒时间
-    priority TEXT DEFAULT 'medium',         -- 优先级: high/medium/low
+    priority TEXT DEFAULT 'none',           -- 优先级: high/medium/low/none
     status TEXT DEFAULT 'active',           -- 状态: active/in_progress/completed/archived
     color TEXT,                             -- 便签背景色
     is_pinned INTEGER DEFAULT 0,            -- 是否置顶 (0/1)

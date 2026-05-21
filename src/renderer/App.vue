@@ -277,7 +277,7 @@ async function createTask(senderName, avatarBase64, displayContent, confidence, 
     confidence: confidence,
     direction: direction,
     createdAt: new Date(),
-    priority: 'medium',
+    priority: 'none',
     status: 'pending',
     isShowDesk: 1
   };

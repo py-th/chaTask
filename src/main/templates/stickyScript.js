@@ -93,6 +93,15 @@
     if (datePickerPopup) datePickerPopup.style.backgroundColor = color;
     const avatarImg = document.querySelector('.avatar-area img');
     if (avatarImg) avatarImg.style.border = '2px solid ' + color;
+
+    // 更新优先级文本显示
+    let priorityText = '';
+    if (priority === 'high') priorityText = '高';
+    else if (priority === 'medium') priorityText = '中';
+    else if (priority === 'low') priorityText = '低';
+    else priorityText = '无';
+    const prioritySpan = document.getElementById('taskPriority');
+    if (prioritySpan) prioritySpan.innerText = priorityText;
   });
 
   electronAPI.on('update-status', (event, status) => {
@@ -126,7 +135,7 @@
   electronAPI.on('update-reminder-info', (event, text) => {
     if (reminderInfo) {
       if (text) {
-        reminderInfo.textContent = text;
+        reminderInfo.textContent = '⏰ ' + text;
         reminderInfo.classList.remove('hidden');
       } else {
         reminderInfo.classList.add('hidden');
@@ -202,5 +211,9 @@
 
   document.getElementById('taskStatus').addEventListener('click', () => {
     electronAPI.send('set-status', { noteId, taskId });
+  });
+
+  document.getElementById('taskPriority').addEventListener('click', () => {
+    electronAPI.send('set-priority', { noteId, taskId });
   });
 })();

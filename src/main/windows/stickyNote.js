@@ -40,6 +40,17 @@ class StickyNoteManager {
         }
       };
 
+      // 获取优先级文本
+      const getPriorityText = (priority) => {
+        switch (priority) {
+          case 'high': return '高';
+          case 'medium': return '中';
+          case 'low': return '低';
+          case 'none': return '无';
+          default: return '无';
+        }
+      };
+
       // 获取优先级颜色
       let priorityColor = '';
       switch (task.priority) {
@@ -70,6 +81,7 @@ class StickyNoteManager {
       const content = escapeHtml(task.content);
       const senderName = escapeHtml(task.sender_name || '未知');
       const statusText = getStatusText(task.status);
+      const priorityText = getPriorityText(task.priority);
 
       // 替换模板中的占位符
       const replacements = {
@@ -82,7 +94,8 @@ class StickyNoteManager {
         '{{senderName}}': senderName,
         '{{dueDate}}': task.due_date || '',
         '{{dueDateText}}': dueDateText,
-        '{{statusText}}': statusText
+        '{{statusText}}': statusText,
+        '{{priorityText}}': priorityText
       };
 
       // 执行替换
