@@ -4,7 +4,7 @@ const { registerContactHandlers } = require('./contact');
 const { registerStickyHandlers } = require('./sticky');
 const { registerScreenshotIpc } = require('./screenshot');
 
-function registerIpcHandlers(mainWindow, stickyManager, yoloService, screenshotUtils, yoloSenderDateService, reminderService) {
+function registerIpcHandlers(mainWindow, stickyManager, screenshotUtils, reminderService) {
   registerScreenshotIpc(mainWindow, screenshotUtils);
   registerTaskHandlers();
   registerContactHandlers();
