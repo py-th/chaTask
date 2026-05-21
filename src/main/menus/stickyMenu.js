@@ -23,6 +23,15 @@ class StickyMenu {
         }
       },
       { type: 'separator' },
+       {
+        label: '复制文本',
+        click: () => {
+          const note = this.stickyManager.notes.get(noteId);
+          if (note && note.win && !note.win.isDestroyed()) {
+            note.win.webContents.send('copy-task-text');
+          }
+        }
+      },
       {
         label: '截取任务',
         click: async () => {

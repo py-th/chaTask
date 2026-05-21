@@ -1,5 +1,5 @@
 // src/main/ipc/sticky.js
-const { ipcMain, BrowserWindow } = require('electron');
+const { ipcMain, BrowserWindow, clipboard } = require('electron');
 const { updateTask, getTaskById } = require('../../database/repositories/taskRepository');
 const { saveReminderRule, deleteReminderRulesByTaskId, getReminderRuleByTaskId } = require('../../database/repositories/reminderRepository');
 const { StickyMenu } = require('../menus');
@@ -333,6 +333,12 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
         break;
       }
     }
+  });
+
+  // 复制便签文本到剪贴板
+  ipcMain.on('copy-note-text', (event, text) => {
+    clipboard.writeText(text);
+    console.log('[Sticky] 文本已复制到剪贴板');
   });
 }
 

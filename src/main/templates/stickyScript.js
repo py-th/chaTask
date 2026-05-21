@@ -68,6 +68,12 @@
     electronAPI.send('show-note-context-menu', { noteId, taskId });
   });
 
+  electronAPI.on('copy-task-text', () => {
+    const text = taskTextDiv.innerText;
+    electronAPI.send('copy-note-text', text);
+    console.log('任务文本已发送到主进程复制');
+  });
+
   electronAPI.on('fold-note', () => {
     container.classList.add('folded-mode');
     console.log('已折叠');
