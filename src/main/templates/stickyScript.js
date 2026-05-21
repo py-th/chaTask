@@ -216,4 +216,11 @@
   document.getElementById('taskPriority').addEventListener('click', () => {
     electronAPI.send('set-priority', { noteId, taskId });
   });
+
+  reminderInfo.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!reminderInfo.classList.contains('hidden')) {
+      showRepeatRemindPicker();
+    }
+  });
 })();

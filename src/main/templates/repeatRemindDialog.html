@@ -45,6 +45,14 @@
       font-weight: 600;
     }
     
+    .dialog-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      -webkit-app-region: no-drag;
+    }
+
+    .dialog-minimize,
     .dialog-close {
       background: none;
       border: none;
@@ -61,6 +69,7 @@
       -webkit-app-region: no-drag;
     }
     
+    .dialog-minimize:hover,
     .dialog-close:hover {
       background: rgba(255,255,255,0.2);
     }
@@ -394,7 +403,10 @@
   <div class="dialog-container">
     <div class="dialog-header">
       <span class="dialog-title">重复与提醒</span>
-      <button class="dialog-close" onclick="closeDialog()">×</button>
+      <div class="dialog-actions">
+        <button class="dialog-minimize" onclick="minimizeWindow()">−</button>
+        <button class="dialog-close" onclick="closeDialog()">×</button>
+      </div>
     </div>
     
     <div class="dialog-body">
@@ -830,6 +842,11 @@
     // 关闭
     function closeDialog() {
       window.electronAPI.send('close-reminder-dialog');
+    }
+
+    // 最小化
+    function minimizeWindow() {
+      window.electronAPI.send('minimize-reminder-dialog');
     }
     
     // 初始化

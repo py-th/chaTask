@@ -311,6 +311,29 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
       }
     }
   });
+
+  // 最小化提醒弹窗
+  ipcMain.on('minimize-reminder-popup', (event) => {
+    // 从发送者找到对应的弹窗窗口
+    for (const [taskId, win] of reminderService.popupWindows.entries()) {
+      if (win.webContents === event.sender) {
+        reminderService.minimizePopupWindow(taskId);
+        break;
+      }
+    }
+  });
+
+  // 最小化提醒设置对话框
+  ipcMain.on('minimize-reminder-dialog', (event) => {
+    for (const [taskId, win] of reminderDialogWindows.entries()) {
+      if (win.webContents === event.sender) {
+        if (!win.isDestroyed()) {
+          win.minimize();
+        }
+        break;
+      }
+    }
+  });
 }
 
 module.exports = { registerStickyHandlers };

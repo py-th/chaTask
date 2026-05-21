@@ -304,6 +304,16 @@ class ReminderService {
     note.win.webContents.send('stop-avatar-blink');
   }
 
+  // 最小化提醒弹窗
+  minimizePopupWindow(taskId) {
+    if (this.popupWindows.has(taskId)) {
+      const win = this.popupWindows.get(taskId);
+      if (!win.isDestroyed()) {
+        win.minimize();
+      }
+    }
+  }
+
   // 处理提醒结果
   async handleReminderAction(taskId, action, data = {}) {
     const pendingLogs = getPendingReminderLogs(taskId);
