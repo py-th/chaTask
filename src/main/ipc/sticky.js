@@ -292,7 +292,7 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
   });
   
   // 处理提醒动作
-  ipcMain.on('reminder-action', async (event, { taskId, action, noteId, minutes }) => {
+  ipcMain.handle('reminder-action', async (event, { taskId, action, noteId, minutes }) => {
     if (reminderService) {
       await reminderService.handleReminderAction(taskId, action, { minutes });
     }
@@ -303,6 +303,8 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
         note.win.webContents.send('stop-avatar-blink');
       }
     }
+
+    return { success: true };
   });
 
   // 最小化提醒弹窗

@@ -90,7 +90,7 @@
     if (priority === 'high') color = '#ffcccc';
     else if (priority === 'medium') color = '#cce5ff';
     else if (priority === 'low') color = '#ccffcc';
-    else color = 'rgba(255,249,196,0.95)';
+    else color = '#feffcc';
     
     const taskDiv = document.querySelector('.task-text');
     if (taskDiv) taskDiv.style.backgroundColor = color;

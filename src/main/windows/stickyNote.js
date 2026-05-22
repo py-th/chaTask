@@ -57,7 +57,7 @@ class StickyNoteManager {
         case 'high': priorityColor = '#ffcccc'; break;
         case 'medium': priorityColor = '#cce5ff'; break;
         case 'low': priorityColor = '#ccffcc'; break;
-        default: priorityColor = 'rgba(255,249,196,0.95)';
+        default: priorityColor = '#feffcc';
       }
 
       // 获取状态图标

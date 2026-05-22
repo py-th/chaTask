@@ -309,7 +309,7 @@
 
     function handleAction(action) {
       actionHandled = true;
-      ipcRenderer.send('reminder-action', {
+      ipcRenderer.invoke('reminder-action', {
         taskId: currentTaskId,
         action: action,
         noteId: currentNoteId
@@ -319,7 +319,7 @@
 
     function handleSnooze(minutes) {
       actionHandled = true;
-      ipcRenderer.send('reminder-action', {
+      ipcRenderer.invoke('reminder-action', {
         taskId: currentTaskId,
         action: 'snooze',
         noteId: currentNoteId,
@@ -330,7 +330,7 @@
 
     window.addEventListener('beforeunload', () => {
       if (currentTaskId && !actionHandled) {
-        ipcRenderer.send('reminder-action', {
+        ipcRenderer.invoke('reminder-action', {
           taskId: currentTaskId,
           action: 'dismiss',
           noteId: currentNoteId
