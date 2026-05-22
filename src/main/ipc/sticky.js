@@ -298,13 +298,12 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
   });
   
   // 处理提醒动作
-  ipcMain.on('reminder-action', async (event, { taskId, action, noteId }) => {
+  ipcMain.on('reminder-action', async (event, { taskId, action, noteId, minutes }) => {
     if (reminderService) {
-      await reminderService.handleReminderAction(taskId, action);
+      await reminderService.handleReminderAction(taskId, action, { minutes });
     }
 
-    // 通知便签停止闪烁（complete/dismiss 时）
-    if (action === 'complete' || action === 'dismiss') {
+    if (action === 'complete') {
       const note = stickyManager.notes.get(noteId);
       if (note && note.win && !note.win.isDestroyed()) {
         note.win.webContents.send('stop-avatar-blink');

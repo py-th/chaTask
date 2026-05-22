@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <title>任务提醒</title>
   <style>
     * {
       margin: 0;
@@ -148,11 +149,16 @@
       border-top: 1px solid #eee;
     }
 
+    .snooze-row {
+      display: flex;
+      gap: 6px;
+    }
+
     .popup-btn {
-      padding: 12px 16px;
+      padding: 10px 12px;
       border: none;
-      border-radius: 10px;
-      font-size: 14px;
+      border-radius: 8px;
+      font-size: 13px;
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
@@ -160,8 +166,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
+      gap: 4px;
       -webkit-app-region: no-drag;
+    }
+
+    .snooze-row .popup-btn {
+      flex: 1;
+      padding: 10px 6px;
+      font-size: 12px;
     }
 
     .popup-btn:hover {
@@ -177,6 +189,10 @@
     .popup-btn.snooze {
       background: #FF9800;
       color: white;
+    }
+
+    .popup-btn.snooze:hover {
+      background: #F57C00;
     }
 
     .popup-btn.reconfig {
@@ -232,11 +248,25 @@
     </div>
 
     <div class="dialog-footer">
+      <div class="snooze-row">
+        <button class="popup-btn snooze" title="延时3分钟" onclick="handleSnooze(3)">
+          <span>⏳</span> 3分钟
+        </button>
+        <button class="popup-btn snooze" title="延时10分钟" onclick="handleSnooze(10)">
+          <span>⏳</span> 10分钟
+        </button>
+        <button class="popup-btn snooze" title="延时15分钟" onclick="handleSnooze(15)">
+          <span>⏳</span> 15分钟
+        </button>
+        <button class="popup-btn snooze" title="延时30分钟" onclick="handleSnooze(30)">
+          <span>⏳</span> 30分钟
+        </button>
+        <button class="popup-btn snooze" title="延时1小时" onclick="handleSnooze(60)">
+          <span>⏳</span> 1小时
+        </button>
+      </div>
       <button class="popup-btn complete" onclick="handleAction('complete')">
         <span>✅</span> 标记完成
-      </button>
-      <button class="popup-btn snooze" onclick="handleAction('snooze')">
-        <span>⏳</span> 延时10分钟
       </button>
       <button class="popup-btn reconfig" onclick="handleAction('reconfig')">
         <span>⚙️</span> 重新设置
@@ -252,10 +282,12 @@
 
     let currentTaskId = null;
     let currentNoteId = null;
+    let actionHandled = false;
 
     ipcRenderer.on('show-reminder-popup', (event, data) => {
       currentTaskId = data.taskId;
       currentNoteId = data.noteId;
+      actionHandled = false;
 
       document.getElementById('popupTaskContent').textContent = data.taskContent || '无内容';
       document.getElementById('popupTime').textContent = data.scheduledTime
@@ -274,6 +306,7 @@
     });
 
     function handleAction(action) {
+      actionHandled = true;
       ipcRenderer.send('reminder-action', {
         taskId: currentTaskId,
         action: action,
@@ -281,6 +314,27 @@
       });
       window.close();
     }
+
+    function handleSnooze(minutes) {
+      actionHandled = true;
+      ipcRenderer.send('reminder-action', {
+        taskId: currentTaskId,
+        action: 'snooze',
+        noteId: currentNoteId,
+        minutes: minutes
+      });
+      window.close();
+    }
+
+    window.addEventListener('beforeunload', () => {
+      if (currentTaskId && !actionHandled) {
+        ipcRenderer.send('reminder-action', {
+          taskId: currentTaskId,
+          action: 'dismiss',
+          noteId: currentNoteId
+        });
+      }
+    });
 
     function minimizeWindow() {
       ipcRenderer.send('minimize-reminder-popup');

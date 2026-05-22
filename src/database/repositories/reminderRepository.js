@@ -135,6 +135,20 @@ function getLatestReminderLog(taskId) {
   return stmt.get(taskId);
 }
 
+// 获取所有待处理的延时提醒记录（含关联任务信息）
+function getAllPendingSnoozeLogs() {
+  const stmt = db.prepare(`
+    SELECT l.*, t.content as task_content, t.sender_name, t.sender_avatar,
+           t.is_completed, t.is_deleted
+    FROM reminder_logs l
+    JOIN tasks t ON l.task_id = t.id
+    WHERE l.status = 'pending' AND l.snooze_minutes IS NOT NULL
+      AND t.is_completed = 0 AND t.is_deleted = 0
+    ORDER BY l.scheduled_time ASC
+  `);
+  return stmt.all();
+}
+
 module.exports = {
   saveReminderRule,
   getReminderRuleByTaskId,
@@ -145,5 +159,6 @@ module.exports = {
   createReminderLog,
   updateReminderLog,
   getPendingReminderLogs,
-  getLatestReminderLog
+  getLatestReminderLog,
+  getAllPendingSnoozeLogs
 };
