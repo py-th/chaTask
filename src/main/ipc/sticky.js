@@ -335,6 +335,18 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
     clipboard.writeText(text);
     console.log('[Sticky] 文本已复制到剪贴板');
   });
+
+  // 保存样式配置（替换旧的透明度设置）
+  ipcMain.on('save-style-config', async (event, { taskId, styleConfig }) => {
+    try {
+      await updateTask(taskId, {
+        style_config: JSON.stringify(styleConfig),
+        opacity: styleConfig.opacity
+      });
+    } catch (err) {
+      console.error('[Sticky] 保存样式配置失败:', err);
+    }
+  });
 }
 
 module.exports = { registerStickyHandlers };

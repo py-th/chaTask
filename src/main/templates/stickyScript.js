@@ -229,4 +229,248 @@
       showRepeatRemindPicker();
     }
   });
+
+  // ========== 统一样式面板 ==========
+  const stylePanel = document.getElementById('stylePanel');
+  const stylePanelClose = document.getElementById('stylePanelClose');
+  const styleOpacityRange = document.getElementById('styleOpacityRange');
+  const styleOpacityValue = document.getElementById('styleOpacityValue');
+  const styleBgColor = document.getElementById('styleBgColor');
+  const styleBgReset = document.getElementById('styleBgReset');
+  const styleTextColor = document.getElementById('styleTextColor');
+  const styleTextReset = document.getElementById('styleTextReset');
+  const styleBoldToggle = document.getElementById('styleBoldToggle');
+  const styleFontDec = document.getElementById('styleFontDec');
+  const styleFontInc = document.getElementById('styleFontInc');
+  const styleFontSize = document.getElementById('styleFontSize');
+  const styleFontFamily = document.getElementById('styleFontFamily');
+  const styleLineHeightDec = document.getElementById('styleLineHeightDec');
+  const styleLineHeightInc = document.getElementById('styleLineHeightInc');
+  const styleLineHeight = document.getElementById('styleLineHeight');
+  const alignBtns = document.querySelectorAll('.align-btn');
+  const contentArea = document.querySelector('.content-area');
+  const taskText = document.getElementById('taskText');
+
+  let currentStyleConfig = Object.assign({
+    opacity: 1,
+    bgColor: '',
+    textColor: '',
+    bold: false,
+    fontSize: 14,
+    fontFamily: '',
+    lineHeight: 1.4,
+    textAlign: 'left'
+  }, window.styleConfig || {});
+
+  function applyStyleConfig(config) {
+    if (contentArea) {
+      contentArea.style.opacity = config.opacity;
+    }
+    if (taskText) {
+      taskText.style.fontWeight = config.bold ? 'bold' : 'normal';
+      if (config.textColor) {
+        taskText.style.color = config.textColor;
+      } else {
+        taskText.style.color = '';
+      }
+      taskText.style.fontSize = (config.fontSize || 14) + 'px';
+      taskText.style.fontFamily = config.fontFamily || '';
+      taskText.style.lineHeight = config.lineHeight || 1.4;
+      taskText.style.textAlign = config.textAlign || 'left';
+    }
+  }
+
+  function syncStylePanel(config) {
+    if (styleOpacityRange) styleOpacityRange.value = config.opacity;
+    if (styleOpacityValue) styleOpacityValue.textContent = Math.round(config.opacity * 100) + '%';
+    if (styleBgColor) styleBgColor.value = config.bgColor || '#ffffff';
+    if (styleTextColor) styleTextColor.value = config.textColor || '#000000';
+    if (styleBoldToggle) {
+      styleBoldToggle.textContent = config.bold ? '开启' : '关闭';
+      styleBoldToggle.classList.toggle('active', !!config.bold);
+    }
+    if (styleFontSize) styleFontSize.textContent = config.fontSize || 14;
+    if (styleFontFamily) styleFontFamily.value = config.fontFamily || '';
+    if (styleLineHeight) styleLineHeight.textContent = (config.lineHeight || 1.4).toFixed(1);
+    if (alignBtns) {
+      alignBtns.forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.align === (config.textAlign || 'left'));
+      });
+    }
+  }
+
+  function saveStyleConfig(config) {
+    currentStyleConfig = Object.assign({}, config);
+    electronAPI.send('save-style-config', { taskId, styleConfig: config });
+  }
+
+  applyStyleConfig(currentStyleConfig);
+
+  electronAPI.on('show-style-panel', () => {
+    if (stylePanel) {
+      syncStylePanel(currentStyleConfig);
+      stylePanel.classList.add('show');
+    }
+  });
+
+  if (stylePanelClose) {
+    stylePanelClose.addEventListener('click', () => {
+      stylePanel.classList.remove('show');
+    });
+  }
+
+  function hideStylePanel() {
+    if (stylePanel) {
+      stylePanel.classList.remove('show');
+    }
+  }
+
+  if (styleOpacityRange) {
+    styleOpacityRange.addEventListener('input', () => {
+      const val = parseFloat(styleOpacityRange.value);
+      if (contentArea) contentArea.style.opacity = val;
+      if (styleOpacityValue) styleOpacityValue.textContent = Math.round(val * 100) + '%';
+      const config = Object.assign({}, currentStyleConfig, { opacity: val });
+      saveStyleConfig(config);
+    });
+  }
+
+  if (styleBgColor) {
+    styleBgColor.addEventListener('input', () => {
+      const val = styleBgColor.value;
+      const taskDiv = document.querySelector('.task-text');
+      const toolbarDiv = document.querySelector('.toolbar');
+      if (taskDiv) taskDiv.style.backgroundColor = val;
+      if (toolbarDiv) toolbarDiv.style.backgroundColor = val;
+      if (datePickerPopup) datePickerPopup.style.backgroundColor = val;
+      if (avatarImg) avatarImg.style.border = '2px solid ' + val;
+      const config = Object.assign({}, currentStyleConfig, { bgColor: val });
+      saveStyleConfig(config);
+    });
+  }
+
+  if (styleBgReset) {
+    styleBgReset.addEventListener('click', () => {
+      const originalColor = '';
+      const taskDiv = document.querySelector('.task-text');
+      const toolbarDiv = document.querySelector('.toolbar');
+      if (taskDiv) taskDiv.style.backgroundColor = originalColor;
+      if (toolbarDiv) toolbarDiv.style.backgroundColor = originalColor;
+      if (datePickerPopup) datePickerPopup.style.backgroundColor = originalColor;
+      if (avatarImg) avatarImg.style.border = '';
+      if (styleBgColor) styleBgColor.value = '#ffffff';
+      const config = Object.assign({}, currentStyleConfig, { bgColor: '' });
+      saveStyleConfig(config);
+    });
+  }
+
+  if (styleTextColor) {
+    styleTextColor.addEventListener('input', () => {
+      const val = styleTextColor.value;
+      if (taskText) taskText.style.color = val;
+      const config = Object.assign({}, currentStyleConfig, { textColor: val });
+      saveStyleConfig(config);
+    });
+  }
+
+  if (styleTextReset) {
+    styleTextReset.addEventListener('click', () => {
+      if (taskText) taskText.style.color = '';
+      if (styleTextColor) styleTextColor.value = '#000000';
+      const config = Object.assign({}, currentStyleConfig, { textColor: '' });
+      saveStyleConfig(config);
+    });
+  }
+
+  if (styleBoldToggle) {
+    styleBoldToggle.addEventListener('click', () => {
+      const current = !!currentStyleConfig.bold;
+      const val = !current;
+      if (taskText) taskText.style.fontWeight = val ? 'bold' : 'normal';
+      styleBoldToggle.textContent = val ? '开启' : '关闭';
+      styleBoldToggle.classList.toggle('active', val);
+      const config = Object.assign({}, currentStyleConfig, { bold: val });
+      saveStyleConfig(config);
+    });
+  }
+
+  if (styleFontDec) {
+    styleFontDec.addEventListener('click', () => {
+      const current = currentStyleConfig.fontSize || 14;
+      const val = Math.max(10, current - 1);
+      if (taskText) taskText.style.fontSize = val + 'px';
+      if (styleFontSize) styleFontSize.textContent = val;
+      const config = Object.assign({}, currentStyleConfig, { fontSize: val });
+      saveStyleConfig(config);
+    });
+  }
+
+  if (styleFontInc) {
+    styleFontInc.addEventListener('click', () => {
+      const current = currentStyleConfig.fontSize || 14;
+      const val = Math.min(32, current + 1);
+      if (taskText) taskText.style.fontSize = val + 'px';
+      if (styleFontSize) styleFontSize.textContent = val;
+      const config = Object.assign({}, currentStyleConfig, { fontSize: val });
+      saveStyleConfig(config);
+    });
+  }
+
+  if (styleFontFamily) {
+    styleFontFamily.addEventListener('change', () => {
+      const val = styleFontFamily.value;
+      if (taskText) taskText.style.fontFamily = val || '';
+      const config = Object.assign({}, currentStyleConfig, { fontFamily: val });
+      saveStyleConfig(config);
+    });
+  }
+
+  if (styleLineHeightDec) {
+    styleLineHeightDec.addEventListener('click', () => {
+      const current = currentStyleConfig.lineHeight || 1.4;
+      const val = Math.max(1.0, Math.round((current - 0.1) * 10) / 10);
+      if (taskText) taskText.style.lineHeight = val;
+      if (styleLineHeight) styleLineHeight.textContent = val.toFixed(1);
+      const config = Object.assign({}, currentStyleConfig, { lineHeight: val });
+      saveStyleConfig(config);
+    });
+  }
+
+  if (styleLineHeightInc) {
+    styleLineHeightInc.addEventListener('click', () => {
+      const current = currentStyleConfig.lineHeight || 1.4;
+      const val = Math.min(2.0, Math.round((current + 0.1) * 10) / 10);
+      if (taskText) taskText.style.lineHeight = val;
+      if (styleLineHeight) styleLineHeight.textContent = val.toFixed(1);
+      const config = Object.assign({}, currentStyleConfig, { lineHeight: val });
+      saveStyleConfig(config);
+    });
+  }
+
+  if (alignBtns) {
+    alignBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.align;
+        alignBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (taskText) taskText.style.textAlign = val;
+        const config = Object.assign({}, currentStyleConfig, { textAlign: val });
+        saveStyleConfig(config);
+      });
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (stylePanel && stylePanel.classList.contains('show')) {
+      if (!stylePanel.contains(e.target) && e.target.id !== 'taskStyle') {
+        hideStylePanel();
+      }
+    }
+  });
+
+  if (stylePanel) {
+    stylePanel.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+    });
+  }
 })();

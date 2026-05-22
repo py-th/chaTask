@@ -148,11 +148,163 @@
     .reminder-info.hidden {
       display: none;
     }
+
+    .style-panel {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 12px;
+      padding: 10px 12px;
+      margin: 0 3px 3px calc(45px + 6px + 3px);
+      background: {{priorityColor}};
+      border-radius: 8px;
+      backdrop-filter: blur(4px);
+      z-index: 3;
+    }
+
+    .style-panel.show {
+      display: flex;
+    }
+
+    .style-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 600;
+      font-size: 13px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(128,128,128,0.25);
+    }
+
+    .style-panel-header .close-btn {
+      cursor: pointer;
+      padding: 0 4px;
+      opacity: 0.5;
+      font-size: 14px;
+    }
+
+    .style-panel-header .close-btn:hover {
+      opacity: 1;
+    }
+
+    .style-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .style-row .style-label {
+      flex-shrink: 0;
+      opacity: 0.7;
+      min-width: 42px;
+    }
+
+    .style-row input[type="range"] {
+      flex: 1;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(128, 128, 128, 0.3);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .style-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #FF9800;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    .style-row input[type="color"] {
+      width: 30px;
+      height: 24px;
+      padding: 0;
+      border: 1px solid rgba(128,128,128,0.3);
+      border-radius: 4px;
+      cursor: pointer;
+      background: none;
+    }
+
+    .style-row .toggle-btn {
+      cursor: pointer;
+      padding: 2px 10px;
+      border-radius: 4px;
+      background: rgba(128,128,128,0.15);
+      font-size: 11px;
+      transition: background 0.15s;
+      user-select: none;
+    }
+
+    .style-row .toggle-btn.active {
+      background: #FF9800;
+      color: #fff;
+    }
+
+    .style-row .size-btn {
+      cursor: pointer;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(128,128,128,0.15);
+      font-size: 14px;
+      font-weight: 600;
+      user-select: none;
+    }
+
+    .style-row .size-btn:hover {
+      background: rgba(128,128,128,0.3);
+    }
+
+    .style-row .size-value {
+      min-width: 28px;
+      text-align: center;
+      font-weight: 500;
+    }
+
+    .style-select {
+      flex: 1;
+      font-size: 11px;
+      padding: 2px 4px;
+      border: 1px solid rgba(128,128,128,0.3);
+      border-radius: 4px;
+      background: rgba(255,255,255,0.5);
+      outline: none;
+      cursor: pointer;
+    }
+
+    .style-select option {
+      font-size: 12px;
+    }
+
+    .align-btn {
+      cursor: pointer;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(128,128,128,0.15);
+      font-size: 13px;
+      transition: background 0.15s;
+      user-select: none;
+      line-height: 1.4;
+    }
+
+    .align-btn:hover {
+      background: rgba(128,128,128,0.3);
+    }
+
+    .align-btn.active {
+      background: #FF9800;
+      color: #fff;
+    }
   </style>
 </head>
 <body>
   <div class="sticky-container">
-    <div class="content-area">
+    <div class="content-area" style="opacity: {{opacity}}">
       <div class="avatar-area">{{avatarImg}}<div class="status-icon">{{statusIcon}}</div></div>
       <div class="task-text" id="taskText">{{content}}</div>
     </div>
@@ -180,11 +332,67 @@
       </div>
     </div>
     <div class="datePickerPopup" id="datePickerPopup">
-      <div style="margin-bottom: 10px;">选择截止日期</div>
+      <div style="margin-bottom: 10px;">📅 选择截止日期</div>
       <input type="date" id="popupDatePicker" style="width: 100%; padding: 6px; margin-bottom: 10px;border-radius:5px;" />
       <div style="display: flex; justify-content: flex-end; gap: 8px;">
         <button id="popupConfirmBtn">确认</button>
         <button id="popupCancelBtn">取消</button>
+      </div>
+    </div>
+    <div class="style-panel" id="stylePanel">
+      <div class="style-panel-header">
+        <span>🎨 样式设置</span>
+        <span class="close-btn" id="stylePanelClose">✕</span>
+      </div>
+      <div class="style-row">
+        <span class="style-label">透明度</span>
+        <input type="range" id="styleOpacityRange" min="0.1" max="1" step="0.05">
+        <span class="style-value" id="styleOpacityValue">100%</span>
+      </div>
+      <div class="style-row">
+        <span class="style-label">背景色</span>
+        <input type="color" id="styleBgColor">
+        <span class="toggle-btn" id="styleBgReset" style="font-size:10px;">重置</span>
+      </div>
+      <div class="style-row">
+        <span class="style-label">文字色</span>
+        <input type="color" id="styleTextColor">
+        <span class="toggle-btn" id="styleTextReset" style="font-size:10px;">重置</span>
+      </div>
+      <div class="style-row">
+        <span class="style-label">加粗</span>
+        <span class="toggle-btn" id="styleBoldToggle">关闭</span>
+      </div>
+      <div class="style-row">
+        <span class="style-label">字号</span>
+        <span class="size-btn" id="styleFontDec">−</span>
+        <span class="size-value" id="styleFontSize">14</span>
+        <span class="size-btn" id="styleFontInc">+</span>
+      </div>
+      <div class="style-row">
+        <span class="style-label">字体</span>
+        <select id="styleFontFamily" class="style-select">
+          <option value="">系统默认</option>
+          <option value="SimSun">宋体</option>
+          <option value="SimHei">黑体</option>
+          <option value="Microsoft YaHei">微软雅黑</option>
+          <option value="KaiTi">楷体</option>
+          <option value="DengXian">等线</option>
+          <option value="Arial">Arial</option>
+          <option value="Consolas">Consolas</option>
+        </select>
+      </div>
+      <div class="style-row">
+        <span class="style-label">行高</span>
+        <span class="size-btn" id="styleLineHeightDec">−</span>
+        <span class="size-value" id="styleLineHeight">1.4</span>
+        <span class="size-btn" id="styleLineHeightInc">+</span>
+      </div>
+      <div class="style-row">
+        <span class="style-label">对齐</span>
+        <span class="align-btn" data-align="left">⬅</span>
+        <span class="align-btn active" data-align="center">≡</span>
+        <span class="align-btn" data-align="right">➡</span>
       </div>
     </div>
   </div>
@@ -192,6 +400,7 @@
   <script>
     window.noteId = {{noteId}};
     window.taskId = "{{taskId}}";
+    window.styleConfig = {{styleConfigJson}};
   </script>
   <script src="stickyScript.js"></script>
 </body>

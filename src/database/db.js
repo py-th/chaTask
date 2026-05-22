@@ -63,6 +63,20 @@ try {
     db.exec(`ALTER TABLE tasks ADD COLUMN reminder_rule_id TEXT`);
     console.log('[db] 迁移完成：reminder_rule_id 列已添加');
   }
+  
+  // 添加 opacity 列（透明度，默认1.0）
+  if (!columns.includes('opacity')) {
+    console.log('[db] 迁移：添加 opacity 列到 tasks 表');
+    db.exec(`ALTER TABLE tasks ADD COLUMN opacity REAL DEFAULT 1.0`);
+    console.log('[db] 迁移完成：opacity 列已添加');
+  }
+
+  // 添加 style_config 列（样式设置JSON）
+  if (!columns.includes('style_config')) {
+    console.log('[db] 迁移：添加 style_config 列到 tasks 表');
+    db.exec(`ALTER TABLE tasks ADD COLUMN style_config TEXT DEFAULT '{}'`);
+    console.log('[db] 迁移完成：style_config 列已添加');
+  }
 } catch (err) {
   console.error('[db] 列迁移失败:', err.message);
 }

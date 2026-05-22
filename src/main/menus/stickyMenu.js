@@ -97,38 +97,12 @@ class StickyMenu {
       { type: 'separator' },
       {
         label: '样式',
-        submenu: [
-          {
-            label: '字体',
-            click: () => {
-              console.log('字体格式设置', taskId);
-            }
-          },
-          {
-            label: '背景色',
-            click: () => {
-              console.log('便签背景色设置', taskId);
-            }
-          },
-          {
-            label: '透明度',
-            click: () => {
-              console.log('便签透明度设置', taskId);
-            }
-          },
-          {
-            label: '文字加粗',
-            click: () => {
-              console.log('文字加粗设置', taskId);
-            }
-          },
-          {
-            label: '文字颜色',
-            click: () => {
-              console.log('文字颜色设置', taskId);
-            }
+        click: () => {
+          const note = this.stickyManager.notes.get(noteId);
+          if (note && note.win && !note.win.isDestroyed()) {
+            note.win.webContents.send('show-style-panel');
           }
-        ]
+        }
       },
       {
         label: '皮肤模板',

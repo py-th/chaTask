@@ -84,6 +84,18 @@ class StickyNoteManager {
       const priorityText = getPriorityText(task.priority);
 
       // 替换模板中的占位符
+      const styleConfig = task.style_config ? (typeof task.style_config === 'string' ? JSON.parse(task.style_config) : task.style_config) : {};
+      const styleConfigJson = JSON.stringify({
+        opacity: task.opacity != null ? task.opacity : 1.0,
+        bgColor: styleConfig.bgColor || '',
+        textColor: styleConfig.textColor || '',
+        bold: styleConfig.bold || false,
+        fontSize: styleConfig.fontSize || 14,
+        fontFamily: styleConfig.fontFamily || '',
+        lineHeight: styleConfig.lineHeight || 1.4,
+        textAlign: styleConfig.textAlign || 'left'
+      });
+
       const replacements = {
         '{{noteId}}': id,
         '{{taskId}}': task.id,
@@ -95,7 +107,9 @@ class StickyNoteManager {
         '{{dueDate}}': task.due_date || '',
         '{{dueDateText}}': dueDateText,
         '{{statusText}}': statusText,
-        '{{priorityText}}': priorityText
+        '{{priorityText}}': priorityText,
+        '{{opacity}}': task.opacity != null ? task.opacity : 1.0,
+        '{{styleConfigJson}}': styleConfigJson
       };
 
       // 执行替换
