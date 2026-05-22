@@ -1,7 +1,7 @@
 // src/main/ipc/sticky.js
 const { ipcMain, BrowserWindow, clipboard } = require('electron');
 const { updateTask, getTaskById } = require('../../database/repositories/taskRepository');
-const { saveReminderRule, deleteReminderRulesByTaskId, getReminderRuleByTaskId } = require('../../database/repositories/reminderRepository');
+const { saveReminderRule, deleteReminderRulesByTaskId, deleteReminderLogsByTaskId, getReminderRuleByTaskId } = require('../../database/repositories/reminderRepository');
 const { StickyMenu } = require('../menus');
 const path = require('path');
 
@@ -216,14 +216,17 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
       });
       
       // 更新便签上的提醒信息显示
-      if (reminderService && data.reminderEnabled) {
-        const rule = getReminderRuleByTaskId(targetTaskId);
-        if (rule) {
-          const nextText = reminderService.getNextReminderText(rule);
-          const note = stickyManager.notes.get(targetNoteId);
-          if (note && note.win && !note.win.isDestroyed()) {
-            note.win.webContents.send('update-reminder-info', nextText);
+      if (reminderService) {
+        const note = stickyManager.notes.get(targetNoteId);
+        if (note && note.win && !note.win.isDestroyed()) {
+          let nextText = null;
+          if (data.reminderEnabled) {
+            const rule = getReminderRuleByTaskId(targetTaskId);
+            if (rule) {
+              nextText = reminderService.getNextReminderText(rule);
+            }
           }
+          note.win.webContents.send('update-reminder-info', nextText);
         }
       }
       
@@ -256,26 +259,17 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
     if (!targetTaskId) return;
     
     try {
-      // 删除数据库中的规则
       deleteReminderRulesByTaskId(targetTaskId);
+      deleteReminderLogsByTaskId(targetTaskId);
       
-      // 更新任务
       await updateTask(targetTaskId, { 
         reminder_enabled: 0,
         reminder_rule_id: null
       });
       
-      // 清除便签上的提醒显示
       const note = stickyManager.notes.get(targetNoteId);
       if (note && note.win && !note.win.isDestroyed()) {
         note.win.webContents.send('update-reminder-info', null);
-      }
-      
-      // 关闭对话框
-      const dialogWin = reminderDialogWindows.get(targetTaskId);
-      if (dialogWin && !dialogWin.isDestroyed()) {
-        dialogWin.close();
-        reminderDialogWindows.delete(targetTaskId);
       }
       
       console.log('[Reminder] 提醒规则已删除');

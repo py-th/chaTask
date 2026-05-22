@@ -7,7 +7,9 @@ const {
   updateReminderLog,
   getPendingReminderLogs,
   getLatestReminderLog,
+  deleteReminderRulesByTaskId,
   deleteReminderLogsByTaskId,
+  deleteOldReminderLogs,
   getAllPendingSnoozeLogs
 } = require('../../database/repositories/reminderRepository');
 const { updateTask, getTaskById } = require('../../database/repositories/taskRepository');
@@ -17,10 +19,13 @@ class ReminderService {
     this.stickyManager = stickyManager;
     this.checkInterval = null;
     this.popupWindows = new Map();
+    this.lastCleanupDate = null;
   }
 
   start() {
     if (this.checkInterval) return;
+
+    this.catchUpMissedReminders();
 
     this.checkInterval = setInterval(() => {
       this.checkReminders();
@@ -49,37 +54,73 @@ class ReminderService {
     try {
       const now = new Date();
 
-      const rules = getAllEnabledRules();
-      for (const rule of rules) {
-        const nextTime = this.calculateNextReminder(rule);
-        if (!nextTime) continue;
-
-        const pendingLogs = getPendingReminderLogs(rule.task_id);
-        const hasPendingForThisTime = pendingLogs.some(log => {
-          const logTime = new Date(log.scheduled_time);
-          return Math.abs(logTime.getTime() - nextTime.getTime()) < 60000;
-        });
-
-        if (hasPendingForThisTime) continue;
-
-        const diffMs = nextTime.getTime() - now.getTime();
-        if (diffMs <= 60000) {
-          this.triggerReminder(rule, nextTime);
-        }
+      if (!this.lastCleanupDate || now.getTime() - this.lastCleanupDate.getTime() > 24 * 60 * 60 * 1000) {
+        this._cleanupOldLogs();
+        this.lastCleanupDate = now;
       }
 
+      const rules = getAllEnabledRules();
       const snoozeLogs = getAllPendingSnoozeLogs();
+
+      for (const rule of rules) {
+        const baseTime = this.calculateNextReminder(rule);
+        if (!baseTime) continue;
+
+        const pendingLogs = getPendingReminderLogs(rule.task_id);
+
+        if (rule.advance_minutes > 0) {
+          const advanceTime = new Date(baseTime.getTime() - rule.advance_minutes * 60 * 1000);
+          this._tryTrigger(rule, advanceTime, pendingLogs, now);
+
+          if (snoozeLogs.some(log => log.task_id === rule.task_id)) {
+            continue;
+          }
+        }
+
+        this._tryTrigger(rule, baseTime, pendingLogs, now);
+      }
+
       for (const log of snoozeLogs) {
         const scheduledTime = new Date(log.scheduled_time);
         const diffMs = scheduledTime.getTime() - now.getTime();
 
         if (diffMs <= 60000) {
+          if (this.popupWindows.has(log.task_id)) continue;
           this.triggerSnoozeReminder(log);
         }
       }
     } catch (err) {
       console.error('[ReminderService] 检查提醒失败:', err);
     }
+  }
+
+  _tryTrigger(rule, targetTime, pendingLogs, now) {
+    if (this._hasTriggerForTime(pendingLogs, rule.task_id, targetTime)) return;
+
+    if (rule.start_date) {
+      const startDate = this.parseDateLocal(rule.start_date);
+      if (targetTime < startDate) return;
+    }
+
+    const diffMs = targetTime.getTime() - now.getTime();
+    if (diffMs >= 0 && diffMs <= 60000) {
+      this.triggerReminder(rule, targetTime);
+    }
+  }
+
+  _hasTriggerForTime(pendingLogs, taskId, targetTime) {
+    const hasPending = pendingLogs.some(log => {
+      const logTime = new Date(log.scheduled_time);
+      return Math.abs(logTime.getTime() - targetTime.getTime()) < 60000;
+    });
+    if (hasPending) return true;
+
+    const latestLog = getLatestReminderLog(taskId);
+    if (latestLog) {
+      const logTime = new Date(latestLog.scheduled_time);
+      return Math.abs(logTime.getTime() - targetTime.getTime()) < 60000;
+    }
+    return false;
   }
 
   parseDateLocal(dateStr) {
@@ -183,7 +224,7 @@ class ReminderService {
             if (checkDate > now) {
               if (startDate) {
                 const startDateTime = new Date(startDate);
-                startDateTime.setHours(0, 0, 0, 0);
+                startDateTime.setHours(hours, minutes, 0, 0);
                 if (checkDate < startDateTime) {
                   continue;
                 }
@@ -331,7 +372,8 @@ class ReminderService {
         taskContent: rule.task_content,
         senderName: rule.sender_name,
         senderAvatar: rule.sender_avatar,
-        scheduledTime: scheduledTime.toISOString()
+        scheduledTime: scheduledTime.toISOString(),
+        reminderTime: rule.reminder_time
       });
     });
 
@@ -389,12 +431,8 @@ class ReminderService {
           is_show_desk: 0
         });
 
-        for (const log of pendingLogs) {
-          updateReminderLog(log.id, {
-            status: 'completed',
-            triggered_at: new Date().toISOString()
-          });
-        }
+        deleteReminderRulesByTaskId(taskId);
+        deleteReminderLogsByTaskId(taskId);
 
         this.stopAvatarBlink(taskId);
 
@@ -527,6 +565,124 @@ class ReminderService {
       }
     }
     return null;
+  }
+
+  _getTodayScheduledTime(rule) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const [hours, minutes] = (rule.reminder_time || '09:00').split(':').map(Number);
+
+    switch (rule.repeat_type) {
+      case 'once': {
+        if (!rule.start_date) return null;
+        const ruleDate = this.parseDateLocal(rule.start_date);
+        const ruleDay = new Date(ruleDate.getFullYear(), ruleDate.getMonth(), ruleDate.getDate());
+        if (ruleDay.getTime() !== today.getTime()) return null;
+        const scheduled = new Date(today);
+        scheduled.setHours(hours, minutes, 0, 0);
+        return scheduled;
+      }
+
+      case 'daily': {
+        const scheduled = new Date(today);
+        scheduled.setHours(hours, minutes, 0, 0);
+        if (rule.start_date) {
+          const startDate = this.parseDateLocal(rule.start_date);
+          const startDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+          if (today.getTime() < startDay.getTime()) return null;
+        }
+        if (rule.end_date) {
+          const endDate = this.parseDateLocal(rule.end_date);
+          const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+          if (today.getTime() > endDay.getTime()) return null;
+        }
+        return scheduled;
+      }
+
+      case 'weekly': {
+        const config = rule.repeat_config ? JSON.parse(rule.repeat_config) : {};
+        const weekdays = config.weekdays || [1];
+        const dayOfWeek = today.getDay() || 7;
+        if (!weekdays.includes(dayOfWeek)) return null;
+        const scheduled = new Date(today);
+        scheduled.setHours(hours, minutes, 0, 0);
+        if (rule.start_date) {
+          const startDate = this.parseDateLocal(rule.start_date);
+          const startDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+          if (today.getTime() < startDay.getTime()) return null;
+        }
+        if (rule.end_date) {
+          const endDate = this.parseDateLocal(rule.end_date);
+          const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+          if (today.getTime() > endDay.getTime()) return null;
+        }
+        return scheduled;
+      }
+
+      case 'monthly': {
+        const config = rule.repeat_config ? JSON.parse(rule.repeat_config) : {};
+        const monthDays = config.monthDays || [1];
+        const dayOfMonth = today.getDate();
+        if (!monthDays.includes(dayOfMonth)) return null;
+        const scheduled = new Date(today);
+        scheduled.setHours(hours, minutes, 0, 0);
+        if (rule.start_date) {
+          const startDate = this.parseDateLocal(rule.start_date);
+          const startDay = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+          if (today.getTime() < startDay.getTime()) return null;
+        }
+        if (rule.end_date) {
+          const endDate = this.parseDateLocal(rule.end_date);
+          const endDay = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+          if (today.getTime() > endDay.getTime()) return null;
+        }
+        return scheduled;
+      }
+
+      case 'custom': {
+        const customDates = rule.custom_dates ? JSON.parse(rule.custom_dates) : [];
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        if (!customDates.includes(todayStr)) return null;
+        const scheduled = new Date(today);
+        scheduled.setHours(hours, minutes, 0, 0);
+        return scheduled;
+      }
+
+      default:
+        return null;
+    }
+  }
+
+  catchUpMissedReminders() {
+    try {
+      const now = new Date();
+      const rules = getAllEnabledRules();
+
+      for (const rule of rules) {
+        const todayScheduled = this._getTodayScheduledTime(rule);
+        if (!todayScheduled) continue;
+        if (todayScheduled >= now) continue;
+
+        const pendingLogs = getPendingReminderLogs(rule.task_id);
+        if (this._hasTriggerForTime(pendingLogs, rule.task_id, todayScheduled)) continue;
+
+        console.log(`[ReminderService] 补发今日未触发的提醒: taskId=${rule.task_id}, time=${todayScheduled.toLocaleString()}`);
+        this.triggerReminder(rule, todayScheduled);
+      }
+    } catch (err) {
+      console.error('[ReminderService] 补发今日提醒失败:', err);
+    }
+  }
+
+  _cleanupOldLogs() {
+    try {
+      const result = deleteOldReminderLogs(30);
+      if (result.changes > 0) {
+        console.log(`[ReminderService] 已清理 ${result.changes} 条超过30天的历史提醒日志`);
+      }
+    } catch (err) {
+      console.error('[ReminderService] 清理旧日志失败:', err);
+    }
   }
 
   getNextReminderText(rule) {

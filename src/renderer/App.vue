@@ -12,7 +12,7 @@
     <div style="padding: 5px;">
       <span> 任务看板：<kbd>任务查询</kbd> <kbd>任务分类统计</kbd> <kbd>任务明细（crud）</kbd> </span><br>
       <span> 桌面便签：<kbd>普通任务</kbd> <kbd>时间轴任务</kbd> </span><br>
-      <span> 工具箱：<kbd>任务日历</kbd> <kbd>桌面倒计时</kbd> <kbd>番茄时钟</kbd></span><br>
+      <span> 工具箱：<kbd>任务时间轴</kbd> <kbd>任务日历</kbd> <kbd>桌面倒计时</kbd> <kbd>番茄时钟</kbd></span><br>
       <span> 设置：<kbd>全局基础设置</kbd> <kbd>便签设置</kbd> <kbd>OCR设置</kbd> <kbd>其它设置</kbd></span>
     </div>
 

@@ -781,8 +781,13 @@
     
     // 切换提醒开关
     function toggleReminder() {
+      const oldValue = reminderEnabled;
       reminderEnabled = !reminderEnabled;
       document.getElementById('reminderToggle').classList.toggle('active', reminderEnabled);
+      
+      if (!reminderEnabled && oldValue) {
+        window.electronAPI.send('delete-reminder-rule');
+      }
     }
     
     // 格式化日期

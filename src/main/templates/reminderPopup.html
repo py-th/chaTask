@@ -290,9 +290,11 @@
       actionHandled = false;
 
       document.getElementById('popupTaskContent').textContent = data.taskContent || '无内容';
-      document.getElementById('popupTime').textContent = data.scheduledTime
-        ? new Date(data.scheduledTime).toLocaleString()
-        : '';
+      document.getElementById('popupTime').textContent = data.reminderTime
+        ? `${new Date(data.scheduledTime).toLocaleDateString()} ${data.reminderTime}`
+        : data.scheduledTime
+          ? new Date(data.scheduledTime).toLocaleString()
+          : '';
 
       if (data.senderName) {
         document.getElementById('popupSender').style.display = 'flex';

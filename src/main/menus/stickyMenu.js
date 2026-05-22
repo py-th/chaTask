@@ -1,5 +1,6 @@
 const { Menu, dialog } = require('electron');
 const { updateTask } = require('../../database/repositories/taskRepository');
+const { deleteReminderRulesByTaskId, deleteReminderLogsByTaskId } = require('../../database/repositories/reminderRepository');
 
 class StickyMenu {
   constructor(stickyManager, screenshotUtils) {
@@ -22,25 +23,6 @@ class StickyMenu {
           await updateTask(taskId, { is_pinned: newPinnedState ? 1 : 0 });
         }
       },
-      { type: 'separator' },
-       {
-        label: '复制文本',
-        click: () => {
-          const note = this.stickyManager.notes.get(noteId);
-          if (note && note.win && !note.win.isDestroyed()) {
-            note.win.webContents.send('copy-task-text');
-          }
-        }
-      },
-      {
-        label: '截取任务',
-        click: async () => {
-          if (this.screenshotUtils) {
-            await this.screenshotUtils.startDoubleScreenshot();
-          }
-        }
-      },
-      { type: 'separator' },
       {
         label: '隐藏 🙈',
         click: async (_, win) => {
@@ -65,11 +47,32 @@ class StickyMenu {
           
           // 用户点击"删除"（索引1）
           if (result.response === 1) {
+            // 清理该任务的提醒规则和日志
+            deleteReminderRulesByTaskId(taskId);
+            deleteReminderLogsByTaskId(taskId);
             // 标记为删除（移动到回收站）
             await updateTask(taskId, { is_deleted: 1, is_show_desk: 0 });
             if (win && !win.isDestroyed()) {
               win.close();
             }
+          }
+        }
+      },
+      { type: 'separator' },
+       {
+        label: '复制文本',
+        click: () => {
+          const note = this.stickyManager.notes.get(noteId);
+          if (note && note.win && !note.win.isDestroyed()) {
+            note.win.webContents.send('copy-task-text');
+          }
+        }
+      },
+      {
+        label: '截取任务',
+        click: async () => {
+          if (this.screenshotUtils) {
+            await this.screenshotUtils.startDoubleScreenshot();
           }
         }
       },
@@ -156,6 +159,13 @@ class StickyMenu {
         click: () => {
           console.log('打开便签管理器');
         }
+      },
+      {
+        label: '工具箱',
+        click: () => {
+          // 后续功能扩展
+          console.log('任务日历，任务时间轴，桌面倒计时，番茄时钟，定时关机');
+        }
       }
     ]);
   }
@@ -204,6 +214,9 @@ class StickyMenu {
             is_completed: 1,
             is_show_desk: 0 
           });
+          // 清理该任务的提醒规则和日志
+          deleteReminderRulesByTaskId(taskId);
+          deleteReminderLogsByTaskId(taskId);
           // 通知前端更新状态显示
           this._notifyNote(noteId, 'update-status', 'completed');
           // 延迟关闭窗口，让用户看到状态变化

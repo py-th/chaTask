@@ -7,6 +7,8 @@ function saveReminderRule(rule) {
   const id = rule.id || uuidv4();
   const now = new Date().toISOString();
   
+  db.prepare(`UPDATE reminder_rules SET is_enabled = 0 WHERE task_id = ?`).run(rule.taskId);
+  
   const stmt = db.prepare(`
     INSERT INTO reminder_rules (
       id, task_id, repeat_type, repeat_config, custom_dates,
@@ -84,6 +86,16 @@ function deleteReminderLogsByTaskId(taskId) {
   return stmt.run(taskId);
 }
 
+// 删除超过指定天数的历史提醒日志（仅删除非 pending 状态的日志）
+function deleteOldReminderLogs(days) {
+  const stmt = db.prepare(`
+    DELETE FROM reminder_logs 
+    WHERE status != 'pending' 
+      AND triggered_at < datetime('now', '-' || ? || ' days')
+  `);
+  return stmt.run(days);
+}
+
 // 创建提醒记录
 function createReminderLog(log) {
   const stmt = db.prepare(`
@@ -156,6 +168,7 @@ module.exports = {
   deleteReminderRule,
   deleteReminderRulesByTaskId,
   deleteReminderLogsByTaskId,
+  deleteOldReminderLogs,
   createReminderLog,
   updateReminderLog,
   getPendingReminderLogs,
