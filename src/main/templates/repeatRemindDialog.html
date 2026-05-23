@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <title>重复提醒设置</title>
   <style>
     * {
       margin: 0;
@@ -391,11 +392,85 @@
       display: none !important;
     }
     
-    .section-title {
+    /* 月份选择网格 */
+    .month-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+      margin: 10px 0;
+    }
+
+    .month-grid .month-btn {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 13px;
-      color: #999;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+      border: 1px solid #ddd;
+      background: white;
+    }
+
+    .month-grid .month-btn:hover {
+      border-color: #FFC107;
+    }
+
+    .month-grid .month-btn.selected {
+      background: #FFC107;
+      color: white;
+      border-color: #FFC107;
+    }
+
+    /* 选中日期显示 */
+    .selected-date-display {
       text-align: center;
-      margin: 8px 0;
+      padding: 0 6px 6px 6px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    /* fieldset/legend 样式（单次/自选日期显示） */
+    #onceDateSection {
+      margin: 12px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    #onceDateSection legend {
+      font-size: 13px;
+      font-weight: 600;
+      color: #666;
+      padding: 0 6px;
+    }
+
+    /* 多日期显示 */
+    .multi-date-display {
+      max-height: 100px;
+      overflow-y: auto;
+      margin-top: 6px;
+    }
+
+    .multi-date-display .date-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      background: #e3f2fd;
+      border-radius: 12px;
+      font-size: 12px;
+      margin: 3px;
+    }
+
+    /* 验证错误提示 */
+    .validation-error {
+      color: #f44336;
+      font-size: 12px;
+      text-align: center;
+      margin-top: 8px;
+      display: none;
     }
   </style>
 </head>
@@ -456,6 +531,14 @@
           <div class="weekday-btn" data-day="7" onclick="toggleWeekday(this)">周日</div>
         </div>
       </div>
+
+      <!-- 每月：月份选择 -->
+      <div id="monthSelector" class="hidden">
+        <div class="section-title">选择哪些月份重复</div>
+        <div class="month-grid" id="monthGrid">
+          <!-- 动态生成 -->
+        </div>
+      </div>
       
       <!-- 每月选择 -->
       <div id="monthlySection" class="hidden">
@@ -465,36 +548,41 @@
         </div>
       </div>
       
-      <!-- 自选日期 -->
-      <div id="customSection" class="hidden">
-        <div class="section-title">已选择的日期</div>
-        <div class="date-list" id="customDateList">
-          <!-- 动态生成 -->
+      <!-- 单次/自选日期显示 -->
+      <fieldset id="onceDateSection" class="hidden">
+        <legend>提醒日期</legend>
+        <div class="selected-date-display" id="onceDateDisplay">
+          请在上方日历中选择日期
+        </div>
+      </fieldset>
+
+      <!-- 结束重复 -->
+      <div id="endRepeatSection">
+        <div class="form-row">
+          <span class="form-label">结束重复:</span>
+          <div class="form-control">
+            <select id="endType">
+              <option value="never">永不结束</option>
+              <option value="date">指定日期</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="form-row hidden" id="endDateRow">
+          <span class="form-label"></span>
+          <div class="form-control">
+            <input type="date" id="endDate">
+          </div>
         </div>
       </div>
       
-      <!-- 开始/结束日期 -->
-      <div class="form-row">
-        <span class="form-label">开始重复:</span>
-        <div class="form-control">
-          <input type="date" id="startDate">
-        </div>
-      </div>
-      
-      <div class="form-row">
-        <span class="form-label">结束重复:</span>
-        <div class="form-control">
-          <select id="endType">
-            <option value="never">永不结束</option>
-            <option value="date">指定日期</option>
-          </select>
-        </div>
-      </div>
-      
-      <div class="form-row hidden" id="endDateRow">
-        <span class="form-label"></span>
-        <div class="form-control">
-          <input type="date" id="endDate">
+      <!-- 开始重复 -->
+      <div id="startRepeatSection">
+        <div class="form-row">
+          <span class="form-label">开始重复:</span>
+          <div class="form-control">
+            <input type="date" id="startDate">
+          </div>
         </div>
       </div>
       
@@ -535,38 +623,41 @@
     </div>
     
     <div class="dialog-footer">
+      <div class="validation-error" id="validationError"></div>
       <button class="btn btn-delete" onclick="deleteReminder()">删除</button>
       <button class="btn btn-confirm" onclick="saveReminder()">确定</button>
     </div>
   </div>
   
   <script>
-    // 状态
+    // ===== 状态 =====
     let currentDate = new Date();
     let selectedDates = [];
     let selectedWeekdays = [];
     let selectedMonthDays = [];
-    let reminderEnabled = false;
-    
-    // 初始化
+    let selectedMonths = [];   // 1-12，用于 monthly 模式
+    let onceSelectedDate = null;
+    let reminderEnabled = true;   // 是否启用提醒
+
+    // ===== 初始化 =====
     function init() {
       renderCalendar();
       renderMonthDays();
+      renderMonthGrid();
       document.getElementById('startDate').value = formatDate(new Date());
-      
-      // 监听重复类型变化
+
       document.getElementById('repeatType').addEventListener('change', function() {
         updateUIByType(this.value);
       });
-      
-      // 监听结束类型变化
+
       document.getElementById('endType').addEventListener('change', function() {
         document.getElementById('endDateRow').classList.toggle('hidden', this.value !== 'date');
       });
-      
+
       updateUIByType('once');
-      
-      // 监听加载已有规则数据
+
+      document.getElementById('reminderToggle').classList.add('active');
+
       window.electronAPI.on('load-reminder-data', (event, data) => {
         if (data.repeatType) {
           document.getElementById('repeatType').value = data.repeatType;
@@ -589,12 +680,10 @@
         if (data.reminderWay) {
           document.getElementById('reminderWay').value = data.reminderWay;
         }
-        
-        // 设置提醒开关
+
         reminderEnabled = data.reminderEnabled || false;
         document.getElementById('reminderToggle').classList.toggle('active', reminderEnabled);
-        
-        // 加载重复配置
+
         if (data.repeatConfig) {
           if (data.repeatType === 'weekly' && data.repeatConfig.weekdays) {
             selectedWeekdays = data.repeatConfig.weekdays;
@@ -603,43 +692,85 @@
               btn.classList.toggle('selected', selectedWeekdays.includes(day));
             });
           }
-          if (data.repeatType === 'monthly' && data.repeatConfig.monthDays) {
-            selectedMonthDays = data.repeatConfig.monthDays;
-            renderMonthDays();
+          if (data.repeatType === 'monthly') {
+            if (data.repeatConfig.monthDays) {
+              selectedMonthDays = data.repeatConfig.monthDays;
+              renderMonthDays();
+            }
+            if (data.repeatConfig.months) {
+              selectedMonths = data.repeatConfig.months;
+              renderMonthGrid();
+            }
           }
         }
-        
-        // 加载自选日期
+
         if (data.customDates) {
           selectedDates = data.customDates;
           renderCalendar();
-          renderCustomDateList();
+          renderCustomDatesDisplay();
+        }
+
+        if (data.repeatType === 'once' && data.startDate) {
+          onceSelectedDate = data.startDate;
+          updateOnceDateDisplay();
+          renderCalendar();
         }
       });
     }
-    
-    // 根据类型更新UI
+
+    // ===== 根据模式切换 UI =====
     function updateUIByType(type) {
-      document.getElementById('weeklySection').classList.toggle('hidden', type !== 'weekly');
-      document.getElementById('monthlySection').classList.toggle('hidden', type !== 'monthly');
-      document.getElementById('customSection').classList.toggle('hidden', type !== 'custom');
+      const calendar = document.querySelector('.calendar-section');
+      const weekly = document.getElementById('weeklySection');
+      const monthly = document.getElementById('monthlySection');
+      const monthSel = document.getElementById('monthSelector');
+      const once = document.getElementById('onceDateSection');
+      const start = document.getElementById('startRepeatSection');
+      const end = document.getElementById('endRepeatSection');
+
+      calendar.classList.toggle('hidden', type === 'weekly' || type === 'monthly');
+      weekly.classList.toggle('hidden', type !== 'weekly');
+      monthly.classList.toggle('hidden', type !== 'monthly');
+      monthSel.classList.toggle('hidden', type !== 'monthly');
+      once.classList.toggle('hidden', type !== 'once' && type !== 'custom');
+      start.classList.toggle('hidden', type === 'once' || type === 'weekly' || type === 'monthly' || type === 'custom');
+      end.classList.toggle('hidden', type === 'once' || type === 'custom');
+
+      if (type === 'once') {
+        onceSelectedDate = null;
+        document.getElementById('onceDateDisplay').textContent = '请在上方日历中选择日期';
+        document.querySelector('#onceDateSection legend').textContent = '提醒日期';
+        // 清除日历选中
+        document.querySelectorAll('.calendar-day:not(.other-month)').forEach(d => d.classList.remove('selected'));
+      }
+      if (type === 'custom') {
+        renderCalendar();
+        renderCustomDatesDisplay();
+      }
+      if (type === 'monthly') {
+        renderMonthDays();
+        renderMonthGrid();
+      }
+      if (type === 'daily' && !document.getElementById('startDate').value) {
+        document.getElementById('startDate').value = formatDate(new Date());
+      }
     }
-    
-    // 渲染日历
+
+    // ===== 渲染日历 =====
     function renderCalendar() {
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth();
-      
+      const type = document.getElementById('repeatType').value;
+
       document.getElementById('calendarTitle').textContent = `${year}年${month + 1}月`;
-      
+
       const firstDay = new Date(year, month, 1);
       const lastDay = new Date(year, month + 1, 0);
-      const startDayOfWeek = firstDay.getDay() || 7; // 周一=1, 周日=7
-      
+      const startDayOfWeek = firstDay.getDay() || 7;
+
       const grid = document.getElementById('calendarGrid');
       grid.innerHTML = '';
-      
-      // 星期标题
+
       const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
       weekdays.forEach(day => {
         const div = document.createElement('div');
@@ -647,60 +778,91 @@
         div.textContent = day;
         grid.appendChild(div);
       });
-      
-      // 空白
+
       for (let i = 1; i < startDayOfWeek; i++) {
         const div = document.createElement('div');
         grid.appendChild(div);
       }
-      
-      // 日期
+
       const today = new Date();
       for (let day = 1; day <= lastDay.getDate(); day++) {
         const div = document.createElement('div');
         div.className = 'calendar-day';
         div.textContent = day;
-        
+
         const dateStr = formatDate(new Date(year, month, day));
-        
-        // 今天
+
         if (year === today.getFullYear() && month === today.getMonth() && day === today.getDate()) {
           div.classList.add('today');
         }
-        
-        // 选中
-        if (selectedDates.includes(dateStr)) {
-          div.classList.add('selected');
+
+        if (type === 'once') {
+          if (onceSelectedDate === dateStr) {
+            div.classList.add('selected');
+          }
+        } else if (type === 'custom') {
+          if (selectedDates.includes(dateStr)) {
+            div.classList.add('selected');
+          }
+        } else if (type === 'daily') {
+          if (dateStr === document.getElementById('startDate').value) {
+            div.classList.add('selected');
+          }
+        } else if (type === 'monthly') {
+          if (selectedMonthDays.includes(day)) {
+            div.classList.add('selected');
+          }
         }
-        
-        div.onclick = () => toggleDate(dateStr, div);
+
+        div.onclick = () => onCalendarDayClick(dateStr, day, div);
         grid.appendChild(div);
       }
-    }
-    
-    // 渲染每月日期选择
-    function renderMonthDays() {
-      const grid = document.getElementById('monthDayGrid');
-      if (!grid) return;
-      
-      grid.innerHTML = '';
-      for (let day = 1; day <= 31; day++) {
-        const div = document.createElement('div');
-        div.className = 'calendar-day';
-        div.textContent = day;
-        div.style.fontSize = '13px';
-        
-        if (selectedMonthDays.includes(day)) {
-          div.classList.add('selected');
-        }
-        
-        div.onclick = () => toggleMonthDay(day, div);
-        grid.appendChild(div);
+
+      if (type === 'custom') {
+        renderCustomDatesDisplay();
       }
     }
-    
-    // 切换日期选择
-    function toggleDate(dateStr, element) {
+
+    function onCalendarDayClick(dateStr, day, element) {
+      const type = document.getElementById('repeatType').value;
+
+      switch (type) {
+        case 'once':
+          onceSelectedDate = dateStr;
+          document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('selected'));
+          element.classList.add('selected');
+          updateOnceDateDisplay();
+          break;
+
+        case 'daily':
+          document.getElementById('startDate').value = dateStr;
+          document.querySelectorAll('.calendar-day').forEach(d => d.classList.remove('selected'));
+          element.classList.add('selected');
+          break;
+
+        case 'monthly':
+          toggleMonthDay(day, element);
+          break;
+
+        case 'custom':
+          toggleDateSelection(dateStr, element);
+          break;
+      }
+    }
+
+    function updateOnceDateDisplay() {
+      const el = document.getElementById('onceDateDisplay');
+      if (onceSelectedDate) {
+        const d = new Date(onceSelectedDate + 'T00:00:00');
+        const weekNames = ['日', '一', '二', '三', '四', '五', '六'];
+        el.textContent = onceSelectedDate + ' (周' + weekNames[d.getDay()] + ')';
+      } else {
+        el.textContent = '请在上方日历中选择日期';
+      }
+    }
+
+    // ===== 自选日期切换 =====
+    function toggleDateSelection(dateStr, element) {
       const index = selectedDates.indexOf(dateStr);
       if (index > -1) {
         selectedDates.splice(index, 1);
@@ -709,14 +871,38 @@
         selectedDates.push(dateStr);
         element.classList.add('selected');
       }
-      renderCustomDateList();
+      renderCustomDatesDisplay();
     }
-    
-    // 切换星期选择
+
+    function renderCustomDatesDisplay() {
+      const el = document.getElementById('onceDateDisplay');
+      if (!el) return;
+      const type = document.getElementById('repeatType').value;
+      if (type !== 'custom') return;
+
+      const legend = document.querySelector('#onceDateSection legend');
+      if (selectedDates.length > 1) {
+        legend.textContent = `提醒日期[${selectedDates.length}]`;
+      } else {
+        legend.textContent = '提醒日期';
+      }
+
+      if (selectedDates.length === 0) {
+        el.innerHTML = '请在上方日历中选择日期';
+        return;
+      }
+      const weekNames = ['日', '一', '二', '三', '四', '五', '六'];
+      const tags = selectedDates.sort().map(date => {
+        const d = new Date(date + 'T00:00:00');
+        return `<span style="display:inline-flex;align-items:center;gap:3px;padding:3px;background:#e3f2fd;border-radius:12px;font-size:12px;margin:2px;">${date} (周${weekNames[d.getDay()]})</span>`;
+      });
+      el.innerHTML = tags.join('');
+    }
+
+    // ===== 星期选择 =====
     function toggleWeekday(element) {
       const day = parseInt(element.dataset.day);
       const index = selectedWeekdays.indexOf(day);
-      
       if (index > -1) {
         selectedWeekdays.splice(index, 1);
         element.classList.remove('selected');
@@ -725,11 +911,27 @@
         element.classList.add('selected');
       }
     }
-    
-    // 切换每月日期选择
+
+    // ===== 每月日期选择 =====
+    function renderMonthDays() {
+      const grid = document.getElementById('monthDayGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+      for (let day = 1; day <= 31; day++) {
+        const div = document.createElement('div');
+        div.className = 'calendar-day';
+        div.textContent = day;
+        div.style.fontSize = '13px';
+        if (selectedMonthDays.includes(day)) {
+          div.classList.add('selected');
+        }
+        div.onclick = () => toggleMonthDay(day, div);
+        grid.appendChild(div);
+      }
+    }
+
     function toggleMonthDay(day, element) {
       const index = selectedMonthDays.indexOf(day);
-      
       if (index > -1) {
         selectedMonthDays.splice(index, 1);
         element.classList.remove('selected');
@@ -737,92 +939,183 @@
         selectedMonthDays.push(day);
         element.classList.add('selected');
       }
+      renderCalendar();
     }
-    
-    // 渲染自选日期列表
-    function renderCustomDateList() {
-      const list = document.getElementById('customDateList');
-      if (!list) return;
-      
-      list.innerHTML = '';
-      selectedDates.sort().forEach(date => {
-        const tag = document.createElement('div');
-        tag.className = 'date-tag';
-        tag.innerHTML = `${date} <span class="remove" onclick="removeDate('${date}')">×</span>`;
-        list.appendChild(tag);
-      });
-      
-      if (selectedDates.length === 0) {
-        list.innerHTML = '<span style="color: #999; font-size: 13px;">请在日历中选择日期</span>';
+
+    // ===== 月份选择(monthly模式) =====
+    function renderMonthGrid() {
+      const grid = document.getElementById('monthGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+      const names = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+      for (let m = 1; m <= 12; m++) {
+        const div = document.createElement('div');
+        div.className = 'month-btn';
+        div.textContent = names[m - 1];
+        if (selectedMonths.includes(m)) {
+          div.classList.add('selected');
+        }
+        div.onclick = () => toggleMonth(m, div);
+        grid.appendChild(div);
       }
     }
-    
-    // 移除日期
-    function removeDate(date) {
-      const index = selectedDates.indexOf(date);
+
+    function toggleMonth(month, element) {
+      const index = selectedMonths.indexOf(month);
       if (index > -1) {
-        selectedDates.splice(index, 1);
-        renderCalendar();
-        renderCustomDateList();
+        selectedMonths.splice(index, 1);
+        element.classList.remove('selected');
+      } else {
+        selectedMonths.push(month);
+        element.classList.add('selected');
       }
     }
-    
-    // 切换月份
+
+    // ===== 导航 =====
     function changeMonth(delta) {
       currentDate.setMonth(currentDate.getMonth() + delta);
       renderCalendar();
     }
-    
-    // 返回今天
+
     function goToToday() {
       currentDate = new Date();
       renderCalendar();
     }
-    
-    // 切换提醒开关
+
+    // ===== 提醒开关 =====
     function toggleReminder() {
       const oldValue = reminderEnabled;
       reminderEnabled = !reminderEnabled;
       document.getElementById('reminderToggle').classList.toggle('active', reminderEnabled);
-      
       if (!reminderEnabled && oldValue) {
         window.electronAPI.send('delete-reminder-rule');
       }
     }
-    
-    // 格式化日期
+
+    // ===== 工具函数 =====
     function formatDate(date) {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
     }
-    
-    // 保存
+
+    // ===== 表单验证 =====
+    function validateForm(type) {
+      const errorEl = document.getElementById('validationError');
+      errorEl.style.display = 'none';
+
+      if (!reminderEnabled) return true;
+
+      let errors = [];
+
+      switch (type) {
+        case 'once':
+          if (!onceSelectedDate) errors.push('请选择提醒日期');
+          else if (onceSelectedDate < formatDate(new Date())) errors.push('提醒日期不能是过去的日期');
+          break;
+        case 'daily':
+          if (!document.getElementById('startDate').value) errors.push('请选择开始重复日期');
+          break;
+        case 'weekly':
+          if (selectedWeekdays.length === 0) errors.push('请至少选择一个星期');
+          break;
+        case 'monthly':
+          if (selectedMonthDays.length === 0) errors.push('请选择每月的哪些天重复');
+          if (selectedMonths.length === 0) errors.push('请选择哪些月份重复');
+
+          if (selectedMonths.length > 0 && selectedMonthDays.length > 0 && document.getElementById('endType').value === 'date') {
+            const endVal = document.getElementById('endDate').value;
+            if (endVal) {
+              const startVal = document.getElementById('startDate').value;
+              const baseYear = startVal ? parseInt(startVal.split('-')[0]) : new Date().getFullYear();
+              const maxMonth = Math.max(...selectedMonths);
+              const maxDay = Math.max(...selectedMonthDays);
+              const lastDayOfMaxMonth = new Date(baseYear, maxMonth, 0).getDate();
+              const actualMaxDay = Math.min(maxDay, lastDayOfMaxMonth);
+              const latestDateStr = `${baseYear}-${String(maxMonth).padStart(2, '0')}-${String(actualMaxDay).padStart(2, '0')}`;
+              if (endVal <= latestDateStr) {
+                errors.push(`结束重复日期必须在${maxMonth}月${actualMaxDay}日之后`);
+              }
+            }
+          }
+          break;
+        case 'custom':
+          if (selectedDates.length === 0) errors.push('请至少选择一个日期');
+          else {
+            const todayStr = formatDate(new Date());
+            const allPast = selectedDates.every(d => d < todayStr);
+            if (allPast) errors.push('所有自选日期均为过去的日期，提醒不会触发');
+          }
+          break;
+      }
+
+      if (document.getElementById('endType').value === 'date') {
+        const endVal = document.getElementById('endDate').value;
+        const startVal = document.getElementById('startDate').value;
+        const todayStr = formatDate(new Date());
+        if (endVal && endVal < todayStr) {
+          errors.push('结束重复日期不能是过去的日期');
+        } else if (endVal && startVal && endVal <= startVal) {
+          errors.push('结束重复日期必须大于开始重复日期');
+        }
+      }
+
+      if (!document.getElementById('reminderTime').value) errors.push('请设置提醒时间');
+
+      if (errors.length > 0) {
+        errorEl.textContent = '⚠ ' + errors.join('；');
+        errorEl.style.display = 'block';
+        return false;
+      }
+      return true;
+    }
+
+    // ===== 保存 =====
     function saveReminder() {
+      if (!reminderEnabled) {
+        closeDialog();
+        return;
+      }
+
       const repeatType = document.getElementById('repeatType').value;
+      if (!validateForm(repeatType)) return;
+
       const reminderTime = document.getElementById('reminderTime').value;
-      const startDate = document.getElementById('startDate').value;
       const endType = document.getElementById('endType').value;
       const endDate = endType === 'date' ? document.getElementById('endDate').value : null;
       const advanceMinutes = parseInt(document.getElementById('advanceReminder').value);
       const reminderWay = document.getElementById('reminderWay').value;
-      
+
+      // 根据模式确定 startDate 和 repeatConfig
+      let startDate = null;
       let repeatConfig = null;
       let customDates = null;
-      
+
       switch (repeatType) {
+        case 'once':
+          startDate = onceSelectedDate;
+          break;
+        case 'daily':
+          startDate = document.getElementById('startDate').value;
+          break;
         case 'weekly':
+          startDate = formatDate(new Date());
           repeatConfig = { weekdays: selectedWeekdays.sort((a, b) => a - b) };
           break;
         case 'monthly':
-          repeatConfig = { monthDays: selectedMonthDays.sort((a, b) => a - b) };
+          startDate = formatDate(new Date());
+          repeatConfig = {
+            monthDays: selectedMonthDays.sort((a, b) => a - b),
+            months: selectedMonths.sort((a, b) => a - b)
+          };
           break;
         case 'custom':
+          startDate = formatDate(new Date());
           customDates = selectedDates;
           break;
       }
-      
+
       window.electronAPI.send('save-reminder-rule', {
         repeatType,
         reminderTime,
@@ -834,27 +1127,24 @@
         repeatConfig,
         customDates
       });
-      
+
       closeDialog();
     }
-    
-    // 删除
+
+    // ===== 删除/关闭 =====
     function deleteReminder() {
       window.electronAPI.send('delete-reminder-rule');
       closeDialog();
     }
-    
-    // 关闭
+
     function closeDialog() {
       window.electronAPI.send('close-reminder-dialog');
     }
 
-    // 最小化
     function minimizeWindow() {
       window.electronAPI.send('minimize-reminder-dialog');
     }
-    
-    // 初始化
+
     init();
   </script>
 </body>

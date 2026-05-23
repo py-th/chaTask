@@ -214,7 +214,29 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
         reminder_enabled: data.reminderEnabled ? 1 : 0,
         reminder_rule_id: ruleId
       });
-      
+
+      // 输出提醒规则日志
+      console.log('========== 提醒规则已保存 ==========');
+      console.log(`任务ID: ${targetTaskId}`);
+      console.log(`重复类型: ${data.repeatType}`);
+      console.log(`提醒时间: ${data.reminderTime}`);
+      console.log(`提前提醒: ${data.advanceMinutes}分钟`);
+      console.log(`提醒方式: ${data.reminderWay}`);
+      console.log(`提醒开关: ${data.reminderEnabled ? '开启' : '关闭'}`);
+      if (data.startDate) console.log(`开始日期: ${data.startDate}`);
+      if (data.endDate) console.log(`结束日期: ${data.endDate}`);
+      if (data.repeatConfig) console.log(`重复配置: ${JSON.stringify(data.repeatConfig)}`);
+      if (data.customDates && data.customDates.length > 0) console.log(`自选日期: ${JSON.stringify(data.customDates)}`);
+      const savedRule = getReminderRuleByTaskId(targetTaskId);
+      if (savedRule) {
+        console.log(`数据库记录: repeat_type=${savedRule.repeat_type}, repeat_config=${savedRule.repeat_config}, start_date=${savedRule.start_date}, end_date=${savedRule.end_date}, custom_dates=${savedRule.custom_dates}`);
+      }
+      if (data.reminderEnabled && reminderService) {
+        const nextText = reminderService.getNextReminderText(savedRule);
+        console.log(`便签显示文本: ${nextText}`);
+      }
+      console.log('====================================');
+
       // 更新便签上的提醒信息显示
       if (reminderService) {
         const note = stickyManager.notes.get(targetNoteId);
@@ -339,10 +361,19 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
   // 保存样式配置（替换旧的透明度设置）
   ipcMain.on('save-style-config', async (event, { taskId, styleConfig }) => {
     try {
-      await updateTask(taskId, {
+      const updateData = {
         style_config: JSON.stringify(styleConfig),
         opacity: styleConfig.opacity
-      });
+      };
+      
+      // 如果用户设置了背景颜色，保存到 task.color 字段
+      if (styleConfig.bgColor && styleConfig.bgColor.trim()) {
+        updateData.color = styleConfig.bgColor;
+        console.log('[Sticky] 保存背景颜色到 task.color:', styleConfig.bgColor);
+      }
+      
+      await updateTask(taskId, updateData);
+      console.log('[Sticky] 样式配置已保存:', styleConfig);
     } catch (err) {
       console.error('[Sticky] 保存样式配置失败:', err);
     }

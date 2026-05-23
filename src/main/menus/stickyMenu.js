@@ -138,7 +138,7 @@ class StickyMenu {
         label: '工具箱',
         click: () => {
           // 后续功能扩展
-          console.log('任务日历，任务时间轴，桌面倒计时，番茄时钟，定时关机');
+          console.log('桌面倒计时，番茄时钟，定时关机');
         }
       }
     ]);
@@ -149,28 +149,28 @@ class StickyMenu {
       {
         label: '高',
         click: async () => {
-          await updateTask(taskId, { priority: 'high' });
+          await updateTask(taskId, { priority: 'high', color: null });
           this._notifyNote(noteId, 'update-priority', 'high');
         }
       },
       {
         label: '中',
         click: async () => {
-          await updateTask(taskId, { priority: 'medium' });
+          await updateTask(taskId, { priority: 'medium', color: null });
           this._notifyNote(noteId, 'update-priority', 'medium');
         }
       },
       {
         label: '低',
         click: async () => {
-          await updateTask(taskId, { priority: 'low' });
+          await updateTask(taskId, { priority: 'low', color: null });
           this._notifyNote(noteId, 'update-priority', 'low');
         }
       },
       {
         label: '无',
         click: async () => {
-          await updateTask(taskId, { priority: 'none' });
+          await updateTask(taskId, { priority: 'none', color: null });
           this._notifyNote(noteId, 'update-priority', 'none');
         }
       }

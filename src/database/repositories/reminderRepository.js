@@ -6,44 +6,45 @@ const { v4: uuidv4 } = require('uuid');
 function saveReminderRule(rule) {
   const id = rule.id || uuidv4();
   const now = new Date().toISOString();
-  
-  db.prepare(`UPDATE reminder_rules SET is_enabled = 0 WHERE task_id = ?`).run(rule.taskId);
-  
-  const stmt = db.prepare(`
-    INSERT INTO reminder_rules (
-      id, task_id, repeat_type, repeat_config, custom_dates,
-      reminder_time, start_date, end_date, advance_minutes,
-      reminder_way, is_enabled, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET
-      repeat_type = excluded.repeat_type,
-      repeat_config = excluded.repeat_config,
-      custom_dates = excluded.custom_dates,
-      reminder_time = excluded.reminder_time,
-      start_date = excluded.start_date,
-      end_date = excluded.end_date,
-      advance_minutes = excluded.advance_minutes,
-      reminder_way = excluded.reminder_way,
-      is_enabled = excluded.is_enabled,
-      updated_at = excluded.updated_at
-  `);
-  
-  stmt.run(
-    id,
-    rule.taskId,
-    rule.repeatType || 'once',
-    rule.repeatConfig ? JSON.stringify(rule.repeatConfig) : null,
-    rule.customDates ? JSON.stringify(rule.customDates) : null,
-    rule.reminderTime || '09:00',
-    rule.startDate || null,
-    rule.endDate || null,
-    rule.advanceMinutes || 0,
-    rule.reminderWay || 'popup',
-    rule.isEnabled !== undefined ? (rule.isEnabled ? 1 : 0) : 1,
-    now,
-    now
-  );
-  
+
+  const upsert = db.transaction(() => {
+    db.prepare(`UPDATE reminder_rules SET is_enabled = 0 WHERE task_id = ?`).run(rule.taskId);
+
+    db.prepare(`
+      INSERT INTO reminder_rules (
+        id, task_id, repeat_type, repeat_config, custom_dates,
+        reminder_time, start_date, end_date, advance_minutes,
+        reminder_way, is_enabled, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        repeat_type = excluded.repeat_type,
+        repeat_config = excluded.repeat_config,
+        custom_dates = excluded.custom_dates,
+        reminder_time = excluded.reminder_time,
+        start_date = excluded.start_date,
+        end_date = excluded.end_date,
+        advance_minutes = excluded.advance_minutes,
+        reminder_way = excluded.reminder_way,
+        is_enabled = excluded.is_enabled,
+        updated_at = excluded.updated_at
+    `).run(
+      id,
+      rule.taskId,
+      rule.repeatType || 'once',
+      rule.repeatConfig ? JSON.stringify(rule.repeatConfig) : null,
+      rule.customDates ? JSON.stringify(rule.customDates) : null,
+      rule.reminderTime || '09:00',
+      rule.startDate || null,
+      rule.endDate || null,
+      rule.advanceMinutes || 0,
+      rule.reminderWay || 'popup',
+      rule.isEnabled !== undefined ? (rule.isEnabled ? 1 : 0) : 1,
+      now,
+      now
+    );
+  });
+
+  upsert();
   return id;
 }
 
@@ -91,7 +92,7 @@ function deleteOldReminderLogs(days) {
   const stmt = db.prepare(`
     DELETE FROM reminder_logs 
     WHERE status != 'pending' 
-      AND triggered_at < datetime('now', '-' || ? || ' days')
+      AND substr(triggered_at, 1, 10) < date('now', '-' || ? || ' days')
   `);
   return stmt.run(days);
 }

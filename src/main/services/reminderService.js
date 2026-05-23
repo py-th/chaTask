@@ -211,9 +211,15 @@ class ReminderService {
       case 'monthly': {
         const config = rule.repeat_config ? JSON.parse(rule.repeat_config) : {};
         const monthDays = config.monthDays || [1];
+        const months = config.months || [];
 
         for (let monthOffset = 0; monthOffset < 24; monthOffset++) {
           const checkDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+
+          if (months.length > 0) {
+            const monthNum = checkDate.getMonth() + 1;
+            if (!months.includes(monthNum)) continue;
+          }
 
           for (const day of monthDays.sort((a, b) => a - b)) {
             const lastDayOfMonth = new Date(checkDate.getFullYear(), checkDate.getMonth() + 1, 0).getDate();
@@ -622,8 +628,13 @@ class ReminderService {
       case 'monthly': {
         const config = rule.repeat_config ? JSON.parse(rule.repeat_config) : {};
         const monthDays = config.monthDays || [1];
+        const months = config.months || [];
         const dayOfMonth = today.getDate();
         if (!monthDays.includes(dayOfMonth)) return null;
+        if (months.length > 0) {
+          const monthNum = today.getMonth() + 1;
+          if (!months.includes(monthNum)) return null;
+        }
         const scheduled = new Date(today);
         scheduled.setHours(hours, minutes, 0, 0);
         if (rule.start_date) {
@@ -690,8 +701,9 @@ class ReminderService {
     if (!nextTime) return null;
 
     const now = new Date();
-    const diffMs = nextTime.getTime() - now.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const nextMidnight = new Date(nextTime.getFullYear(), nextTime.getMonth(), nextTime.getDate());
+    const diffDays = Math.round((nextMidnight.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
 
     let dateText;
     if (diffDays === 0) {

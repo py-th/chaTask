@@ -51,14 +51,19 @@ class StickyNoteManager {
         }
       };
 
-      // 获取优先级颜色
-      let priorityColor = '';
-      switch (task.priority) {
-        case 'high': priorityColor = '#ffcccc'; break;
-        case 'medium': priorityColor = '#cce5ff'; break;
-        case 'low': priorityColor = '#ccffcc'; break;
-        default: priorityColor = '#feffcc';
-      }
+      // 获取优先级颜色（仅作为默认颜色）
+      const getPriorityDefaultColor = (priority) => {
+        switch (priority) {
+          case 'high': return '#ffcccc';
+          case 'medium': return '#cce5ff';
+          case 'low': return '#ccffcc';
+          default: return 'rgba(255,249,196,0.95)';
+        }
+      };
+
+      // 获取便签背景色：用户手动设置 > 优先级默认颜色
+      const priorityDefaultColor = getPriorityDefaultColor(task.priority);
+      const noteBackgroundColor = task.color && task.color.trim() ? task.color : priorityDefaultColor;
 
       // 获取状态图标
       let statusIcon = '';
@@ -70,11 +75,11 @@ class StickyNoteManager {
         default: statusIcon = '';
       }
 
-      // 头像图片
+      // 头像图片 - 使用实际背景色
       const defaultAvatarSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='45' height='45' viewBox='0 0 45 45'%3E%3Ccircle cx='22.5' cy='22.5' r='22.5' fill='%23e8e8e8'/%3E%3Ccircle cx='22.5' cy='16.5' r='7' fill='none' stroke='%23888' stroke-width='2.5'/%3E%3Cpath d='M8 37.5Q22.5 26 37 37.5' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E";
       const avatarImg = task.sender_avatar ? 
-        `<img class="avatar" src="${escapeHtml(task.sender_avatar)}" style="width:45px;height:45px;border-radius:50%;object-fit:cover;border: 2px solid ${priorityColor};box-shadow: 0 2px 5px rgba(0,0,0,0.2);" />` : 
-        `<img class="avatar" src="${defaultAvatarSvg}" style="width:45px;height:45px;border-radius:50%;object-fit:cover;border: 2px solid ${priorityColor};box-shadow: 0 2px 5px rgba(0,0,0,0.2);" />`;
+        `<img class="avatar" src="${escapeHtml(task.sender_avatar)}" style="width:45px;height:45px;border-radius:50%;object-fit:cover;border: 2px solid ${noteBackgroundColor};box-shadow: 0 2px 5px rgba(0,0,0,0.2);" />` : 
+        `<img class="avatar" src="${defaultAvatarSvg}" style="width:45px;height:45px;border-radius:50%;object-fit:cover;border: 2px solid ${noteBackgroundColor};box-shadow: 0 2px 5px rgba(0,0,0,0.2);" />`;
       
         // 截止日期文本
       const dueDateText = task.due_date ? new Date(task.due_date).toLocaleDateString() : '未设置';
@@ -83,7 +88,7 @@ class StickyNoteManager {
       const statusText = getStatusText(task.status);
       const priorityText = getPriorityText(task.priority);
 
-      // 替换模板中的占位符
+      // 样式配置
       const styleConfig = task.style_config ? (typeof task.style_config === 'string' ? JSON.parse(task.style_config) : task.style_config) : {};
       const styleConfigJson = JSON.stringify({
         opacity: task.opacity != null ? task.opacity : 1.0,
@@ -96,10 +101,11 @@ class StickyNoteManager {
         textAlign: styleConfig.textAlign || 'left'
       });
 
+      // 替换模板中的占位符
       const replacements = {
         '{{noteId}}': id,
         '{{taskId}}': task.id,
-        '{{priorityColor}}': priorityColor,
+        '{{priorityColor}}': noteBackgroundColor,
         '{{statusIcon}}': statusIcon,
         '{{avatarImg}}': avatarImg,
         '{{content}}': content,
