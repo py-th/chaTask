@@ -1,5 +1,5 @@
 // src/main/windows/mainWindow.js
-const { BrowserWindow } = require('electron');
+const { BrowserWindow, Menu } = require('electron');
 const path = require('path');
 
 function createMainWindow() {
@@ -12,7 +12,9 @@ function createMainWindow() {
       preload: path.join(__dirname, '../../preload/index.js')
     }
   });
+  Menu.setApplicationMenu(null);
   win.loadURL('http://localhost:5173');
+  // 开发环境 默认打开控制台
   if (process.env.NODE_ENV === 'development') {
     win.webContents.openDevTools();
   }

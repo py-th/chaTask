@@ -182,11 +182,12 @@ class StickyMenu {
       {
         label: '完成',
         click: async () => {
-          // 更新任务状态为已完成，并标记 is_completed=1
+          const completedAt = new Date().toISOString();
           await updateTask(taskId, { 
             status: 'completed', 
             is_completed: 1,
-            is_show_desk: 0 
+            is_show_desk: 0,
+            completed_at: completedAt
           });
           // 清理该任务的提醒规则和日志
           deleteReminderRulesByTaskId(taskId);

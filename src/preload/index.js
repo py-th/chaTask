@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   finishScreenshot: (region) => ipcRenderer.invoke('finish-screenshot', region),
   cancelScreenshot: () => ipcRenderer.send('cancel-screenshot'),
   startDoubleScreenshot: () => ipcRenderer.invoke('start-double-screenshot'),
+  showMainWindow: () => ipcRenderer.invoke('show-main-window'),
   onDoubleScreenshotResult: (callback) => {
     ipcRenderer.on('double-screenshot-result', (event, data) => callback(data));
   },
@@ -45,6 +46,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // 获取截图配置
   getScreenshotConfig: () => ipcRenderer.invoke('get-screenshot-config'),
+
+  // 设置相关
+  getSettings: () => ipcRenderer.invoke('get-settings'),
+  saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
+
+  // 数据管理
+  exportAllData: () => ipcRenderer.invoke('export-all-data'),
+  importAllData: () => ipcRenderer.invoke('import-all-data'),
+  clearAllData: () => ipcRenderer.invoke('clear-all-data'),
 
   // 剪贴板截图（备选方案）
   onNewScreenshot: (callback) => {

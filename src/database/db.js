@@ -34,7 +34,8 @@ db.exec(`
     attachments TEXT,                       -- 附件 JSON 数组
     is_completed INTEGER DEFAULT 0,         -- 是否完成 (兼容旧字段) (0/1)
     is_archived INTEGER DEFAULT 0,          -- 是否归档 (0/1)
-    is_deleted INTEGER DEFAULT 0            -- 是否删除（回收站）(0/1)
+    is_deleted INTEGER DEFAULT 0,            -- 是否删除（回收站）(0/1)
+    completed_at TEXT                       -- 任务完成时间
   )
 `);
 
@@ -76,6 +77,13 @@ try {
     console.log('[db] 迁移：添加 style_config 列到 tasks 表');
     db.exec(`ALTER TABLE tasks ADD COLUMN style_config TEXT DEFAULT '{}'`);
     console.log('[db] 迁移完成：style_config 列已添加');
+  }
+
+  // 添加 completed_at 列（任务完成时间）
+  if (!columns.includes('completed_at')) {
+    console.log('[db] 迁移：添加 completed_at 列到 tasks 表');
+    db.exec(`ALTER TABLE tasks ADD COLUMN completed_at TEXT`);
+    console.log('[db] 迁移完成：completed_at 列已添加');
   }
 } catch (err) {
   console.error('[db] 列迁移失败:', err.message);

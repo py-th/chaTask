@@ -9,8 +9,8 @@ function insertTask(task) {
     INSERT INTO tasks (
       id, source, sender_avatar, sender_name, content, source_time, created_at,
       due_date, reminder_time, priority, status, color, is_pinned, is_show_desk,
-      position_x, position_y, tags, attachments, is_completed, is_archived
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      position_x, position_y, tags, attachments, is_completed, is_archived, completed_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const createdAt = task.createdAt ? (task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt) : new Date().toISOString();
   return stmt.run(
@@ -33,7 +33,8 @@ function insertTask(task) {
     task.tags ? JSON.stringify(task.tags) : null,
     task.attachments ? JSON.stringify(task.attachments) : null,
     task.isCompleted ? 1 : 0,
-    task.isArchived ? 1 : 0
+    task.isArchived ? 1 : 0,
+    task.completedAt || null
   );
 }
 // 获取所有正常任务（未删除、未归档、未完成）
