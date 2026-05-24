@@ -13,7 +13,7 @@ const { initOCR } = require('./services/ocrService');
 const ReminderService = require('./services/reminderService');
 const { getDeskTasks } = require('../database/repositories/taskRepository');
 const db = require('../database/db');
-const config = require('./config');
+const { getEffectiveConfig, loadUserSettings } = require('./configManager');
 const { createTray, updateTrayTooltip } = require('./tray');
 
 let mainWindow = null;
@@ -26,6 +26,39 @@ let reminderService = null;
 
 app.isQuitting = false;
 
+function registerDynamicShortcuts(shortcutConfig) {
+  globalShortcut.unregisterAll();
+  const screenshotShortcut = shortcutConfig.screenshot || 'Ctrl+Alt+S';
+  const showWindowShortcut = shortcutConfig.showWindow || 'Ctrl+Shift+A';
+
+  try {
+    globalShortcut.register(screenshotShortcut.replace('Ctrl', 'CommandOrControl'), () => {
+      if (screenshotUtils) screenshotUtils.startDoubleScreenshot();
+    });
+    console.log(`[main] 注册截图快捷键: ${screenshotShortcut}`);
+  } catch (e) {
+    console.error(`[main] 注册截图快捷键失败: ${e.message}`);
+  }
+
+  try {
+    globalShortcut.register(showWindowShortcut.replace('Ctrl', 'CommandOrControl'), () => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.setSkipTaskbar(false);
+        mainWindow.restore();
+        mainWindow.show();
+        mainWindow.setAlwaysOnTop(true);
+        mainWindow.focus();
+        setTimeout(() => {
+          if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setAlwaysOnTop(false);
+        }, 200);
+      }
+    });
+    console.log(`[main] 注册显示窗口快捷键: ${showWindowShortcut}`);
+  } catch (e) {
+    console.error(`[main] 注册显示窗口快捷键失败: ${e.message}`);
+  }
+}
+
 app.whenReady().then(async () => {
   mainWindow = createMainWindow();
   console.log('[main] 主窗口创建完成');
@@ -33,32 +66,43 @@ app.whenReady().then(async () => {
   createTray(mainWindow);
   console.log('[main] 系统托盘创建完成');
 
+  const effectiveConfig = getEffectiveConfig();
+
+  if (effectiveConfig.general.autoLaunch) {
+    app.setLoginItemSettings({ openAtLogin: true });
+  } else {
+    app.setLoginItemSettings({ openAtLogin: false });
+  }
+
+  const closeToTray = effectiveConfig.general.minimizeToTray !== false;
+
   mainWindow.on('close', (event) => {
     if (!app.isQuitting) {
       event.preventDefault();
+      if (closeToTray) {
+        mainWindow.hide();
+        mainWindow.setSkipTaskbar(true);
+      }
+    }
+  });
+
+  mainWindow.on('minimize', () => {
+    if (closeToTray) {
       mainWindow.hide();
       mainWindow.setSkipTaskbar(true);
     }
   });
 
-  mainWindow.on('minimize', () => {
-    mainWindow.hide();
-    mainWindow.setSkipTaskbar(true);
-  });
-
-  // ✅ 第1步：初始化窗口管理器和工具类
   screenshotUtils = new ScreenshotUtils();
   stickyManager = new StickyNoteManager();
+  stickyManager.settings = effectiveConfig.sticky;
 
-  // 初始化提醒服务
-  reminderService = new ReminderService(stickyManager);
+  reminderService = new ReminderService(stickyManager, effectiveConfig.reminder);
   reminderService.start();
   console.log('[main] 提醒服务已启动');
 
-  // 将提醒服务注入到 StickyNoteManager
   stickyManager.reminderService = reminderService;
 
-  // ✅ 第2步：注册所有 IPC Handler（不依赖 YOLO 服务的基础 IPC）
   registerIpcHandlers(mainWindow, stickyManager, screenshotUtils, reminderService);
 
   ipcMain.handle('show-main-window', () => {
@@ -78,7 +122,6 @@ app.whenReady().then(async () => {
     return true;
   });
 
-  // 恢复桌面便签（重启后自动显示之前未完成的桌面任务）
   try {
     const deskTasks = getDeskTasks();
     console.log(`[main] 恢复桌面便签: ${deskTasks.length} 个任务`);
@@ -90,7 +133,6 @@ app.whenReady().then(async () => {
   }
   console.log('[main] 基础 IPC 处理器注册完成');
 
-  // ✅ 第3步：预加载 OCR（失败不阻塞）
   try {
     await initOCR();
     console.log('[main] OCR 服务初始化完成');
@@ -98,7 +140,6 @@ app.whenReady().then(async () => {
     console.error('[main] OCR 初始化失败:', err.message);
   }
 
-  // ✅ 第4步：初始化 YOLO 头像/文本模型（失败不阻塞）
   try {
     yoloService = new YOLOService();
     await yoloService.init();
@@ -107,7 +148,6 @@ app.whenReady().then(async () => {
     console.error('[main] YOLO 头像/文本模型初始化失败:', err.message);
   }
 
-  // ✅ 第5步：初始化 YOLO 发送者/日期模型（完全可选，失败不阻塞）
   if (YOLOSenderDateService) {
     try {
       yoloSenderDateService = new YOLOSenderDateService();
@@ -119,7 +159,6 @@ app.whenReady().then(async () => {
     }
   }
 
-  // ✅ 第6步：注册依赖 YOLO 服务的 IPC Handler（必须在 YOLO 初始化之后）
   ipcMain.handle('finish-screenshot', async (event, region) => {
     if (!yoloService) {
       return { success: false, error: 'YOLO 头像/文本服务未初始化' };
@@ -193,32 +232,37 @@ app.whenReady().then(async () => {
     }
   });
 
-  // ✅ 第7步：根据配置决定截图模式（两种方式互斥）
-  const screenshotMode = config.screenshot ? config.screenshot.mode : 'shortcut';
+  const screenshotMode = effectiveConfig.screenshot.mode;
 
   if (screenshotMode === 'clipboard') {
     console.log('[main] 启用系统截图+剪贴板监听模式');
+    const s = effectiveConfig.screenshot;
     clipboardService = new ClipboardService({
-      interval: config.screenshot.clipboardInterval || 1000,
-      minWidth: 50,
-      maxWidth: 500,
-      minHeight: 20,
-      maxHeight: 300
+      interval: s.clipboardInterval,
+      minWidth: s.clipboardMinWidth,
+      maxWidth: s.clipboardMaxWidth,
+      minHeight: s.clipboardMinHeight,
+      maxHeight: s.clipboardMaxHeight
     });
     clipboardService.setDependencies(yoloService, mainWindow);
     clipboardService.start();
   } else {
-    console.log('[main] 启用快捷键截图模式 (Ctrl+Alt+S)');
+    console.log('[main] 启用快捷键截图模式');
   }
 
-  // ✅ 第8步：仅在快捷键模式下注册全局快捷键
-  if (screenshotMode === 'shortcut') {
-    globalShortcut.register('CommandOrControl+Alt+S', () => {
-      if (screenshotUtils) {
-        screenshotUtils.startDoubleScreenshot();
-      }
-    });
-  }
+  registerDynamicShortcuts(effectiveConfig.shortcuts);
+
+  ipcMain.handle('reload-shortcuts', () => {
+    const cfg = getEffectiveConfig();
+    registerDynamicShortcuts(cfg.shortcuts);
+    return true;
+  });
+
+  ipcMain.handle('reload-auto-launch', () => {
+    const cfg = getEffectiveConfig();
+    app.setLoginItemSettings({ openAtLogin: cfg.general.autoLaunch });
+    return true;
+  });
 });
 
 app.on('window-all-closed', () => {
@@ -235,7 +279,6 @@ app.on('activate', () => {
   }
 });
 
-// 释放全局快捷键
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
 });

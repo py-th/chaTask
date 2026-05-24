@@ -1,5 +1,6 @@
 // src/main/services/contactMatcher.js
 const { matchAvatar } = require('../utils/hash');
+const { getEffectiveConfig } = require('../configManager');
 
 function levenshteinDistance(a, b) {
   const matrix = [];
@@ -46,7 +47,8 @@ async function matchContact(avatarBuffer, avatarHash, detectedSender, contacts) 
   // ========== 步骤1：如果有头像，尝试严格匹配 ==========
   let avatarMatch = null;
   if (avatarBuffer && avatarHash) {
-    avatarMatch = await matchAvatar(avatarBuffer, avatarHash, contacts, 8, 0.7);
+    const cfg = getEffectiveConfig();
+    avatarMatch = await matchAvatar(avatarBuffer, avatarHash, contacts, cfg.matching.avatarHashThreshold, cfg.matching.avatarColorThreshold);
   }
   
   if (avatarMatch) {
@@ -85,7 +87,8 @@ async function matchContact(avatarBuffer, avatarHash, detectedSender, contacts) 
       
       // 如果有头像，尝试宽松匹配判断是否同一人换头像
       if (avatarBuffer && avatarHash && nameMatch.avatar_hash && nameMatch.avatar_base64) {
-        const looseMatch = await matchAvatar(avatarBuffer, avatarHash, [nameMatch], 15, 0.5);
+        const cfg = getEffectiveConfig();
+        const looseMatch = await matchAvatar(avatarBuffer, avatarHash, [nameMatch], cfg.matching.looseHashThreshold, cfg.matching.looseColorThreshold);
         
         if (looseMatch) {
           return {

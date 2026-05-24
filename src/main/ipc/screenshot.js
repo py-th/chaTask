@@ -8,21 +8,12 @@ function registerScreenshotIpc(mainWindow, screenshotUtils) {
     }
   });
 
-  // ✅ 双截图 IPC
   ipcMain.handle('start-double-screenshot', async () => {
     await screenshotUtils.startDoubleScreenshot();
   });
 
   ipcMain.on('cancel-screenshot', () => {
     screenshotUtils.closeOverlay();
-  });
-
-  // ✅ 提供截图配置给渲染进程
-  const config = require('../config');
-  ipcMain.handle('get-screenshot-config', () => {
-    return {
-      mode: config.screenshot ? config.screenshot.mode : 'shortcut'
-    };
   });
 }
 

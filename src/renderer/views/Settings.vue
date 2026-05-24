@@ -22,7 +22,7 @@
               <span class="setting-desc">程序在系统启动时自动运行</span>
             </div>
             <label class="toggle">
-              <input type="checkbox" v-model="settings.general.autoLaunch" @change="saveSettings" />
+              <input type="checkbox" v-model="settings.general.autoLaunch" @change="onAutoLaunchChange" />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -45,7 +45,7 @@
           <div class="setting-row">
             <div class="setting-info">
               <span class="setting-name">默认透明度</span>
-              <span class="setting-desc">新建便签的默认透明度 ({{ settings.sticky.defaultOpacity }})</span>
+              <span class="setting-desc">新建便签的默认透明度 ({{ settings.sticky.defaultOpacity }}%)</span>
             </div>
             <input
               type="range"
@@ -65,6 +65,19 @@
               <span class="toggle-slider"></span>
             </label>
           </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">贴边检测阈值</span>
+              <span class="setting-desc">距离屏幕边缘多少像素触发折叠 ({{ settings.sticky.edgeSnapThreshold }}px)</span>
+            </div>
+            <input
+              type="range"
+              min="5"
+              max="30"
+              v-model.number="settings.sticky.edgeSnapThreshold"
+              @change="saveSettings"
+            />
+          </div>
         </div>
       </template>
 
@@ -74,11 +87,23 @@
           <div class="setting-row">
             <div class="setting-info">
               <span class="setting-name">截图方式</span>
-              <span class="setting-desc">选择截图触发方式</span>
+              <span class="setting-desc">选择截图触发方式（切换后需重启生效）</span>
             </div>
             <select v-model="settings.screenshot.mode" @change="saveSettings">
               <option value="shortcut">快捷键截图 (Ctrl+Alt+S)</option>
               <option value="clipboard">剪贴板监听 (Win+Shift+S)</option>
+            </select>
+          </div>
+          <div v-if="settings.screenshot.mode === 'clipboard'" class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">剪贴板轮询间隔</span>
+              <span class="setting-desc">检测新截图的间隔时间 ({{ settings.screenshot.clipboardInterval }}ms)</span>
+            </div>
+            <select v-model.number="settings.screenshot.clipboardInterval" @change="saveSettings">
+              <option :value="500">500ms</option>
+              <option :value="1000">1000ms</option>
+              <option :value="2000">2000ms</option>
+              <option :value="3000">3000ms</option>
             </select>
           </div>
         </div>
@@ -92,7 +117,7 @@
               <span class="setting-name">OCR 引擎</span>
               <span class="setting-desc">本地使用 PaddleOCR，云端调用百度 OCR API</span>
             </div>
-            <select v-model="settings.ocr.mode" @change="saveSettings">
+            <select v-model="settings.ocr.mode" @change="onOcrModeChange">
               <option value="local">本地 (PaddleOCR)</option>
               <option value="cloud">云端 (百度 OCR)</option>
             </select>
@@ -100,14 +125,38 @@
           <div v-if="settings.ocr.mode === 'cloud'" class="setting-row">
             <div class="setting-info">
               <span class="setting-name">API Key</span>
-              <span class="setting-desc">百度 OCR API 密钥</span>
+              <span class="setting-desc">百度 OCR API Key</span>
             </div>
             <input
               type="text"
-              v-model="settings.ocr.cloudApiKey"
+              v-model="settings.ocr.cloud.apiKey"
               @change="saveSettings"
-              placeholder="输入 API Key"
+              placeholder="请输入 API Key"
             />
+          </div>
+          <div v-if="settings.ocr.mode === 'cloud'" class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">Secret Key</span>
+              <span class="setting-desc">百度 OCR Secret Key</span>
+            </div>
+            <input
+              type="password"
+              v-model="settings.ocr.cloud.secretKey"
+              @change="saveSettings"
+              placeholder="请输入 Secret Key"
+            />
+          </div>
+          <div v-if="settings.ocr.mode === 'cloud'" class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">超时时间</span>
+              <span class="setting-desc">云端请求超时时间 ({{ settings.ocr.cloud.timeout }}ms)</span>
+            </div>
+            <select v-model.number="settings.ocr.cloud.timeout" @change="saveSettings">
+              <option :value="5000">5秒</option>
+              <option :value="10000">10秒</option>
+              <option :value="15000">15秒</option>
+              <option :value="30000">30秒</option>
+            </select>
           </div>
           <div class="setting-row">
             <div class="setting-info">
@@ -119,6 +168,51 @@
               <option value="en">英文</option>
               <option value="ch_en">中英混合</option>
             </select>
+          </div>
+        </div>
+      </template>
+
+      <template v-if="currentSection === 'ai'">
+        <h3 class="settings-section-title">AI 识别设置</h3>
+        <div class="settings-group card">
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">YOLO 置信度阈值</span>
+              <span class="setting-desc">控制头像/文本检测灵敏度 ({{ (settings.yolo.confThreshold * 100).toFixed(0) }}%)</span>
+            </div>
+            <input
+              type="range"
+              min="10"
+              max="90"
+              v-model.number="yoloConfPercent"
+              @change="onYoloConfChange"
+            />
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">头像哈希匹配阈值</span>
+              <span class="setting-desc">汉明距离阈值，越小越严格 ({{ settings.matching.avatarHashThreshold }})</span>
+            </div>
+            <input
+              type="range"
+              min="3"
+              max="20"
+              v-model.number="settings.matching.avatarHashThreshold"
+              @change="saveSettings"
+            />
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">颜色相似度阈值</span>
+              <span class="setting-desc">辅助验证头像匹配 ({{ (settings.matching.avatarColorThreshold * 100).toFixed(0) }}%)</span>
+            </div>
+            <input
+              type="range"
+              min="30"
+              max="95"
+              v-model.number="colorThresholdPercent"
+              @change="onColorThresholdChange"
+            />
           </div>
         </div>
       </template>
@@ -135,11 +229,10 @@
               <input
                 type="text"
                 v-model="settings.shortcuts.screenshot"
-                @change="saveSettings"
+                @change="onShortcutChange('screenshot')"
                 placeholder="Ctrl+Alt+S"
                 class="shortcut-input"
               />
-              <button class="btn btn-xs btn-outline" @click="startRecordShortcut('screenshot')">录制</button>
             </div>
           </div>
           <div class="setting-row">
@@ -151,11 +244,10 @@
               <input
                 type="text"
                 v-model="settings.shortcuts.showWindow"
-                @change="saveSettings"
+                @change="onShortcutChange('showWindow')"
                 placeholder="Ctrl+Shift+A"
                 class="shortcut-input"
               />
-              <button class="btn btn-xs btn-outline" @click="startRecordShortcut('showWindow')">录制</button>
             </div>
           </div>
         </div>
@@ -184,6 +276,17 @@
               <option :value="30">30分钟</option>
             </select>
           </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">检查间隔</span>
+              <span class="setting-desc">提醒调度器检查频率 ({{ settings.reminder.checkInterval / 1000 }}秒)</span>
+            </div>
+            <select v-model.number="settings.reminder.checkInterval" @change="saveSettings">
+              <option :value="15000">15秒</option>
+              <option :value="30000">30秒</option>
+              <option :value="60000">60秒</option>
+            </select>
+          </div>
         </div>
       </template>
 
@@ -203,6 +306,13 @@
               <span class="setting-desc">从 JSON 文件恢复任务、联系人和设置</span>
             </div>
             <button class="btn btn-outline" @click="importData">📥 导入</button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">重置设置</span>
+              <span class="setting-desc">将所有设置恢复为默认值</span>
+            </div>
+            <button class="btn btn-outline" @click="resetSettings">🔄 重置</button>
           </div>
           <div class="setting-row">
             <div class="setting-info">
@@ -289,13 +399,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 
 const sections = [
   { key: 'general', icon: '⚙️', label: '基础设置' },
   { key: 'sticky', icon: '📌', label: '便签设置' },
   { key: 'screenshot', icon: '📸', label: '截图设置' },
   { key: 'ocr', icon: '🔍', label: 'OCR 设置' },
+  { key: 'ai', icon: '🤖', label: 'AI 设置' },
   { key: 'shortcuts', icon: '⌨️', label: '快捷键' },
   { key: 'reminder', icon: '🔔', label: '提醒设置' },
   { key: 'data', icon: '☁️', label: '数据管理' },
@@ -308,26 +419,67 @@ const dataMsgType = ref('success')
 
 const settings = reactive({
   general: { autoLaunch: false, minimizeToTray: true },
-  sticky: { defaultOpacity: 100, edgeSnap: true },
-  screenshot: { mode: 'shortcut' },
-  ocr: { mode: 'local', cloudApiKey: '', language: 'ch' },
+  sticky: { defaultOpacity: 100, edgeSnap: true, edgeSnapThreshold: 10 },
+  screenshot: { mode: 'shortcut', clipboardInterval: 1000, clipboardMinWidth: 50, clipboardMaxWidth: 500, clipboardMinHeight: 20, clipboardMaxHeight: 300 },
+  ocr: {
+    mode: 'local',
+    cloud: { enabled: false, provider: 'baidu', apiKey: '', secretKey: '', timeout: 10000 },
+    language: 'ch'
+  },
+  yolo: { confThreshold: 0.5 },
+  matching: { avatarHashThreshold: 8, avatarColorThreshold: 0.7 },
   shortcuts: { screenshot: 'Ctrl+Alt+S', showWindow: 'Ctrl+Shift+A' },
-  reminder: { defaultTime: '09:00', advanceMinutes: 0 },
+  reminder: { defaultTime: '09:00', advanceMinutes: 0, checkInterval: 30000 },
   cloudSync: { enabled: false, provider: 'baidu', autoBackup: false }
+})
+
+const yoloConfPercent = computed({
+  get: () => Math.round(settings.yolo.confThreshold * 100),
+  set: (val) => { settings.yolo.confThreshold = val / 100 }
+})
+
+const colorThresholdPercent = computed({
+  get: () => Math.round(settings.matching.avatarColorThreshold * 100),
+  set: (val) => { settings.matching.avatarColorThreshold = val / 100 }
 })
 
 async function saveSettings() {
   try {
-    await window.electronAPI.saveSettings({ ...settings })
+    await window.electronAPI.saveSettings(JSON.parse(JSON.stringify(settings)))
   } catch (err) {
     console.error('保存设置失败:', err)
   }
 }
 
-function startRecordShortcut(key) {
-  dataMessage.value = '请在 3 秒内按下新的快捷键组合...'
-  dataMsgType.value = 'info'
-  setTimeout(() => { dataMessage.value = '' }, 3000)
+async function onAutoLaunchChange() {
+  await saveSettings()
+  try {
+    await window.electronAPI.reloadAutoLaunch()
+  } catch (err) {
+    console.error('更新开机启动失败:', err)
+  }
+}
+
+async function onShortcutChange() {
+  await saveSettings()
+  try {
+    await window.electronAPI.reloadShortcuts()
+  } catch (err) {
+    console.error('更新快捷键失败:', err)
+  }
+}
+
+function onOcrModeChange() {
+  settings.ocr.cloud.enabled = settings.ocr.mode === 'cloud'
+  saveSettings()
+}
+
+function onYoloConfChange() {
+  saveSettings()
+}
+
+function onColorThresholdChange() {
+  saveSettings()
 }
 
 async function exportData() {
@@ -354,6 +506,7 @@ async function importData() {
     if (result.success) {
       dataMessage.value = `成功导入 ${result.taskCount || 0} 个任务、${result.contactCount || 0} 个联系人`
       dataMsgType.value = 'success'
+      await reloadSettings()
     } else {
       dataMessage.value = '导入失败: ' + (result.error || '未知错误')
       dataMsgType.value = 'error'
@@ -363,6 +516,20 @@ async function importData() {
     dataMessage.value = '导入失败: ' + err.message
     dataMsgType.value = 'error'
     setTimeout(() => { dataMessage.value = '' }, 5000)
+  }
+}
+
+async function resetSettings() {
+  if (!confirm('确定要将所有设置恢复为默认值吗？')) return
+  try {
+    await window.electronAPI.resetSettings()
+    dataMessage.value = '设置已恢复为默认值'
+    dataMsgType.value = 'success'
+    await reloadSettings()
+    setTimeout(() => { dataMessage.value = '' }, 3000)
+  } catch (err) {
+    dataMessage.value = '重置失败: ' + err.message
+    dataMsgType.value = 'error'
   }
 }
 
@@ -382,11 +549,11 @@ async function clearAllData() {
   }
 }
 
-onMounted(async () => {
+async function reloadSettings() {
   try {
     const saved = await window.electronAPI.getSettings()
     if (saved) {
-      const keys = ['general', 'sticky', 'screenshot', 'ocr', 'shortcuts', 'reminder', 'cloudSync']
+      const keys = ['general', 'sticky', 'screenshot', 'ocr', 'yolo', 'matching', 'shortcuts', 'reminder', 'cloudSync']
       keys.forEach(k => {
         if (saved[k]) Object.assign(settings[k], saved[k])
       })
@@ -394,6 +561,11 @@ onMounted(async () => {
   } catch (err) {
     console.error('加载设置失败:', err)
   }
+}
+
+onMounted(async () => {
+  await reloadSettings()
+  settings.ocr.cloud.enabled = settings.ocr.mode === 'cloud'
 })
 </script>
 
@@ -489,8 +661,13 @@ onMounted(async () => {
   min-width: 160px;
 }
 
-.setting-row input[type="text"] {
+.setting-row input[type="text"],
+.setting-row input[type="password"] {
   min-width: 180px;
+}
+
+.setting-row input[type="range"] {
+  width: 140px;
 }
 
 .btn-group {

@@ -2,18 +2,19 @@
 const ort = require('onnxruntime-node');
 const sharp = require('sharp');
 const fs = require('fs');
-const config = require('../config');
+const { getEffectiveConfig } = require('../configManager');
 const { computeImageHash } = require('../utils/hash');
 const { recognizeTextFromRegion } = require('./ocrService');
 
 class YOLOService {
   constructor() {
     this.session = null;
-    this.inputSize = config.yolo.inputSize;
-    this.confThreshold = config.yolo.confThreshold;
-    this.nmsThreshold = config.yolo.nmsThreshold;
-    this.classes = config.yolo.classes;
-    this.modelPath = config.modelPath_avatar_text;
+    const cfg = getEffectiveConfig();
+    this.inputSize = cfg.yolo.inputSize;
+    this.confThreshold = cfg.yolo.confThreshold;
+    this.nmsThreshold = cfg.yolo.nmsThreshold;
+    this.classes = cfg.yolo.classes;
+    this.modelPath = cfg.modelPath_avatar_text;
   }
 
   async init() {

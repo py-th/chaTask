@@ -1,7 +1,6 @@
 // src/main/services/ocrService.js
 const sharp = require('sharp');
-const config = require('../config');
-//const fs = require('fs');
+const { getEffectiveConfig } = require('../configManager');
 const path = require('path');
 
 // ============================================================
@@ -32,7 +31,8 @@ async function initOCR() {
  */
 async function initRapidOCR() {
   const Ocr = require('@repeato/ocr');
-  const { detModelPath, recModelPath, dictionaryPath } = config.rapidOCR;
+  const cfg = getEffectiveConfig();
+  const { detModelPath, recModelPath, dictionaryPath } = cfg.rapidOCR;
 
   const requiredFiles = [
     { path: detModelPath, name: '检测模型' },
@@ -95,7 +95,8 @@ async function recognizeTextFromRegion(imageBuffer, region) {
   fs.writeFileSync(debugFile, croppedBuffer);
   console.log(`[OCR] 🖼️ 调试图像已保存: ${debugFile}`);
   */
-  const cloudEnabled = config.ocr.cloud && config.ocr.cloud.enabled;
+  const cfg = getEffectiveConfig();
+  const cloudEnabled = cfg.ocr.cloud && cfg.ocr.cloud.enabled;
   // 策略：用户启用云端 → 优先云端；否则直接用本地 RapidOCR
   if (cloudEnabled) {
     try {
@@ -233,7 +234,7 @@ async function recognizeWithRapidOCR(pngBuffer, origWidth, origHeight) {
 }
 
 async function recognizeWithCloud(imageBuffer) {
-  const cloudConfig = config.ocr.cloud;
+  const cloudConfig = getEffectiveConfig().ocr.cloud;
 
   if (!cloudConfig || !cloudConfig.enabled) {
     throw new Error('云端 OCR 未配置');

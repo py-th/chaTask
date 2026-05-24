@@ -3,7 +3,6 @@ const { matchContact } = require('./contactMatcher');
 const { updateContactAvatar } = require('../../database/repositories/contactRepository');
 const { computeImageHash } = require('../utils/hash');
 const db = require('../../database/db');
-const config = require('../config');
 
 /**
  * 整合两个YOLO模型的识别结果

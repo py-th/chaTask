@@ -15,8 +15,9 @@ const {
 const { updateTask, getTaskById } = require('../../database/repositories/taskRepository');
 
 class ReminderService {
-  constructor(stickyManager) {
+  constructor(stickyManager, config) {
     this.stickyManager = stickyManager;
+    this.config = config || {};
     this.checkInterval = null;
     this.popupWindows = new Map();
     this.lastCleanupDate = null;
@@ -27,13 +28,14 @@ class ReminderService {
 
     this.catchUpMissedReminders();
 
+    const interval = this.config.checkInterval || 30000;
     this.checkInterval = setInterval(() => {
       this.checkReminders();
-    }, 30000);
+    }, interval);
 
     this.checkReminders();
 
-    console.log('[ReminderService] 提醒调度器已启动 (间隔30秒)');
+    console.log(`[ReminderService] 提醒调度器已启动 (间隔${interval / 1000}秒)`);
   }
 
   stop() {
@@ -84,7 +86,7 @@ class ReminderService {
         const scheduledTime = new Date(log.scheduled_time);
         const diffMs = scheduledTime.getTime() - now.getTime();
 
-        if (diffMs <= 60000) {
+        if (diffMs <= (this.config.triggerWindowMs || 60000)) {
           if (this.popupWindows.has(log.task_id)) continue;
           this.triggerSnoozeReminder(log);
         }
@@ -103,22 +105,24 @@ class ReminderService {
     }
 
     const diffMs = targetTime.getTime() - now.getTime();
-    if (diffMs >= 0 && diffMs <= 60000) {
+    const triggerWindow = this.config.triggerWindowMs || 60000;
+    if (diffMs >= 0 && diffMs <= triggerWindow) {
       this.triggerReminder(rule, targetTime);
     }
   }
 
   _hasTriggerForTime(pendingLogs, taskId, targetTime) {
+    const triggerWindow = this.config.triggerWindowMs || 60000;
     const hasPending = pendingLogs.some(log => {
       const logTime = new Date(log.scheduled_time);
-      return Math.abs(logTime.getTime() - targetTime.getTime()) < 60000;
+      return Math.abs(logTime.getTime() - targetTime.getTime()) < triggerWindow;
     });
     if (hasPending) return true;
 
     const latestLog = getLatestReminderLog(taskId);
     if (latestLog) {
       const logTime = new Date(latestLog.scheduled_time);
-      return Math.abs(logTime.getTime() - targetTime.getTime()) < 60000;
+      return Math.abs(logTime.getTime() - targetTime.getTime()) < triggerWindow;
     }
     return false;
   }
@@ -452,7 +456,7 @@ class ReminderService {
       }
 
       case 'snooze': {
-        const snoozeMinutes = data.minutes || 3;
+        const snoozeMinutes = data.minutes || this.config.snoozeMinutes || 3;
         const snoozeTime = new Date();
         snoozeTime.setMinutes(snoozeTime.getMinutes() + snoozeMinutes);
 
@@ -687,9 +691,10 @@ class ReminderService {
 
   _cleanupOldLogs() {
     try {
-      const result = deleteOldReminderLogs(30);
+      const days = this.config.cleanupDays || 30;
+      const result = deleteOldReminderLogs(days);
       if (result.changes > 0) {
-        console.log(`[ReminderService] 已清理 ${result.changes} 条超过30天的历史提醒日志`);
+        console.log(`[ReminderService] 已清理 ${result.changes} 条超过${days}天的历史提醒日志`);
       }
     } catch (err) {
       console.error('[ReminderService] 清理旧日志失败:', err);

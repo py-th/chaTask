@@ -2,17 +2,18 @@
 const ort = require('onnxruntime-node');
 const sharp = require('sharp');
 const fs = require('fs');
-const config = require('../config');
+const { getEffectiveConfig } = require('../configManager');
 const { recognizeTextFromRegion } = require('./ocrService');
 
 class YOLOSenderDateService {
   constructor() {
     this.session = null;
-    this.inputSize = config.yolo.inputSize;
-    this.confThreshold = config.yolo.confThreshold;
-    this.nmsThreshold = config.yolo.nmsThreshold;
+    const cfg = getEffectiveConfig();
+    this.inputSize = cfg.yolo.inputSize;
+    this.confThreshold = cfg.yolo.confThreshold;
+    this.nmsThreshold = cfg.yolo.nmsThreshold;
     this.classes = ['sender', 'message_date'];
-    this.modelPath = config.modelPath_sender_date;
+    this.modelPath = cfg.modelPath_sender_date;
   }
 
   async init() {

@@ -50,6 +50,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 设置相关
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
+  resetSettings: () => ipcRenderer.invoke('reset-settings'),
+  getEffectiveConfig: () => ipcRenderer.invoke('get-effective-config'),
+  reloadShortcuts: () => ipcRenderer.invoke('reload-shortcuts'),
+  reloadAutoLaunch: () => ipcRenderer.invoke('reload-auto-launch'),
 
   // 数据管理
   exportAllData: () => ipcRenderer.invoke('export-all-data'),

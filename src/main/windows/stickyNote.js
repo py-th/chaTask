@@ -12,6 +12,13 @@ class StickyNoteManager {
     this.templatePath = path.join(__dirname, '../templates/stickyTemplate.html');
     this.scriptPath = path.join(__dirname, '../templates/stickyScript.js');
     this.reminderService = reminderService;
+    this.settings = {
+      edgeSnap: true,
+      edgeSnapThreshold: 10,
+      foldedSize: 45,
+      defaultWidth: 300,
+      minHeight: 60
+    };
   }
 
   // 读取并填充 HTML 模板
@@ -137,8 +144,8 @@ class StickyNoteManager {
   async createNote(task) {
     const id = this.nextId++;
     const win = new BrowserWindow({
-      width: 300,
-      height: 60,
+      width: this.settings.defaultWidth || 300,
+      height: this.settings.minHeight || 60,
       x: task.position_x || undefined,
       y: task.position_y || undefined,
       alwaysOnTop: task.is_pinned === 1,
@@ -206,7 +213,7 @@ class StickyNoteManager {
   resizeNote(id, height) {
     const note = this.notes.get(id);
     if (note && !note.win.isDestroyed()) {
-      const minHeight = 60;
+      const minHeight = this.settings.minHeight || 60;
       const newHeight = Math.max(minHeight, height);
       note.win.setBounds({ height: newHeight });
       // 如果处于折叠状态，同步更新 originalBounds 的高度
@@ -262,9 +269,10 @@ class StickyNoteManager {
   }
 
   checkEdgeSnap(win, id) {
+    if (!this.settings.edgeSnap) return;
     const bounds = win.getBounds();
     const workArea = this.getCurrentDisplayWorkArea(win);
-    const threshold = 10;
+    const threshold = this.settings.edgeSnapThreshold || 10;
     const note = this.notes.get(id);
     if (!note || note.isDragging) return;
 
@@ -319,7 +327,7 @@ class StickyNoteManager {
       height: currentBounds.height
     };
 
-    const foldedSize = 45; // 与头像大小匹配
+    const foldedSize = this.settings.foldedSize || 45;
     let newX = currentBounds.x;
     let newY = currentBounds.y;
 

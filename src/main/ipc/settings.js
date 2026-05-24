@@ -2,53 +2,36 @@ const { ipcMain, dialog, app } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const db = require('../../database/db');
-
-const settingsPath = path.join(app.getPath('userData'), 'settings.json');
-
-const defaultSettings = {
-  general: { autoLaunch: false, minimizeToTray: true },
-  sticky: { defaultOpacity: 100, edgeSnap: true },
-  screenshot: { mode: 'shortcut' },
-  ocr: { mode: 'local', cloudApiKey: '', language: 'ch' },
-  shortcuts: { screenshot: 'Ctrl+Alt+S', showWindow: 'Ctrl+Shift+A' },
-  reminder: { defaultTime: '09:00', advanceMinutes: 0 },
-  cloudSync: { enabled: false, provider: 'baidu', autoBackup: false }
-};
-
-function loadSettings() {
-  try {
-    if (fs.existsSync(settingsPath)) {
-      const raw = fs.readFileSync(settingsPath, 'utf8');
-      return { ...defaultSettings, ...JSON.parse(raw) };
-    }
-  } catch (err) {
-    console.error('[Settings] 读取设置文件失败:', err.message);
-  }
-  return { ...defaultSettings };
-}
-
-function saveSettingsToFile(settings) {
-  try {
-    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
-    return true;
-  } catch (err) {
-    console.error('[Settings] 保存设置文件失败:', err.message);
-    return false;
-  }
-}
+const { loadUserSettings, saveUserSettings, getEffectiveConfig, userDefaults } = require('../configManager');
 
 function registerSettingsHandlers() {
   ipcMain.handle('get-settings', () => {
-    return loadSettings();
+    return loadUserSettings();
   });
 
   ipcMain.handle('save-settings', (event, settings) => {
-    return saveSettingsToFile(settings);
+    return saveUserSettings(settings);
+  });
+
+  ipcMain.handle('get-effective-config', () => {
+    return getEffectiveConfig();
+  });
+
+  ipcMain.handle('reset-settings', () => {
+    return saveUserSettings(userDefaults);
+  });
+
+  ipcMain.handle('get-screenshot-config', () => {
+    const config = getEffectiveConfig();
+    return {
+      mode: config.screenshot.mode,
+      clipboardInterval: config.screenshot.clipboardInterval
+    };
   });
 
   ipcMain.handle('export-all-data', async () => {
     try {
-      const settings = loadSettings();
+      const settings = loadUserSettings();
       const tasks = db.prepare('SELECT * FROM tasks ORDER BY created_at DESC').all();
       const contacts = db.prepare('SELECT * FROM contacts ORDER BY name').all();
 
@@ -134,7 +117,7 @@ function registerSettingsHandlers() {
       insertMany();
 
       if (importData.settings) {
-        saveSettingsToFile({ ...defaultSettings, ...importData.settings });
+        saveUserSettings(importData.settings);
       }
 
       return {
@@ -162,4 +145,4 @@ function registerSettingsHandlers() {
   });
 }
 
-module.exports = { registerSettingsHandlers, loadSettings, defaultSettings };
+module.exports = { registerSettingsHandlers, loadUserSettings, userDefaults };
