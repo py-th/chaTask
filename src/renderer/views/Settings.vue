@@ -28,6 +28,17 @@
           </div>
           <div class="setting-row">
             <div class="setting-info">
+              <span class="setting-name">外观主题</span>
+              <span class="setting-desc">切换主界面的颜色主题</span>
+            </div>
+            <select v-model="settings.general.theme" @change="onThemeChange">
+              <option value="light">浅色</option>
+              <option value="dark">深色</option>
+              <option value="system">跟随系统</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
               <span class="setting-name">关闭时最小化到托盘</span>
               <span class="setting-desc">关闭窗口时隐藏到系统托盘而不是退出</span>
             </div>
@@ -372,12 +383,12 @@
       </template>
 
       <template v-if="currentSection === 'about'">
-        <h3 class="settings-section-title">关于 ChatAsk</h3>
+        <h3 class="settings-section-title">关于 ChaTask</h3>
         <div class="settings-group card">
           <div class="about-info">
             <div class="about-row">
               <span>应用名称</span>
-              <span>ChatAsk - 智能任务便签</span>
+              <span>ChaTask - 智能任务便签</span>
             </div>
             <div class="about-row">
               <span>版本号</span>
@@ -418,7 +429,7 @@ const dataMessage = ref('')
 const dataMsgType = ref('success')
 
 const settings = reactive({
-  general: { autoLaunch: false, minimizeToTray: true },
+  general: { autoLaunch: false, minimizeToTray: true, theme: 'system' },
   sticky: { defaultOpacity: 100, edgeSnap: true, edgeSnapThreshold: 10 },
   screenshot: { mode: 'shortcut', clipboardInterval: 1000, clipboardMinWidth: 50, clipboardMaxWidth: 500, clipboardMinHeight: 20, clipboardMaxHeight: 300 },
   ocr: {
@@ -480,6 +491,40 @@ function onYoloConfChange() {
 
 function onColorThresholdChange() {
   saveSettings()
+}
+
+function applyTheme(theme) {
+  const root = document.documentElement
+  root.classList.remove('theme-dark')
+  if (theme === 'dark') {
+    root.classList.add('theme-dark')
+  } else if (theme === 'system') {
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      root.classList.add('theme-dark')
+    }
+  }
+}
+
+function onThemeChange() {
+  applyTheme(settings.general.theme)
+  saveSettings()
+}
+
+let systemThemeListener = null
+
+function watchSystemTheme() {
+  if (systemThemeListener) {
+    systemThemeListener()
+    systemThemeListener = null
+  }
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  const handler = () => {
+    if (settings.general.theme === 'system') {
+      applyTheme('system')
+    }
+  }
+  mediaQuery.addEventListener('change', handler)
+  systemThemeListener = () => mediaQuery.removeEventListener('change', handler)
 }
 
 async function exportData() {
@@ -566,6 +611,8 @@ async function reloadSettings() {
 onMounted(async () => {
   await reloadSettings()
   settings.ocr.cloud.enabled = settings.ocr.mode === 'cloud'
+  applyTheme(settings.general.theme)
+  watchSystemTheme()
 })
 </script>
 

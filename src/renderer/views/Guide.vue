@@ -2,7 +2,7 @@
   <div class="guide-page">
     <div class="guide-header">
       <h2>📖 操作指引</h2>
-      <p>快速了解如何使用 ChatAsk 的各项功能</p>
+      <p>快速了解如何使用 ChaTask 的各项功能</p>
     </div>
 
     <div class="guide-section card">

@@ -15,13 +15,17 @@
 
   --color-bg: #F5F6FA;
   --color-bg-card: #FFFFFF;
-  --color-bg-sidebar: #1E1E2D;
-  --color-bg-sidebar-hover: #2A2A3D;
+  --color-bg-sidebar: #F0F2F5;
+  --color-bg-sidebar-hover: #E4E6EB;
   --color-bg-sidebar-active: #4A90D9;
 
   --color-text: #1D2129;
   --color-text-secondary: #86909C;
-  --color-text-sidebar: #A2A3B7;
+  --color-text-sidebar: #4E5969;
+
+  --color-sidebar-brand-text: #1D2129;
+  --color-sidebar-divider: rgba(0, 0, 0, 0.08);
+  --color-sidebar-avatar-bg: rgba(0, 0, 0, 0.06);
 
   --color-border: #E5E6EB;
   --color-border-light: #F2F3F5;
@@ -58,4 +62,28 @@ body {
   background: var(--color-bg);
   overflow: hidden;
   user-select: none;
+}
+
+/* ========== 深色主题 ========== */
+:root.theme-dark {
+  --color-bg: #1A1A2E;
+  --color-bg-card: #22223A;
+  --color-bg-sidebar: #141428;
+  --color-bg-sidebar-hover: #1E1E35;
+  --color-bg-sidebar-active: #4A90D9;
+
+  --color-text: #E1E5EE;
+  --color-text-secondary: #8E929A;
+  --color-text-sidebar: #9898B0;
+
+  --color-sidebar-brand-text: #fff;
+  --color-sidebar-divider: rgba(255, 255, 255, 0.08);
+  --color-sidebar-avatar-bg: rgba(255, 255, 255, 0.1);
+
+  --color-border: #3A3A55;
+  --color-border-light: #2A2A42;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.45);
 }

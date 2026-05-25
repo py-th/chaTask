@@ -15,7 +15,7 @@ async function generateTrayIcon() {
 async function createTray(mainWindow) {
   const icon = await generateTrayIcon();
   tray = new Tray(icon);
-  tray.setToolTip('ChatAsk - 智能任务便签');
+  tray.setToolTip('ChaTask - 智能任务便签');
 
   function showMainWindow() {
     if (!mainWindow) return;
@@ -74,7 +74,7 @@ function buildMenu(mainWindow, showFn) {
 
 function updateTrayTooltip(text) {
   if (tray && !tray.isDestroyed()) {
-    tray.setToolTip(text || 'ChatAsk - 智能任务便签');
+    tray.setToolTip(text || 'ChaTask - 智能任务便签');
   }
 }
 

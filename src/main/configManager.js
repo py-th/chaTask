@@ -54,7 +54,8 @@ const builtinDefaults = {
 const userDefaults = {
   general: {
     autoLaunch: false,
-    minimizeToTray: true
+    minimizeToTray: true,
+    theme: 'system'
   },
   sticky: {
     defaultOpacity: 100,

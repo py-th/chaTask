@@ -2,7 +2,7 @@
   <aside class="sidebar">
     <div class="sidebar-brand">
       <span class="brand-icon">📌</span>
-      <span class="brand-text">ChatAsk</span>
+      <span class="brand-text">ChaTask</span>
     </div>
 
     <nav class="sidebar-nav">
@@ -76,7 +76,7 @@ const navItems = computed(() => [
 .brand-text {
   font-size: var(--font-size-lg);
   font-weight: 700;
-  color: #fff;
+  color: var(--color-sidebar-brand-text);
   letter-spacing: 0.5px;
 }
 
@@ -142,7 +142,7 @@ const navItems = computed(() => [
 
 .sidebar-divider {
   height: 1px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--color-sidebar-divider);
   margin-bottom: 10px;
 }
 
@@ -163,7 +163,7 @@ const navItems = computed(() => [
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--color-sidebar-avatar-bg);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -208,7 +208,46 @@ async function createTask(senderName, avatarBase64, displayContent, confidence, 
   }
 }
 
+let systemThemeListener = null
+
+function applyTheme(theme) {
+  const root = document.documentElement
+  root.classList.remove('theme-dark')
+  if (theme === 'dark') {
+    root.classList.add('theme-dark')
+  } else if (theme === 'system') {
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      root.classList.add('theme-dark')
+    }
+  }
+}
+
+function watchSystemTheme(themeRef) {
+  if (systemThemeListener) {
+    systemThemeListener()
+    systemThemeListener = null
+  }
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  const handler = () => {
+    if (themeRef() === 'system') {
+      applyTheme('system')
+    }
+  }
+  mediaQuery.addEventListener('change', handler)
+  systemThemeListener = () => mediaQuery.removeEventListener('change', handler)
+}
+
 onMounted(async () => {
+  try {
+    const settings = await window.electronAPI.getSettings()
+    const theme = settings?.general?.theme || 'system'
+    applyTheme(theme)
+    watchSystemTheme(() => settings?.general?.theme || 'system')
+  } catch (err) {
+    applyTheme('system')
+    watchSystemTheme(() => 'system')
+  }
+
   await refreshStatus()
 
   unsubscribeIntegrated = window.electronAPI.onIntegratedExtractionResult((data) => {
@@ -228,6 +267,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (unsubscribeIntegrated) unsubscribeIntegrated()
+  if (systemThemeListener) systemThemeListener()
 })
 </script>
 
