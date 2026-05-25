@@ -9,7 +9,7 @@ function registerIpcHandlers(mainWindow, stickyManager, screenshotUtils, reminde
   registerScreenshotIpc(mainWindow, screenshotUtils);
   registerTaskHandlers();
   registerContactHandlers();
-  registerStickyHandlers(stickyManager, screenshotUtils, reminderService);
+  registerStickyHandlers(mainWindow, stickyManager, screenshotUtils, reminderService);
   registerSettingsHandlers();
 }
 

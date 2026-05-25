@@ -3,9 +3,17 @@ const { updateTask } = require('../../database/repositories/taskRepository');
 const { deleteReminderRulesByTaskId, deleteReminderLogsByTaskId } = require('../../database/repositories/reminderRepository');
 
 class StickyMenu {
-  constructor(stickyManager, screenshotUtils) {
+  constructor(mainWindow, stickyManager, screenshotUtils) {
+    this.mainWindow = mainWindow;
     this.stickyManager = stickyManager;
     this.screenshotUtils = screenshotUtils;
+  }
+
+  // 通知主窗口刷新任务列表
+  notifyMainWindowUpdate() {
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send('refresh-task-list');
+    }
   }
 
   buildContextMenu(noteId, taskId, isPinned) {
@@ -21,6 +29,7 @@ class StickyMenu {
             note.win.setAlwaysOnTop(newPinnedState);
           }
           await updateTask(taskId, { is_pinned: newPinnedState ? 1 : 0 });
+          this.notifyMainWindowUpdate();
         }
       },
       {
@@ -30,6 +39,7 @@ class StickyMenu {
           if (win && !win.isDestroyed()) {
             win.close();
           }
+          this.notifyMainWindowUpdate();
         }
       },
       {
@@ -55,6 +65,7 @@ class StickyMenu {
             if (win && !win.isDestroyed()) {
               win.close();
             }
+            this.notifyMainWindowUpdate();
           }
         }
       },
@@ -151,6 +162,7 @@ class StickyMenu {
         click: async () => {
           await updateTask(taskId, { priority: 'high', color: null });
           this._notifyNote(noteId, 'update-priority', 'high');
+          this.notifyMainWindowUpdate();
         }
       },
       {
@@ -158,6 +170,7 @@ class StickyMenu {
         click: async () => {
           await updateTask(taskId, { priority: 'medium', color: null });
           this._notifyNote(noteId, 'update-priority', 'medium');
+          this.notifyMainWindowUpdate();
         }
       },
       {
@@ -165,6 +178,7 @@ class StickyMenu {
         click: async () => {
           await updateTask(taskId, { priority: 'low', color: null });
           this._notifyNote(noteId, 'update-priority', 'low');
+          this.notifyMainWindowUpdate();
         }
       },
       {
@@ -172,6 +186,7 @@ class StickyMenu {
         click: async () => {
           await updateTask(taskId, { priority: 'none', color: null });
           this._notifyNote(noteId, 'update-priority', 'none');
+          this.notifyMainWindowUpdate();
         }
       }
     ];
@@ -194,6 +209,7 @@ class StickyMenu {
           deleteReminderLogsByTaskId(taskId);
           // 通知前端更新状态显示
           this._notifyNote(noteId, 'update-status', 'completed');
+          this.notifyMainWindowUpdate();
           // 延迟关闭窗口，让用户看到状态变化
           setTimeout(() => {
             const note = this.stickyManager.notes.get(noteId);
@@ -208,6 +224,7 @@ class StickyMenu {
         click: async () => {
           await updateTask(taskId, { status: 'in_progress', is_show_desk: 1 });
           this._notifyNote(noteId, 'update-status', 'in_progress');
+          this.notifyMainWindowUpdate();
         }
       },
       {
@@ -215,6 +232,7 @@ class StickyMenu {
         click: async () => {
           await updateTask(taskId, { status: 'pending', is_show_desk: 1 });
           this._notifyNote(noteId, 'update-status', 'pending');
+          this.notifyMainWindowUpdate();
         }
       },
       {
@@ -222,6 +240,7 @@ class StickyMenu {
         click: async () => {
           await updateTask(taskId, { status: 'overdue', is_show_desk: 1 });
           this._notifyNote(noteId, 'update-status', 'overdue');
+          this.notifyMainWindowUpdate();
         }
       }
     ];

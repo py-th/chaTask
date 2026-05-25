@@ -5,8 +5,15 @@ const { saveReminderRule, deleteReminderRulesByTaskId, deleteReminderLogsByTaskI
 const { StickyMenu } = require('../menus');
 const path = require('path');
 
-function registerStickyHandlers(stickyManager, screenshotUtils, reminderService) {
-  const stickyMenu = new StickyMenu(stickyManager, screenshotUtils);
+function registerStickyHandlers(mainWindow, stickyManager, screenshotUtils, reminderService) {
+  const stickyMenu = new StickyMenu(mainWindow, stickyManager, screenshotUtils);
+  
+  // 通知主窗口刷新任务列表
+  function notifyMainWindow() {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('refresh-task-list');
+    }
+  }
 
   let currentDraggingNoteId = null;
   let reminderDialogWindows = new Map(); // taskId -> dialogWindow
@@ -47,6 +54,7 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
 
   ipcMain.on('update-note-content', async (event, { id, content, taskId }) => {
     await updateTask(taskId, { content });
+    notifyMainWindow();
     const note = stickyManager.notes.get(id);
     if (note) note.taskId = taskId;
   });
@@ -55,6 +63,7 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
   
   ipcMain.on('hide-note', (event, { id, taskId }) => {
     updateTask(taskId, { is_show_desk: 0 });
+    notifyMainWindow();
     stickyManager.deleteNote(id);
   });
 
@@ -64,6 +73,7 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
       const newPinned = !note.win.isAlwaysOnTop();
       note.win.setAlwaysOnTop(newPinned);
       await updateTask(taskId, { is_pinned: newPinned ? 1 : 0 });
+      notifyMainWindow();
     }
   });
 
@@ -74,6 +84,7 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
 
   ipcMain.on('set-due-date', async (event, { noteId, taskId, date }) => {
     await updateTask(taskId, { due_date: date });
+    notifyMainWindow();
     const note = stickyManager.notes.get(noteId);
     if (note && note.win && !note.win.isDestroyed()) {
       note.win.webContents.send('update-due-date', date);
@@ -214,6 +225,7 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
         reminder_enabled: data.reminderEnabled ? 1 : 0,
         reminder_rule_id: ruleId
       });
+      notifyMainWindow();
 
       // 输出提醒规则日志
       console.log('========== 提醒规则已保存 ==========');
@@ -288,6 +300,7 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
         reminder_enabled: 0,
         reminder_rule_id: null
       });
+      notifyMainWindow();
       
       const note = stickyManager.notes.get(targetNoteId);
       if (note && note.win && !note.win.isDestroyed()) {

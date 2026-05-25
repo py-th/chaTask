@@ -92,4 +92,10 @@ function getTaskById(id) {
   return stmt.get(id);
 }
 
-module.exports = { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, getDeskTasks, updateTask, getTaskById };
+// 彻底删除任务（不可恢复）
+function deleteTask(id) {
+  const stmt = db.prepare(`DELETE FROM tasks WHERE id = ?`);
+  return stmt.run(id);
+}
+
+module.exports = { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, getDeskTasks, updateTask, getTaskById, deleteTask };

@@ -24,10 +24,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   on: (channel, listener) => ipcRenderer.on(channel, listener),
   invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
   createStickyNote: (data) => ipcRenderer.invoke('create-sticky-note', data),
+  onRefreshTaskList: (callback) => {
+    const listener = (event) => callback();
+    ipcRenderer.on('refresh-task-list', listener);
+    return () => ipcRenderer.removeListener('refresh-task-list', listener);
+  },
   
   // 任务数据库
   saveTask: (task) => ipcRenderer.invoke('save-task', task),
   updateTask: (id, updates) => ipcRenderer.invoke('update-task', { id, updates }),
+  deleteTask: (id) => ipcRenderer.invoke('delete-task', id),
   getAllTasks: () => ipcRenderer.invoke('get-all-tasks'),
   getCompletedTasks: () => ipcRenderer.invoke('get-completed-tasks'),
   getDeletedTasks: () => ipcRenderer.invoke('get-deleted-tasks'),
