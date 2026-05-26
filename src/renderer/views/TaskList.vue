@@ -1,34 +1,36 @@
 <template>
   <div class="tasklist-view">
-    <div class="tasklist-toolbar">
-      <div class="toolbar-search">
-        <input
-          v-model="searchKeyword"
-          type="text"
-          placeholder="搜索任务内容、发送者..."
-          @input="onSearchInput"
-        />
+    <div class="tasklist-header">
+      <div class="tasklist-toolbar">
+        <div class="toolbar-search">
+          <input
+            v-model="searchKeyword"
+            type="text"
+            placeholder="🔎搜索任务内容、发送者..."
+            @input="onSearchInput"
+          />
+        </div>
+        <div class="toolbar-actions">
+          <select v-model="sortBy" @change="loadTasks">
+            <option value="created_at_desc">创建时间(新→旧)</option>
+            <option value="created_at_asc">创建时间(旧→新)</option>
+            <option value="due_date_asc">截止日期(近→远)</option>
+            <option value="due_date_desc">截止日期(远→近)</option>
+          </select>
+        </div>
       </div>
-      <div class="toolbar-actions">
-        <select v-model="sortBy" @change="loadTasks">
-          <option value="created_at_desc">创建时间(新→旧)</option>
-          <option value="created_at_asc">创建时间(旧→新)</option>
-          <option value="due_date_asc">截止日期(近→远)</option>
-          <option value="due_date_desc">截止日期(远→近)</option>
-        </select>
-      </div>
-    </div>
 
-    <div class="quick-filters">
-      <button
-        v-for="f in quickFilters"
-        :key="f.key"
-        :class="['btn btn-sm', currentFilter === f.key ? 'btn-primary' : 'btn-outline']"
-        @click="setFilter(f.key)"
-      >
-        {{ f.label }}
-        <span class="filter-count">({{ getFilterCount(f.key) }})</span>
-      </button>
+      <div class="quick-filters">
+        <button
+          v-for="f in quickFilters"
+          :key="f.key"
+          :class="['btn btn-sm', currentFilter === f.key ? 'btn-primary' : 'btn-outline']"
+          @click="setFilter(f.key)"
+        >
+          {{ f.label }}
+          <span class="filter-count">({{ getFilterCount(f.key) }})</span>
+        </button>
+      </div>
     </div>
 
     <div class="tasklist-body">
@@ -69,7 +71,7 @@
                 <button class="btn btn-sm btn-danger" @click="permanentDelete(task)">💣 彻底删除</button>
               </template>
               <template v-else-if="currentFilter === 'desktop'">
-                <button class="btn btn-sm btn-outline" @click="removeFromDesktop(task)">📤 移除桌面</button>
+                <button class="btn btn-sm btn-outline" @click="removeFromDesktop(task)">� 隐藏</button>
               </template>
               <template v-else>
                 <button class="btn btn-sm btn-outline" @click="createSticky(task)">📌 便签</button>
@@ -88,7 +90,7 @@
         <button class="btn btn-sm btn-danger" @click="batchPermanentDelete">💣 彻底删除</button>
       </template>
       <template v-else-if="currentFilter === 'desktop'">
-        <button class="btn btn-sm btn-outline" @click="batchRemoveFromDesktop">📤 移除桌面</button>
+        <button class="btn btn-sm btn-outline" @click="batchRemoveFromDesktop">� 批量隐藏</button>
       </template>
       <template v-else>
         <button class="btn btn-sm btn-outline" @click="batchComplete">✅ 批量完成</button>
@@ -334,6 +336,7 @@ async function batchRemoveFromDesktop() {
   for (const id of selectedIds.value) {
     try {
       await window.electronAPI.updateTask(id, { is_show_desk: 0 })
+      window.electronAPI.send('hide-note', { id: id, taskId: id })
     } catch (e) { console.error(e) }
   }
   clearSelection()
@@ -358,16 +361,20 @@ async function permanentDelete(task) {
 async function removeFromDesktop(task) {
   try {
     await window.electronAPI.updateTask(task.id, { is_show_desk: 0 })
+    window.electronAPI.send('hide-note', { id: task.id, taskId: task.id })
     await loadTasks()
   } catch (e) { console.error(e) }
 }
 
 async function createSticky(task) {
-  const content = `[${task.sender_name || '未知'}] ${task.content}`
-  if (task.sender_avatar) {
-    await window.electronAPI.createStickyNote({ content, avatar: task.sender_avatar, taskId: task.id })
-    await window.electronAPI.updateTask(task.id, { is_show_desk: 1 })
-  }
+  try {
+    const content = `[${task.sender_name || '未知'}] ${task.content}`
+    if (task.sender_avatar) {
+      await window.electronAPI.createStickyNote({ content, avatar: task.sender_avatar, taskId: task.id })
+      await window.electronAPI.updateTask(task.id, { is_show_desk: 1 })
+      await loadTasks()
+    }
+  } catch (e) { console.error(e) }
 }
 
 function openDetail(task) {
@@ -463,6 +470,19 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.tasklist-header {
+  position: sticky;
+  top: -20px;
+  z-index: 10;
+  background: var(--color-bg);
+  margin: -20px -20px 0;
+  padding: 10px 20px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-bottom: 1px solid var(--color-border-light);
 }
 
 .tasklist-toolbar {

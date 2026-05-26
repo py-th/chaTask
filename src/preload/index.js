@@ -24,6 +24,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   on: (channel, listener) => ipcRenderer.on(channel, listener),
   invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
   createStickyNote: (data) => ipcRenderer.invoke('create-sticky-note', data),
+  hideNote: (taskId) => ipcRenderer.send('hide-note', { taskId }),
   onRefreshTaskList: (callback) => {
     const listener = (event) => callback();
     ipcRenderer.on('refresh-task-list', listener);

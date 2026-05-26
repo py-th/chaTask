@@ -49,7 +49,9 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
 
   ipcMain.handle('create-sticky-note', async (event, { content, avatar, taskId }) => {
     const task = await getTaskById(taskId);
-    return stickyManager.createNote(task);
+    const result = stickyManager.createNote(task);
+    notifyMainWindow();
+    return result;
   });
 
   ipcMain.on('update-note-content', async (event, { id, content, taskId }) => {
@@ -64,7 +66,18 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
   ipcMain.on('hide-note', (event, { id, taskId }) => {
     updateTask(taskId, { is_show_desk: 0 });
     notifyMainWindow();
-    stickyManager.deleteNote(id);
+    // 先尝试用 id 查找，如果找不到则用 taskId 查找
+    let noteId = id;
+    if (!stickyManager.notes.has(id)) {
+      // 根据 taskId 查找对应的便签
+      for (const [key, note] of stickyManager.notes.entries()) {
+        if (note.taskId === taskId) {
+          noteId = key;
+          break;
+        }
+      }
+    }
+    stickyManager.deleteNote(noteId);
   });
 
   ipcMain.on('toggle-pin', async (event, { id, taskId, pinned }) => {
