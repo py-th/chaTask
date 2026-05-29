@@ -52,7 +52,7 @@ function saveReminderRule(rule) {
 function getReminderRuleByTaskId(taskId) {
   const stmt = db.prepare(`
     SELECT * FROM reminder_rules 
-    WHERE task_id = ? AND is_enabled = 1
+    WHERE task_id = ?
     ORDER BY created_at DESC LIMIT 1
   `);
   return stmt.get(taskId);

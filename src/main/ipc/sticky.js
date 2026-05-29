@@ -350,6 +350,8 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
       if (note && note.win && !note.win.isDestroyed()) {
         note.win.webContents.send('stop-avatar-blink');
       }
+      // 通知主窗口刷新任务列表
+      notifyMainWindow();
     }
 
     return { success: true };

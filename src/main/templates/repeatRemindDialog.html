@@ -984,12 +984,8 @@
 
     // ===== 提醒开关 =====
     function toggleReminder() {
-      const oldValue = reminderEnabled;
       reminderEnabled = !reminderEnabled;
       document.getElementById('reminderToggle').classList.toggle('active', reminderEnabled);
-      if (!reminderEnabled && oldValue) {
-        window.electronAPI.send('delete-reminder-rule');
-      }
     }
 
     // ===== 工具函数 =====
@@ -1004,8 +1000,6 @@
     function validateForm(type) {
       const errorEl = document.getElementById('validationError');
       errorEl.style.display = 'none';
-
-      if (!reminderEnabled) return true;
 
       let errors = [];
 
@@ -1073,11 +1067,6 @@
 
     // ===== 保存 =====
     function saveReminder() {
-      if (!reminderEnabled) {
-        closeDialog();
-        return;
-      }
-
       const repeatType = document.getElementById('repeatType').value;
       if (!validateForm(repeatType)) return;
 
