@@ -80,4 +80,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('screenshot-extracted', listener)
     return () => ipcRenderer.removeListener('screenshot-extracted', listener)
   },
+
+  // 提醒设置
+  openReminderDialog: (taskId) => ipcRenderer.send('open-reminder-dialog', { taskId }),
+  getReminderRule: (taskId) => ipcRenderer.invoke('get-reminder-rule', taskId),
 })

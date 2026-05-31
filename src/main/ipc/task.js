@@ -1,6 +1,7 @@
 // src/main/ipc/task.js
 const { ipcMain } = require('electron');
 const TaskService = require('../services/taskService');
+const { getReminderRuleByTaskId } = require('../../database/repositories/reminderRepository');
 
 let taskService = null;
 
@@ -30,6 +31,15 @@ function registerTaskHandlers(getMainWindow) {
       return await taskService.getTaskById(taskId);
     } catch (error) {
       console.error('获取任务详情失败:', error);
+      return null;
+    }
+  });
+
+  ipcMain.handle('get-reminder-rule', async (event, taskId) => {
+    try {
+      return getReminderRuleByTaskId(taskId);
+    } catch (error) {
+      console.error('获取提醒规则失败:', error);
       return null;
     }
   });

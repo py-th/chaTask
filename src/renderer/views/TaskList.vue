@@ -44,12 +44,15 @@
           v-for="task in filteredTasks"
           :key="task.id"
           :class="['task-card', 'card', { selected: selectedIds.has(task.id), deleted: task.is_deleted === 1 }]"
+          @contextmenu="showContextMenu($event, task)"
+          @dblclick="openDetail(task)"
         >
           <div class="task-card-main">
             <input
               type="checkbox"
               :checked="selectedIds.has(task.id)"
               @change="toggleSelect(task.id)"
+              @click.stop
               class="task-checkbox"
             />
             <img :src="task.sender_avatar || defaultAvatar" class="task-avatar" />
@@ -65,23 +68,19 @@
                 <span v-if="task.reminder_enabled === 1">🔔 已提醒</span>
               </div>
             </div>
-            <div class="task-card-actions">
-              <template v-if="currentFilter === 'deleted'">
-                <button class="btn btn-sm btn-success" @click="restoreTask(task)">🔄 恢复</button>
-                <button class="btn btn-sm btn-danger" @click="permanentDelete(task)">💣 彻底删除</button>
-              </template>
-              <template v-else-if="currentFilter === 'desktop'">
-                <button class="btn btn-sm btn-outline" @click="removeFromDesktop(task)">� 隐藏</button>
-              </template>
-              <template v-else>
-                <button class="btn btn-sm btn-outline" @click="createSticky(task)">📌 便签</button>
-              </template>
-              <button class="btn btn-sm btn-outline" @click="openDetail(task)">详情</button>
-            </div>
+
           </div>
         </div>
       </div>
     </div>
+
+    <TaskContextMenu
+      :visible="contextMenuVisible"
+      :position="contextMenuPosition"
+      :task="contextMenuTask"
+      @hide="hideContextMenu"
+      @action="handleContextMenuAction"
+    />
 
     <div v-if="selectedIds.size > 0" class="batch-bar">
       <span>已选择 {{ selectedIds.size }} 项</span>
@@ -95,9 +94,9 @@
       <template v-else>
         <button class="btn btn-sm btn-outline" @click="batchComplete">✅ 批量完成</button>
         <button class="btn btn-sm btn-danger" @click="batchDelete">🗑️ 批量删除</button>
-        <button class="btn btn-sm btn-outline" @click="batchSetPriority('high')">🔴 高优先</button>
-        <button class="btn btn-sm btn-outline" @click="batchSetPriority('medium')">🟡 中优先</button>
       </template>
+      <button class="btn btn-sm btn-outline" @click="selectAll">☑️ 全选</button>
+      <button class="btn btn-sm btn-outline" @click="invertSelection">🔃 反选</button>
       <button class="btn btn-sm btn-outline" @click="clearSelection">取消选择</button>
     </div>
 
@@ -139,6 +138,23 @@
             <input type="date" :value="detailTask.due_date ? detailTask.due_date.slice(0,10) : ''" @change="setDueDate" />
           </div>
           <div class="detail-row">
+            <label>提醒规则</label>
+            <div v-if="detailTask.reminderRule" class="reminder-rule-info" @click="openReminderFromDetail">
+              <span class="reminder-badge" :class="{ active: detailTask.reminderRule.is_enabled === 1 }">
+                {{ detailTask.reminderRule.is_enabled === 1 ? '🔔 已开启' : '🔕 已关闭' }}
+              </span>
+              <span class="reminder-type">{{ formatReminderType(detailTask.reminderRule.repeat_type) }}</span>
+              <span v-if="detailTask.reminderRule.reminder_time" class="reminder-time">
+                ⏰ {{ detailTask.reminderRule.reminder_time }}
+              </span>
+              <span class="reminder-edit-hint">点击修改</span>
+            </div>
+            <div v-else class="reminder-rule-info" @click="openReminderFromDetail">
+              <span class="reminder-badge">🔕 未设置</span>
+              <span class="reminder-edit-hint">点击设置</span>
+            </div>
+          </div>
+          <div class="detail-row">
             <label>创建时间</label>
             <span>{{ detailTask.created_at }}</span>
           </div>
@@ -154,6 +170,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import TaskContextMenu from '../components/common/TaskContextMenu.vue'
 
 const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='45' height='45' viewBox='0 0 45 45'%3E%3Ccircle cx='22.5' cy='22.5' r='22.5' fill='%23e8e8e8'/%3E%3Ccircle cx='22.5' cy='16.5' r='7' fill='none' stroke='%23888' stroke-width='2.5'/%3E%3Cpath d='M8 37.5Q22.5 26 37 37.5' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"
 
@@ -165,6 +182,66 @@ const selectedIds = ref(new Set())
 const showDetail = ref(false)
 const detailTask = ref(null)
 let desktopUpdateTimer = null
+
+// 右键菜单状态
+const contextMenuVisible = ref(false)
+const contextMenuPosition = ref({ x: 0, y: 0 })
+const contextMenuTask = ref(null)
+
+function showContextMenu(event, task) {
+  event.preventDefault()
+  contextMenuTask.value = task
+  contextMenuPosition.value = { x: event.clientX, y: event.clientY }
+  contextMenuVisible.value = true
+}
+
+function hideContextMenu() {
+  contextMenuVisible.value = false
+  contextMenuTask.value = null
+}
+
+async function handleContextMenuAction({ type, task }) {
+  switch (type) {
+    case 'detail':
+      openDetail(task)
+      break
+    case 'addToDesktop':
+      await createSticky(task)
+      break
+    case 'hideFromDesktop':
+      await removeFromDesktop(task)
+      break
+    case 'priority':
+      // 优先级在详情中设置
+      openDetail(task)
+      break
+    case 'status':
+      // 状态在详情中设置
+      openDetail(task)
+      break
+    case 'reminder':
+      // 提醒设置 - 调用重复提醒对话框
+      window.electronAPI.openReminderDialog(task.id)
+      break
+    case 'restore':
+      await restoreTask(task)
+      break
+    case 'delete':
+      await softDeleteTask(task)
+      break
+    case 'permanentDelete':
+      await permanentDelete(task)
+      break
+  }
+}
+
+async function softDeleteTask(task) {
+  if (!confirm('确定要删除这个任务吗？')) return
+  try {
+    await window.electronAPI.updateTask(task.id, { is_deleted: 1, is_show_desk: 0 })
+    await loadTasks()
+  } catch (e) { console.error(e) }
+}
 
 const quickFilters = [
   { key: 'all', label: '全部' },
@@ -279,6 +356,20 @@ function clearSelection() {
   selectedIds.value = new Set()
 }
 
+function selectAll() {
+  selectedIds.value = new Set(filteredTasks.value.map(t => t.id))
+}
+
+function invertSelection() {
+  const newSet = new Set()
+  for (const task of filteredTasks.value) {
+    if (!selectedIds.value.has(task.id)) {
+      newSet.add(task.id)
+    }
+  }
+  selectedIds.value = newSet
+}
+
 async function batchComplete() {
   const completedAt = new Date().toISOString();
   for (const id of selectedIds.value) {
@@ -295,16 +386,6 @@ async function batchDelete() {
   for (const id of selectedIds.value) {
     try {
       await window.electronAPI.updateTask(id, { is_deleted: 1, is_show_desk: 0 })
-    } catch (e) { console.error(e) }
-  }
-  clearSelection()
-  await loadTasks()
-}
-
-async function batchSetPriority(priority) {
-  for (const id of selectedIds.value) {
-    try {
-      await window.electronAPI.updateTask(id, { priority })
     } catch (e) { console.error(e) }
   }
   clearSelection()
@@ -377,9 +458,35 @@ async function createSticky(task) {
   } catch (e) { console.error(e) }
 }
 
-function openDetail(task) {
+async function openDetail(task) {
   detailTask.value = { ...task }
   showDetail.value = true
+  // 加载提醒规则
+  try {
+    const rule = await window.electronAPI.getReminderRule(task.id)
+    if (rule) {
+      detailTask.value.reminderRule = rule
+    }
+  } catch (e) {
+    console.error('加载提醒规则失败:', e)
+  }
+}
+
+function openReminderFromDetail() {
+  if (detailTask.value) {
+    window.electronAPI.openReminderDialog(detailTask.value.id)
+  }
+}
+
+function formatReminderType(type) {
+  const typeMap = {
+    'once': '单次提醒',
+    'daily': '每天',
+    'weekly': '每周',
+    'monthly': '每月',
+    'custom': '自定义'
+  }
+  return typeMap[type] || type
 }
 
 async function saveDetail() {
@@ -532,11 +639,13 @@ onUnmounted(() => {
 
 .task-card:hover {
   box-shadow: var(--shadow-md);
+  border-color: var(--color-primary-light);
 }
 
 .task-card.selected {
   border-color: var(--color-primary);
   background: rgba(74, 144, 217, 0.04);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
 }
 
 .task-card.deleted {
@@ -659,5 +768,57 @@ onUnmounted(() => {
 .detail-row select,
 .detail-row input {
   width: 100%;
+}
+
+.reminder-rule-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.reminder-rule-info:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary-light);
+}
+
+.reminder-badge {
+  font-size: var(--font-size-sm);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-border-light);
+  color: var(--color-text-secondary);
+}
+
+.reminder-badge.active {
+  background: #e6f7ff;
+  color: #1890ff;
+}
+
+.reminder-type {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.reminder-time {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.reminder-edit-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-left: auto;
+  opacity: 0.7;
+}
+
+.reminder-rule-info:hover .reminder-edit-hint {
+  opacity: 1;
+  color: var(--color-primary);
 }
 </style>
