@@ -3,10 +3,12 @@ const { ipcMain } = require('electron');
 const { 
   getAllContacts, 
   saveContact, 
+  createContact,
   findContactByHash,
   findContactByName,
   updateContactAvatar
 } = require('../../database/repositories/contactRepository');
+const { computeImageHash } = require('../utils/hash');
 
 function registerContactHandlers() {
   ipcMain.handle('get-all-contacts', () => getAllContacts());
@@ -30,6 +32,46 @@ function registerContactHandlers() {
   ipcMain.handle('update-contact-avatar', async (event, { name, avatarHash, avatarBase64 }) => {
     await updateContactAvatar(name, avatarHash, avatarBase64);
     return { success: true };
+  });
+
+  // 手动创建联系人（前端传入头像base64，主进程计算hash后持久化）
+  ipcMain.handle('create-contact', async (event, { name, avatarBase64, source, remark }) => {
+    if (!name || !name.trim()) {
+      return { success: false, error: '联系人名称不能为空' };
+    }
+
+    const trimmedName = name.trim();
+    let avatarHash = null;
+    let processedBase64 = null;
+
+    // 处理头像：计算hash并标准化base64格式
+    if (avatarBase64) {
+      try {
+        const base64Data = avatarBase64.replace(/^data:image\/\w+;base64,/, '');
+        const avatarBuffer = Buffer.from(base64Data, 'base64');
+        avatarHash = await computeImageHash(avatarBuffer);
+        processedBase64 = `data:image/png;base64,${base64Data}`;
+      } catch (err) {
+        console.error('[contact] 头像处理失败:', err);
+      }
+    }
+
+    try {
+      const result = createContact({
+        name: trimmedName,
+        avatarHash,
+        avatarBase64: processedBase64,
+        source: source || 'manual',
+        remark: remark || null
+      });
+      return { success: true, contactId: result.lastInsertRowid };
+    } catch (err) {
+      if (err.message && err.message.includes('UNIQUE constraint failed')) {
+        return { success: false, error: '联系人名称已存在' };
+      }
+      console.error('[contact] 创建联系人失败:', err);
+      return { success: false, error: err.message };
+    }
   });
 }
 

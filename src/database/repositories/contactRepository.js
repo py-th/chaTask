@@ -9,10 +9,18 @@ function getAllContacts() {
 
 function saveContact(contact) {
   const stmt = db.prepare(`
-    INSERT OR REPLACE INTO contacts (name, avatar_hash, avatar_base64)
-    VALUES (?, ?, ?)
+    INSERT OR REPLACE INTO contacts (name, avatar_hash, avatar_base64, source, remark)
+    VALUES (?, ?, ?, ?, ?)
   `);
-  return stmt.run(contact.name, contact.avatarHash, contact.avatarBase64);
+  return stmt.run(contact.name, contact.avatarHash, contact.avatarBase64, contact.source || 'manual', contact.remark || null);
+}
+
+function createContact(contact) {
+  const stmt = db.prepare(`
+    INSERT INTO contacts (name, avatar_hash, avatar_base64, source, remark)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  return stmt.run(contact.name, contact.avatarHash, contact.avatarBase64, contact.source || 'manual', contact.remark || null);
 }
 
 /**
@@ -61,6 +69,7 @@ function updateContactAvatar(name, avatarHash, avatarBase64) {
 module.exports = { 
   getAllContacts, 
   saveContact, 
+  createContact,
   findContactByHash,
   findContactByName,
   updateContactAvatar

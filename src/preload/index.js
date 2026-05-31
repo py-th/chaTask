@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveContact: (contact) => ipcRenderer.invoke('save-contact', contact),
   findContactByHash: (hash) => ipcRenderer.invoke('find-contact-by-hash', hash),
   saveNewContact: (data) => ipcRenderer.invoke('save-new-contact', data),
+  createContact: (data) => ipcRenderer.invoke('create-contact', data),
   
   // 名称截图引导
   requestNameScreenshot: () => ipcRenderer.send('request-name-screenshot'),

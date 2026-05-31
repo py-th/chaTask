@@ -62,6 +62,7 @@ import TaskList from './views/TaskList.vue'
 import TaskTimeline from './views/TaskTimeline.vue'
 import TaskCalendar from './views/TaskCalendar.vue'
 import TaskQuadrant from './views/TaskQuadrant.vue'
+import ContactList from './views/ContactList.vue'
 import Settings from './views/Settings.vue'
 import Guide from './views/Guide.vue'
 
@@ -71,6 +72,7 @@ const viewComponents = {
   timeline: TaskTimeline,
   calendar: TaskCalendar,
   quadrant: TaskQuadrant,
+  contacts: ContactList,
   settings: Settings,
   guide: Guide
 }
@@ -81,6 +83,7 @@ const viewMetaMap = {
   timeline:  { icon: '📅', title: '任务时间轴' },
   calendar:  { icon: '🗓️', title: '任务日历' },
   quadrant:  { icon: '🎯', title: '任务四象限' },
+  contacts:  { icon: '👥',  title: '联系人' },
   settings:  { icon: '⚙️',  title: '设置中心' },
   guide:     { icon: '📖',  title: '操作指引' }
 }

@@ -42,6 +42,7 @@ defineEmits(['navigate'])
 const navItems = computed(() => [
   { id: 'dashboard', icon: '📊', label: '任务看板' },
   { id: 'tasklist',  icon: '📋', label: '任务列表', badge: props.pendingCount || null },
+  { id: 'contacts',  icon: '👥',  label: '联系人' },
   { id: 'timeline',  icon: '📅', label: '任务时间轴' },
   { id: 'calendar',  icon: '🗓️', label: '任务日历' },
   { id: 'quadrant',  icon: '🎯', label: '任务四象限' },

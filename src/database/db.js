@@ -132,8 +132,23 @@ db.exec(`
     avatar_hash TEXT,
     avatar_base64 TEXT,
     source TEXT DEFAULT 'manual',           -- 联系人来源
+    remark TEXT,                            -- 备注
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   )
 `);
+
+// 联系人表列迁移：添加备注字段
+try {
+  const contactTableInfo = db.prepare("PRAGMA table_info(contacts)").all();
+  const contactColumns = contactTableInfo.map(col => col.name);
+
+  if (!contactColumns.includes('remark')) {
+    console.log('[db] 迁移：添加 remark 列到 contacts 表');
+    db.exec(`ALTER TABLE contacts ADD COLUMN remark TEXT`);
+    console.log('[db] 迁移完成：remark 列已添加');
+  }
+} catch (err) {
+  console.error('[db] 联系人表列迁移失败:', err.message);
+}
 
 module.exports = db;
