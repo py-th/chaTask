@@ -6,8 +6,10 @@ const { registerScreenshotIpc } = require('./screenshot');
 const { registerSettingsHandlers } = require('./settings');
 
 function registerIpcHandlers(mainWindow, stickyManager, screenshotUtils, reminderService) {
+  const getMainWindow = () => mainWindow;
+
   registerScreenshotIpc(mainWindow, screenshotUtils);
-  registerTaskHandlers();
+  registerTaskHandlers(getMainWindow);
   registerContactHandlers();
   registerStickyHandlers(mainWindow, stickyManager, screenshotUtils, reminderService);
   registerSettingsHandlers();

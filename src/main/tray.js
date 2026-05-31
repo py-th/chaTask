@@ -1,19 +1,30 @@
 const { Tray, Menu, nativeImage, app } = require('electron');
-const sharp = require('sharp');
+const path = require('path');
+const fs = require('fs');
 
 let tray = null;
 
-async function generateTrayIcon() {
-  const svg = `<svg width="32" height="32" xmlns="http://www.w3.org/2000/svg">
-    <rect width="32" height="32" rx="6" fill="#4A90D9"/>
-    <path d="M9 16 L14 21 L23 11" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`;
-  const pngBuffer = await sharp(Buffer.from(svg)).resize(32, 32).png().toBuffer();
-  return nativeImage.createFromBuffer(pngBuffer, { width: 32, height: 32 });
+function getResourcePath(...relativePaths) {
+  if (process.resourcesPath) {
+    const prodPath = path.join(process.resourcesPath, ...relativePaths);
+    if (fs.existsSync(prodPath)) {
+      return prodPath;
+    }
+  }
+  const devPath = path.join(process.cwd(), 'public', ...relativePaths);
+  if (fs.existsSync(devPath)) {
+    return devPath;
+  }
+  return path.join(process.cwd(), 'public', ...relativePaths);
 }
 
-async function createTray(mainWindow) {
-  const icon = await generateTrayIcon();
+function createTrayIcon() {
+  const iconPath = getResourcePath('resource', 'tray_icon32.png');
+  return nativeImage.createFromPath(iconPath);
+}
+
+function createTray(mainWindow) {
+  const icon = createTrayIcon();
   tray = new Tray(icon);
   tray.setToolTip('ChaTask - 智能任务便签');
 

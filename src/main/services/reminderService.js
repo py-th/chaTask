@@ -1,6 +1,7 @@
 // src/main/services/reminderService.js
-const { BrowserWindow, screen } = require('electron');
+const { BrowserWindow, screen, Notification, nativeImage, app } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const {
   getAllEnabledRules,
   createReminderLog,
@@ -13,6 +14,22 @@ const {
   getAllPendingSnoozeLogs
 } = require('../../database/repositories/reminderRepository');
 const { updateTask, getTaskById } = require('../../database/repositories/taskRepository');
+
+function getNotificationIconPath() {
+  if (process.resourcesPath) {
+    const prodPath = path.join(process.resourcesPath, 'resource', 'tray_icon32.png');
+    if (fs.existsSync(prodPath)) {
+      return prodPath;
+    }
+  }
+  const devPath = path.join(process.cwd(), 'public', 'resource', 'tray_icon32.png');
+  if (fs.existsSync(devPath)) {
+    return devPath;
+  }
+  return null;
+}
+
+let notificationIconPath = getNotificationIconPath();
 
 class ReminderService {
   constructor(stickyManager, config) {
@@ -474,6 +491,14 @@ class ReminderService {
           status: 'pending',
           snoozeMinutes: snoozeMinutes
         });
+
+        const timeStr = `${String(snoozeTime.getHours()).padStart(2, '0')}:${String(snoozeTime.getMinutes()).padStart(2, '0')}`;
+        const notification = new Notification({
+          title: '任务延迟提醒',
+          body: `你的任务已延迟${snoozeMinutes}分钟，将在${timeStr}再次提醒`,
+          silent: true
+        });
+        notification.show();
 
         this.closePopupWindow(taskId);
         break;

@@ -5,7 +5,11 @@
   "main": "src/main/index.js",
   "scripts": {
     "dev": "chcp 65001 >nul && electron-vite dev",
-    "build": "electron-vite build"
+    "build": "electron-vite build",
+    "build:win": "npm run build && electron-builder --win",
+    "build:mac": "npm run build && electron-builder --mac",
+    "build:linux": "npm run build && electron-builder --linux",
+    "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [],
   "author": "",
@@ -15,9 +19,12 @@
     "@electron/rebuild": "^4.0.4",
     "@vitejs/plugin-vue": "^6.0.5",
     "electron": "^41.2.0",
+    "electron-builder": "^26.8.1",
     "electron-rebuild": "^3.2.9",
     "electron-screenshot": "^1.0.5",
     "electron-vite": "^5.0.0",
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.34.5",
     "vue": "^3.5.32"
   },
   "dependencies": {
@@ -32,7 +39,6 @@
     "onnxruntime-node": "^1.24.3",
     "ppu-paddle-ocr": "^5.1.1",
     "querystring": "^0.2.1",
-    "sharp": "^0.34.5",
     "tesseract.js": "^7.0.0",
     "uuid": "^13.0.0"
   }

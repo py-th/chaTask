@@ -1,24 +1,33 @@
 // src/main/ipc/task.js
 const { ipcMain } = require('electron');
-const { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, getTaskById, updateTask, deleteTask } = require('../../database/repositories/taskRepository');
+const TaskService = require('../services/taskService');
 
-function registerTaskHandlers() {
-  ipcMain.handle('save-task', (event, task) => insertTask(task));
-  ipcMain.handle('get-all-tasks', () => getAllTasks());
-  ipcMain.handle('get-completed-tasks', () => getCompletedTasks());
-  ipcMain.handle('get-deleted-tasks', () => getDeletedTasks());
-  
-  // 更新任务
-  ipcMain.handle('update-task', (event, { id, updates }) => updateTask(id, updates));
-  
-  // 彻底删除任务
-  ipcMain.handle('delete-task', (event, id) => deleteTask(id));
-  
-  // 1. 添加：获取单个任务详情
+let taskService = null;
+
+function registerTaskHandlers(getMainWindow) {
+  taskService = new TaskService(getMainWindow);
+
+  ipcMain.handle('save-task', (event, task) => taskService.createTask(task));
+  ipcMain.handle('get-all-tasks', () => taskService.getAllTasks());
+  ipcMain.handle('get-completed-tasks', () => taskService.getCompletedTasks());
+  ipcMain.handle('get-deleted-tasks', () => taskService.getDeletedTasks());
+  ipcMain.handle('get-desk-tasks', () => taskService.getDeskTasks());
+
+  ipcMain.handle('update-task', (event, { id, updates }) => taskService.updateTask(id, updates));
+
+  ipcMain.handle('delete-task', (event, id) => taskService.deleteTask(id));
+
+  ipcMain.handle('restore-task', (event, id) => taskService.restoreTask(id));
+
+  ipcMain.handle('complete-task', (event, id) => taskService.completeTask(id));
+
+  ipcMain.handle('show-on-desk', (event, { id, show }) => taskService.showOnDesk(id, show));
+
+  ipcMain.handle('toggle-pin', (event, { id, isPinned }) => taskService.togglePin(id, isPinned));
+
   ipcMain.handle('get-task-detail', async (event, taskId) => {
     try {
-      const task = await getTaskById(taskId); // 你的数据库查询方法
-      return task; // 返回包含 is_pinned 等字段的对象
+      return await taskService.getTaskById(taskId);
     } catch (error) {
       console.error('获取任务详情失败:', error);
       return null;
@@ -26,4 +35,8 @@ function registerTaskHandlers() {
   });
 }
 
-module.exports = { registerTaskHandlers };
+function getTaskService() {
+  return taskService;
+}
+
+module.exports = { registerTaskHandlers, getTaskService };

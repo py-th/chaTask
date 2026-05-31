@@ -1,0 +1,55 @@
+/**
+ * @see https://www.electron.build/configuration/configuration
+ */
+{
+  "appId": "com.chatask.app",
+  "productName": "ChaTask",
+  "copyright": "Copyright © 2026",
+  "asar": true,
+  "directories": {
+    "output": "release/${version}",
+    "buildResources": "build"
+  },
+  "files": [
+    "out/**/*",
+    "public/resource/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "public/models",
+      "to": "models"
+    },
+    {
+      "from": "public/native",
+      "to": "native"
+    }
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "build/icon.ico",
+    "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "ChaTask"
+  },
+  "mac": {
+    "target": ["dmg"],
+    "icon": "build/icon.icns",
+    "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
+  },
+  "linux": {
+    "target": ["AppImage"],
+    "icon": "build/icon_256.png",
+    "artifactName": "${productName}-Linux-${version}.${ext}"
+  }
+}

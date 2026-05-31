@@ -60,6 +60,10 @@ function registerDynamicShortcuts(shortcutConfig) {
 }
 
 app.whenReady().then(async () => {
+  app.setName('ChaTask');
+  if (process.platform === 'win32') {
+    app.setAppUserModelId(process.execPath);
+  }
   mainWindow = createMainWindow();
   console.log('[main] 主窗口创建完成');
 
