@@ -66,11 +66,39 @@ function updateContactAvatar(name, avatarHash, avatarBase64) {
   return stmt.run(avatarHash, avatarBase64, name);
 }
 
-module.exports = { 
-  getAllContacts, 
-  saveContact, 
+/** 更新联系人信息 */
+function updateContact(id, updates) {
+  const fields = [];
+  const values = [];
+  for (const [key, value] of Object.entries(updates)) {
+    fields.push(`${key} = ?`);
+    values.push(value);
+  }
+  values.push(id);
+  const stmt = db.prepare(`UPDATE contacts SET ${fields.join(', ')} WHERE id = ?`);
+  return stmt.run(values);
+}
+
+/** 删除联系人 */
+function deleteContact(id) {
+  const stmt = db.prepare(`DELETE FROM contacts WHERE id = ?`);
+  return stmt.run(id);
+}
+
+/** 根据联系人名称删除其所有任务 */
+function deleteTasksByContactName(name) {
+  const stmt = db.prepare(`DELETE FROM tasks WHERE sender_name = ?`);
+  return stmt.run(name);
+}
+
+module.exports = {
+  getAllContacts,
+  saveContact,
   createContact,
   findContactByHash,
   findContactByName,
-  updateContactAvatar
+  updateContactAvatar,
+  updateContact,
+  deleteContact,
+  deleteTasksByContactName
 };

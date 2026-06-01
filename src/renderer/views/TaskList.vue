@@ -500,6 +500,7 @@ async function saveDetail() {
       updates.completed_at = new Date().toISOString()
     } else {
       updates.is_completed = 0
+      updates.completed_at = null
     }
     await window.electronAPI.updateTask(id, updates)
     await loadTasks()

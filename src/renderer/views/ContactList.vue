@@ -31,7 +31,9 @@
             <div class="contact-card-info">
               <div class="contact-card-name">
                 <strong>{{ contact.name || '未知' }}</strong>
-                <span class="contact-task-count">{{ getTaskCount(contact.name) }} 条任务</span>
+                <span class="contact-task-count" @click.stop="showContactTasks(contact)">
+                  {{ getTaskCount(contact.name) }} 条任务
+                </span>
               </div>
               <div class="contact-card-meta">
                 <span class="tag">📅 {{ formatDate(contact.created_at) }}</span>
@@ -39,22 +41,27 @@
               </div>
             </div>
           </div>
+          <!-- 悬浮操作按钮 -->
+          <div class="contact-card-actions">
+            <button class="btn btn-xs btn-outline" @click.stop="openEditModal(contact)">✏️</button>
+            <button class="btn btn-xs btn-danger" @click.stop="confirmDeleteContact(contact)">🗑️</button>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- 添加联系人弹窗 -->
-    <div v-if="showAddModal" class="modal-overlay" @click.self="closeAddModal">
+    <!-- 添加/编辑联系人弹窗 -->
+    <div v-if="showAddModal || showEditModal" class="modal-overlay" @click.self="closeModal">
       <div class="modal-panel card add-contact-panel">
         <div class="modal-header">
-          <h3>添加联系人</h3>
-          <button class="btn btn-sm btn-outline" @click="closeAddModal">✕</button>
+          <h3>{{ showEditModal ? '修改联系人' : '添加联系人' }}</h3>
+          <button class="btn btn-sm btn-outline" @click="closeModal">✕</button>
         </div>
         <div class="modal-body">
           <div class="form-group">
             <label>头像</label>
             <div class="avatar-upload">
-              <img :src="newContact.avatarPreview || defaultAvatar" class="avatar-preview" />
+              <img :src="modalContact.avatarPreview || defaultAvatar" class="avatar-preview" />
               <input
                 ref="avatarInput"
                 type="file"
@@ -69,20 +76,20 @@
           </div>
           <div class="form-group">
             <label>名称 <span class="required">*</span></label>
-            <input v-model="newContact.name" type="text" placeholder="请输入联系人名称" />
+            <input v-model="modalContact.name" type="text" placeholder="请输入联系人名称" />
           </div>
           <div class="form-group">
             <label>来源</label>
-            <input v-model="newContact.source" type="text" placeholder="手动" />
+            <input v-model="modalContact.source" type="text" placeholder="手动" />
           </div>
           <div class="form-group">
             <label>备注</label>
-            <textarea v-model="newContact.remark" rows="3" placeholder="请输入备注..."></textarea>
+            <textarea v-model="modalContact.remark" rows="3" placeholder="请输入备注..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-outline" @click="closeAddModal">取消</button>
-          <button class="btn btn-primary" :disabled="!newContact.name.trim()" @click="submitAddContact">
+          <button class="btn btn-outline" @click="closeModal">取消</button>
+          <button class="btn btn-primary" :disabled="!modalContact.name.trim()" @click="submitContact">
             保存
           </button>
         </div>
@@ -91,7 +98,7 @@
 
     <!-- 联系人任务列表弹窗 -->
     <div v-if="showTaskModal" class="modal-overlay" @click.self="showTaskModal = false">
-      <div class="modal-panel card">
+      <div class="modal-panel card task-list-panel">
         <div class="modal-header">
           <div class="modal-title">
             <img :src="selectedContact?.avatar_base64 || defaultAvatar" class="modal-avatar" />
@@ -111,10 +118,42 @@
               v-for="(task, index) in contactTasks"
               :key="task.id"
               class="task-card card"
+              @mouseenter="hoveredTaskId = task.id"
+              @mouseleave="hoveredTaskId = null"
             >
               <div class="task-card-content">
                 <span class="task-index">{{ index + 1 }}.</span>
-                {{ task.content }}
+                <div class="task-text-wrapper" style="flex: 1;">
+                  <span
+                    v-if="editingTaskId !== task.id"
+                    class="task-text"
+                    @dblclick.stop="startEditTask(task)"
+                  >{{ task.content }}</span>
+                  <textarea
+                    v-else
+                    ref="taskEditInput"
+                    v-model="editingTaskContent"
+                    class="task-edit-textarea"
+                    rows="3"
+                    @blur="saveTaskEdit(task)"
+                    @keydown.enter.prevent="saveTaskEdit(task)"
+                    @keydown.esc="cancelTaskEdit"
+                  />
+                </div>
+                <button
+                  v-show="hoveredTaskId === task.id && editingTaskId !== task.id && task.is_completed !== 1"
+                  class="btn btn-xs btn-success task-action-btn"
+                  @click.stop="completeTask(task)"
+                >
+                  ✅
+                </button>
+                <button
+                  v-show="hoveredTaskId === task.id && editingTaskId !== task.id"
+                  class="btn btn-xs btn-danger task-action-btn"
+                  @click.stop="deleteTask(task)"
+                >
+                  🗑️
+                </button>
               </div>
               <div class="task-card-meta">
                 <span :class="getStatusTag(task)">{{ statusText(task.status) }}</span>
@@ -131,7 +170,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 
 const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='45' height='45' viewBox='0 0 45 45'%3E%3Ccircle cx='22.5' cy='22.5' r='22.5' fill='%23e8e8e8'/%3E%3Ccircle cx='22.5' cy='16.5' r='7' fill='none' stroke='%23888' stroke-width='2.5'/%3E%3Cpath d='M8 37.5Q22.5 26 37 37.5' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"
 
@@ -141,15 +180,23 @@ const searchKeyword = ref('')
 const showTaskModal = ref(false)
 const selectedContact = ref(null)
 
-// 添加联系人弹窗状态
+// 添加/编辑联系人弹窗状态
 const showAddModal = ref(false)
-const newContact = ref({
+const showEditModal = ref(false)
+const editingContactId = ref(null)
+const modalContact = ref({
   name: '',
   avatarBase64: '',
   avatarPreview: '',
   source: '',
   remark: ''
 })
+
+// 任务编辑状态
+const hoveredTaskId = ref(null)
+const editingTaskId = ref(null)
+const editingTaskContent = ref('')
+const taskEditInput = ref(null)
 
 const filteredContacts = computed(() => {
   let list = [...contacts.value]
@@ -181,12 +228,29 @@ function showContactTasks(contact) {
 }
 
 function openAddModal() {
-  newContact.value = { name: '', avatarBase64: '', avatarPreview: '', source: '', remark: '' }
+  editingContactId.value = null
+  modalContact.value = { name: '', avatarBase64: '', avatarPreview: '', source: '', remark: '' }
   showAddModal.value = true
+  showEditModal.value = false
 }
 
-function closeAddModal() {
+function openEditModal(contact) {
+  editingContactId.value = contact.id
+  modalContact.value = {
+    name: contact.name || '',
+    avatarBase64: contact.avatar_base64 || '',
+    avatarPreview: contact.avatar_base64 || '',
+    source: contact.source || '',
+    remark: contact.remark || ''
+  }
+  showEditModal.value = true
   showAddModal.value = false
+}
+
+function closeModal() {
+  showAddModal.value = false
+  showEditModal.value = false
+  editingContactId.value = null
 }
 
 function onAvatarChange(event) {
@@ -196,32 +260,126 @@ function onAvatarChange(event) {
   const reader = new FileReader()
   reader.onload = (e) => {
     const result = e.target.result
-    newContact.value.avatarPreview = result
-    newContact.value.avatarBase64 = result
+    modalContact.value.avatarPreview = result
+    modalContact.value.avatarBase64 = result
   }
   reader.readAsDataURL(file)
 }
 
-async function submitAddContact() {
-  if (!newContact.value.name.trim()) return
+async function submitContact() {
+  if (!modalContact.value.name.trim()) return
 
   try {
-    const result = await window.electronAPI.createContact({
-      name: newContact.value.name.trim(),
-      avatarBase64: newContact.value.avatarBase64 || '',
-      source: newContact.value.source.trim() || 'manual',
-      remark: newContact.value.remark.trim() || ''
-    })
+    let result
+    if (showEditModal.value && editingContactId.value) {
+      result = await window.electronAPI.updateContact({
+        id: editingContactId.value,
+        name: modalContact.value.name.trim(),
+        avatarBase64: modalContact.value.avatarBase64 || '',
+        source: modalContact.value.source.trim() || 'manual',
+        remark: modalContact.value.remark.trim() || ''
+      })
+    } else {
+      result = await window.electronAPI.createContact({
+        name: modalContact.value.name.trim(),
+        avatarBase64: modalContact.value.avatarBase64 || '',
+        source: modalContact.value.source.trim() || 'manual',
+        remark: modalContact.value.remark.trim() || ''
+      })
+    }
 
     if (result.success) {
-      closeAddModal()
+      closeModal()
       await loadData()
     } else {
-      alert(result.error || '添加联系人失败')
+      alert(result.error || '操作失败')
     }
   } catch (err) {
-    console.error('添加联系人失败:', err)
-    alert('添加联系人失败')
+    console.error('操作联系人失败:', err)
+    alert('操作失败')
+  }
+}
+
+async function confirmDeleteContact(contact) {
+  const taskCount = getTaskCount(contact.name)
+  const confirmMsg = taskCount > 0
+    ? `确定要删除联系人「${contact.name}」吗？\n\n该联系人有 ${taskCount} 条任务，删除后联系人及其所有任务将不可恢复！`
+    : `确定要删除联系人「${contact.name}」吗？\n\n删除后不可恢复！`
+
+  if (!confirm(confirmMsg)) return
+
+  try {
+    const result = await window.electronAPI.deleteContact({
+      id: contact.id,
+      name: contact.name
+    })
+    if (result.success) {
+      await loadData()
+    } else {
+      alert(result.error || '删除失败')
+    }
+  } catch (err) {
+    console.error('删除联系人失败:', err)
+    alert('删除失败')
+  }
+}
+
+// 任务编辑
+function startEditTask(task) {
+  editingTaskId.value = task.id
+  editingTaskContent.value = task.content
+  nextTick(() => {
+    if (taskEditInput.value) {
+      taskEditInput.value.focus()
+    }
+  })
+}
+
+async function saveTaskEdit(task) {
+  if (!editingTaskId.value) return
+  const newContent = editingTaskContent.value.trim()
+  if (!newContent || newContent === task.content) {
+    cancelTaskEdit()
+    return
+  }
+
+  try {
+    await window.electronAPI.updateTask(task.id, { content: newContent })
+    task.content = newContent
+  } catch (err) {
+    console.error('更新任务失败:', err)
+    alert('更新任务失败')
+  } finally {
+    cancelTaskEdit()
+  }
+}
+
+function cancelTaskEdit() {
+  editingTaskId.value = null
+  editingTaskContent.value = ''
+}
+
+async function completeTask(task) {
+  if (!confirm(`确定要将这条任务标记为完成吗？\n\n${task.content.substring(0, 50)}${task.content.length > 50 ? '...' : ''}`)) return
+
+  try {
+    await window.electronAPI.completeTask(task.id)
+    await loadData()
+  } catch (err) {
+    console.error('标记完成任务失败:', err)
+    alert('标记完成失败')
+  }
+}
+
+async function deleteTask(task) {
+  if (!confirm(`确定要将这条任务移入回收站吗？\n\n${task.content.substring(0, 50)}${task.content.length > 50 ? '...' : ''}\n\n可在任务列表的回收站中恢复。`)) return
+
+  try {
+    await window.electronAPI.updateTask(task.id, { is_deleted: 1 })
+    await loadData()
+  } catch (err) {
+    console.error('删除任务失败:', err)
+    alert('删除任务失败')
   }
 }
 
@@ -280,8 +438,20 @@ async function loadData() {
   }
 }
 
+let unregisterRefresh = null
+
 onMounted(() => {
   loadData()
+  // 监听任务列表刷新事件（桌面便签或其他页面修改任务后同步刷新）
+  if (window.electronAPI && window.electronAPI.onRefreshTaskList) {
+    unregisterRefresh = window.electronAPI.onRefreshTaskList(loadData)
+  }
+})
+
+onUnmounted(() => {
+  if (unregisterRefresh) {
+    unregisterRefresh()
+  }
 })
 </script>
 
@@ -334,11 +504,17 @@ onMounted(() => {
   padding: 16px;
   cursor: pointer;
   transition: all var(--transition-fast);
+  position: relative;
 }
 
 .contact-card:hover {
   box-shadow: var(--shadow-md);
   border-color: var(--color-primary-light);
+}
+
+.contact-card:hover .contact-card-actions {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .contact-card-main {
@@ -378,12 +554,32 @@ onMounted(() => {
   padding: 2px 8px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.contact-task-count:hover {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .contact-card-meta {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+/* 悬浮操作按钮 */
+.contact-card-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
 }
 
 /* 弹窗样式 */
@@ -405,6 +601,10 @@ onMounted(() => {
   max-height: 80vh;
   overflow-y: auto;
   padding: 24px;
+}
+
+.task-list-panel {
+  width: 700px;
 }
 
 .modal-header {
@@ -440,12 +640,16 @@ onMounted(() => {
 
 .modal-body .task-card {
   padding: 12px;
+  position: relative;
 }
 
 .modal-body .task-card-content {
   margin-bottom: 6px;
   line-height: 1.5;
   word-break: break-all;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .task-index {
@@ -454,6 +658,39 @@ onMounted(() => {
   color: var(--color-text-secondary);
   font-weight: 600;
   margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.task-text {
+  cursor: text;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.task-text:hover {
+  background: var(--color-border-light);
+}
+
+.task-edit-textarea {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  outline: none;
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.task-action-btn {
+  flex-shrink: 0;
+  margin-left: 4px;
 }
 
 .modal-body .task-card-meta {
@@ -464,7 +701,7 @@ onMounted(() => {
   color: var(--color-text-secondary);
 }
 
-/* 添加联系人弹窗 */
+/* 添加/编辑联系人弹窗 */
 .add-contact-panel {
   width: 420px;
 }

@@ -9,7 +9,7 @@ function registerIpcHandlers(mainWindow, stickyManager, screenshotUtils, reminde
   const getMainWindow = () => mainWindow;
 
   registerScreenshotIpc(mainWindow, screenshotUtils);
-  registerTaskHandlers(getMainWindow);
+  registerTaskHandlers(getMainWindow, stickyManager);
   registerContactHandlers();
   registerStickyHandlers(mainWindow, stickyManager, screenshotUtils, reminderService);
   registerSettingsHandlers();

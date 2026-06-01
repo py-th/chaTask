@@ -72,7 +72,12 @@ class TaskService {
   }
 
   async completeTask(id) {
-    return await updateTask(id, { is_completed: 1, is_show_desk: 0 });
+    return await updateTask(id, {
+      status: 'completed',
+      is_completed: 1,
+      is_show_desk: 0,
+      completed_at: new Date().toISOString()
+    });
   }
 
   async showOnDesk(id, show = true) {

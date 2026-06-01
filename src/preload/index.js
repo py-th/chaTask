@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveTask: (task) => ipcRenderer.invoke('save-task', task),
   updateTask: (id, updates) => ipcRenderer.invoke('update-task', { id, updates }),
   deleteTask: (id) => ipcRenderer.invoke('delete-task', id),
+  completeTask: (id) => ipcRenderer.invoke('complete-task', id),
   getAllTasks: () => ipcRenderer.invoke('get-all-tasks'),
   getCompletedTasks: () => ipcRenderer.invoke('get-completed-tasks'),
   getDeletedTasks: () => ipcRenderer.invoke('get-deleted-tasks'),
@@ -45,6 +46,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   findContactByHash: (hash) => ipcRenderer.invoke('find-contact-by-hash', hash),
   saveNewContact: (data) => ipcRenderer.invoke('save-new-contact', data),
   createContact: (data) => ipcRenderer.invoke('create-contact', data),
+  updateContact: (data) => ipcRenderer.invoke('update-contact', data),
+  deleteContact: (data) => ipcRenderer.invoke('delete-contact', data),
   
   // 名称截图引导
   requestNameScreenshot: () => ipcRenderer.send('request-name-screenshot'),
