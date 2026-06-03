@@ -113,7 +113,21 @@
           </div>
           <div class="detail-row">
             <label>内容</label>
-            <span>{{ detailTask.content }}</span>
+            <span
+              v-if="!editingDetailContent"
+              class="detail-content-text"
+              @dblclick="startEditContent"
+            >{{ detailTask.content }}</span>
+            <textarea
+              v-else
+              ref="detailContentInput"
+              v-model="detailTask.content"
+              class="detail-content-input"
+              rows="3"
+              @blur="saveContentEdit"
+              @keydown.enter.prevent="saveContentEdit"
+              @keydown.esc="cancelContentEdit"
+            />
           </div>
           <div class="detail-row">
             <label>优先级</label>
@@ -147,6 +161,7 @@
               <span v-if="detailTask.reminderRule.reminder_time" class="reminder-time">
                 ⏰ {{ detailTask.reminderRule.reminder_time }}
               </span>
+              <span class="reminder-way">{{ formatReminderWay(detailTask.reminderRule.reminder_way) }}</span>
               <span class="reminder-edit-hint">点击修改</span>
             </div>
             <div v-else class="reminder-rule-info" @click="openReminderFromDetail">
@@ -169,7 +184,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import TaskContextMenu from '../components/common/TaskContextMenu.vue'
 
 const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='45' height='45' viewBox='0 0 45 45'%3E%3Ccircle cx='22.5' cy='22.5' r='22.5' fill='%23e8e8e8'/%3E%3Ccircle cx='22.5' cy='16.5' r='7' fill='none' stroke='%23888' stroke-width='2.5'/%3E%3Cpath d='M8 37.5Q22.5 26 37 37.5' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"
@@ -181,6 +196,8 @@ const sortBy = ref('created_at_desc')
 const selectedIds = ref(new Set())
 const showDetail = ref(false)
 const detailTask = ref(null)
+const editingDetailContent = ref(false)
+const detailContentInput = ref(null)
 let desktopUpdateTimer = null
 
 // 右键菜单状态
@@ -489,6 +506,15 @@ function formatReminderType(type) {
   return typeMap[type] || type
 }
 
+function formatReminderWay(way) {
+  const wayMap = {
+    'popup': '💬 弹窗',
+    'sound': '🔊 声音',
+    'silent': '🔇 静默'
+  }
+  return wayMap[way] || way
+}
+
 async function saveDetail() {
   if (!detailTask.value) return
   try {
@@ -505,6 +531,36 @@ async function saveDetail() {
     await window.electronAPI.updateTask(id, updates)
     await loadTasks()
   } catch (e) { console.error(e) }
+}
+
+function startEditContent() {
+  editingDetailContent.value = true
+  nextTick(() => {
+    if (detailContentInput.value) {
+      detailContentInput.value.focus()
+    }
+  })
+}
+
+async function saveContentEdit() {
+  if (!detailTask.value) return
+  const newContent = detailTask.value.content.trim()
+  if (!newContent) {
+    cancelContentEdit()
+    return
+  }
+  try {
+    await window.electronAPI.updateTask(detailTask.value.id, { content: newContent })
+    editingDetailContent.value = false
+    await loadTasks()
+  } catch (e) {
+    console.error('更新任务内容失败:', e)
+    alert('更新任务内容失败')
+  }
+}
+
+function cancelContentEdit() {
+  editingDetailContent.value = false
 }
 
 async function setDueDate(e) {
@@ -771,6 +827,34 @@ onUnmounted(() => {
   width: 100%;
 }
 
+.detail-content-text {
+  cursor: text;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.detail-content-text:hover {
+  background: var(--color-border-light);
+}
+
+.detail-content-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  outline: none;
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
 .reminder-rule-info {
   display: flex;
   align-items: center;
@@ -809,6 +893,14 @@ onUnmounted(() => {
 .reminder-time {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+}
+
+.reminder-way {
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+  background: var(--color-border-light);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
 }
 
 .reminder-edit-hint {

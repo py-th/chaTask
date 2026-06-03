@@ -89,6 +89,16 @@
               @change="saveSettings"
             />
           </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">不在任务栏显示便签</span>
+              <span class="setting-desc">桌面便签窗口不显示在任务栏中（重启便签后生效）</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" v-model="settings.sticky.skipTaskbar" @change="saveSettings" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
         </div>
       </template>
 
@@ -430,7 +440,7 @@ const dataMsgType = ref('success')
 
 const settings = reactive({
   general: { autoLaunch: false, minimizeToTray: true, theme: 'system' },
-  sticky: { defaultOpacity: 100, edgeSnap: true, edgeSnapThreshold: 10 },
+  sticky: { defaultOpacity: 100, edgeSnap: true, edgeSnapThreshold: 10, skipTaskbar: true },
   screenshot: { mode: 'shortcut', clipboardInterval: 1000, clipboardMinWidth: 50, clipboardMaxWidth: 500, clipboardMinHeight: 20, clipboardMaxHeight: 300 },
   ocr: {
     mode: 'local',

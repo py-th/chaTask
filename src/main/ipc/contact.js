@@ -6,10 +6,12 @@ const {
   createContact,
   findContactByHash,
   findContactByName,
+  getContactById,
   updateContactAvatar,
   updateContact,
   deleteContact,
-  deleteTasksByContactName
+  deleteTasksByContactName,
+  syncContactToTasks
 } = require('../../database/repositories/contactRepository');
 const { computeImageHash } = require('../utils/hash');
 
@@ -100,6 +102,10 @@ function registerContactHandlers() {
     }
 
     try {
+      // 获取旧联系人信息，用于同步更新任务表
+      const oldContact = getContactById(id);
+      const oldName = oldContact ? oldContact.name : trimmedName;
+
       const updates = {
         name: trimmedName,
         source: source || 'manual',
@@ -110,6 +116,11 @@ function registerContactHandlers() {
         updates.avatar_base64 = processedBase64;
       }
       updateContact(id, updates);
+
+      // 同步更新 tasks 表中该联系人的名称和头像
+      const newAvatar = processedBase64 || (oldContact ? oldContact.avatar_base64 : '');
+      syncContactToTasks(oldName, trimmedName, newAvatar);
+
       return { success: true };
     } catch (err) {
       if (err.message && err.message.includes('UNIQUE constraint failed')) {

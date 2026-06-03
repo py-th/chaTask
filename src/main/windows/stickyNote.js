@@ -1,9 +1,36 @@
 // src/main/windows/stickyNote.js
-const { BrowserWindow, screen } = require('electron');
+const { BrowserWindow, screen, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { getReminderRuleByTaskId } = require('../../database/repositories/reminderRepository');
 const { updateTask } = require('../../database/repositories/taskRepository');
+const { loadUserSettings } = require('../configManager');
+
+function getStickyIconPath() {
+  // 优先使用 48x48 图标，任务栏显示效果较好
+  if (process.resourcesPath) {
+    const prodPath = path.join(process.resourcesPath, 'resource', 'tray_icon48.png');
+    if (fs.existsSync(prodPath)) {
+      return prodPath;
+    }
+  }
+  const devPath = path.join(process.cwd(), 'public', 'resource', 'tray_icon48.png');
+  if (fs.existsSync(devPath)) {
+    return devPath;
+  }
+  // 降级使用 32x32
+  if (process.resourcesPath) {
+    const prodPath32 = path.join(process.resourcesPath, 'resource', 'tray_icon32.png');
+    if (fs.existsSync(prodPath32)) {
+      return prodPath32;
+    }
+  }
+  const devPath32 = path.join(process.cwd(), 'public', 'resource', 'tray_icon32.png');
+  if (fs.existsSync(devPath32)) {
+    return devPath32;
+  }
+  return null;
+}
 
 class StickyNoteManager {
   constructor(reminderService) {
@@ -19,6 +46,15 @@ class StickyNoteManager {
       defaultWidth: 300,
       minHeight: 60
     };
+    this.stickyIcon = null;
+    const iconPath = getStickyIconPath();
+    if (iconPath) {
+      try {
+        this.stickyIcon = nativeImage.createFromPath(iconPath);
+      } catch (err) {
+        console.error('[StickyNote] 加载便签图标失败:', err);
+      }
+    }
   }
 
   // 读取并填充 HTML 模板
@@ -143,6 +179,27 @@ class StickyNoteManager {
 
   async createNote(task) {
     const id = this.nextId++;
+    // 读取用户设置中的 skipTaskbar 配置
+    const userSettings = loadUserSettings();
+    const skipTaskbar = userSettings.sticky && userSettings.sticky.skipTaskbar !== false;
+
+    // 优先使用任务头像作为任务栏图标（跳过 SVG 格式的默认头像）
+    let taskbarIcon = this.stickyIcon;
+    if (task.sender_avatar && !task.sender_avatar.includes('svg+xml')) {
+      try {
+        if (task.sender_avatar.startsWith('data:image/')) {
+          taskbarIcon = nativeImage.createFromDataURL(task.sender_avatar);
+        } else {
+          const base64Data = task.sender_avatar.replace(/^data:image\/\w+;base64,/, '');
+          const buffer = Buffer.from(base64Data, 'base64');
+          taskbarIcon = nativeImage.createFromBuffer(buffer);
+        }
+      } catch (err) {
+        console.error('[StickyNote] 从头像创建图标失败:', err);
+        taskbarIcon = this.stickyIcon;
+      }
+    }
+
     const win = new BrowserWindow({
       width: this.settings.defaultWidth || 300,
       height: this.settings.minHeight || 60,
@@ -153,7 +210,8 @@ class StickyNoteManager {
       transparent: true,
       resizable: false,
       movable: true,
-      //skipTaskbar: true,不在任务栏显示窗口，调试环境打开打开显示，生产环境隐藏
+      skipTaskbar: skipTaskbar,
+      icon: taskbarIcon || undefined,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,

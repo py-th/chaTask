@@ -58,6 +58,13 @@ function findContactByName(name) {
   return stmt.get(name);
 }
 
+/** 通过ID查找 */
+function getContactById(id) {
+  if (!id) return null;
+  const stmt = db.prepare(`SELECT * FROM contacts WHERE id = ?`);
+  return stmt.get(id);
+}
+
 /** 更新联系人头像（同一人换头像时调用） */
 function updateContactAvatar(name, avatarHash, avatarBase64) {
   const stmt = db.prepare(`
@@ -91,14 +98,24 @@ function deleteTasksByContactName(name) {
   return stmt.run(name);
 }
 
+/** 同步更新任务表中该联系人的名称和头像 */
+function syncContactToTasks(oldName, newName, newAvatar) {
+  const stmt = db.prepare(`
+    UPDATE tasks SET sender_name = ?, sender_avatar = ? WHERE sender_name = ?
+  `);
+  return stmt.run(newName, newAvatar || '', oldName);
+}
+
 module.exports = {
   getAllContacts,
   saveContact,
   createContact,
   findContactByHash,
   findContactByName,
+  getContactById,
   updateContactAvatar,
   updateContact,
   deleteContact,
-  deleteTasksByContactName
+  deleteTasksByContactName,
+  syncContactToTasks
 };

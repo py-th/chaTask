@@ -60,7 +60,8 @@ const userDefaults = {
   sticky: {
     defaultOpacity: 100,
     edgeSnap: true,
-    edgeSnapThreshold: 10
+    edgeSnapThreshold: 10,
+    skipTaskbar: true
   },
   screenshot: {
     mode: 'shortcut',
