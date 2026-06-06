@@ -205,18 +205,22 @@ async function onIntegratedExtractionResult(data) {
       message.text,
       message.confidence,
       message.direction,
-      message.sourceTime
+      message.sourceTime,
+      message.source,
+      message.dueDate
     )
   }
 }
 
-async function createTask(senderName, avatarBase64, displayContent, confidence, direction, sourceTime) {
+async function createTask(senderName, avatarBase64, displayContent, confidence, direction, sourceTime, source, dueDate) {
   const task = {
     id: uuidv4(),
     content: displayContent.substring(0, 500),
     sourceTime: sourceTime || new Date().toISOString(),
     senderAvatar: avatarBase64,
     senderName: senderName,
+    source: source || '',
+    dueDate: dueDate || null,
     confidence: confidence,
     direction: direction,
     createdAt: new Date(),

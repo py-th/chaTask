@@ -65,6 +65,7 @@
                 <span :class="getPriorityTag(task)">{{ priorityText(task.priority) }}</span>
                 <span v-if="task.reminder_enabled === 1">🔔</span>
                 <span v-if="task.is_show_desk === 1">📌</span>
+                <span v-if="task.source">来自：{{ task.source }}</span>
                 <span v-if="task.due_date">截止: {{ formatDate(task.due_date) }}</span>
                 <span>创建: {{ formatDate(task.created_at) }}</span>
                 <span v-if="task.status === 'completed' && task.completed_at">完成: {{ formatDate(task.completed_at) }}</span>

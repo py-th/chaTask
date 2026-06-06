@@ -197,16 +197,36 @@ app.whenReady().then(async () => {
         if (unconfirmed.length > 0) {
           try {
             const contacts = db.prepare('SELECT * FROM contacts').all();
-            const confirmedNames = await showNameDialog(unconfirmed, contacts);
-            if (confirmedNames && confirmedNames.length > 0) {
-              for (const item of confirmedNames) {
+            const dialogResult = await showNameDialog(
+              unconfirmed,
+              contacts,
+              integratedData.screenshotInfo?.windowName || 'Unknown'
+            );
+            if (dialogResult && dialogResult.results && dialogResult.results.length > 0) {
+              for (const item of dialogResult.results) {
                 const msg = integratedData.messages[item.idx];
                 if (msg) {
                   msg.senderName = item.name;
                   msg.isNewContact = true;
+                  if (item.text) msg.text = item.text;
+                  if (item.dueDate) msg.dueDate = item.dueDate;
+                  if (item.avatarBase64) msg.avatarBase64 = item.avatarBase64;
                 }
               }
-            } else if (confirmedNames === null) {
+              // 处理联系人头像更新
+              if (dialogResult.contactUpdates && dialogResult.contactUpdates.length > 0) {
+                for (const update of dialogResult.contactUpdates) {
+                  try {
+                    await require('../database/repositories/contactRepository').updateContactAvatar(
+                      update.name, update.avatarHash, update.avatarBase64
+                    );
+                    console.log(`[main] 更新联系人[${update.name}]头像`);
+                  } catch (e) {
+                    console.error(`[main] 更新联系人[${update.name}]头像失败:`, e);
+                  }
+                }
+              }
+            } else if (dialogResult === null) {
               return { success: true };
             }
           } catch (err) {

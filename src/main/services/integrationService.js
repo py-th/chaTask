@@ -97,6 +97,8 @@ async function integrateExtractionResults(avatarTextResult, senderDateResult, sc
           avatarHash: avatarHash,
           senderName: matchResult.senderName,
           sourceTime: sourceTime,
+          rawDateText: bestDate ? bestDate.text : null,
+          source: screenshotData.windowName || '',
           confidence: msg.confidence,
           direction: msg.direction,
           isNewContact: matchResult.isNewContact,
