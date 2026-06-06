@@ -63,9 +63,11 @@
               <div class="task-card-meta">
                 <span :class="getStatusTag(task)">{{ statusText(task.status) }}</span>
                 <span :class="getPriorityTag(task)">{{ priorityText(task.priority) }}</span>
-                <span v-if="task.due_date">📅 截止: {{ formatDate(task.due_date) }}</span>
-                <span>🕐 {{ formatDate(task.created_at) }}</span>
-                <span v-if="task.reminder_enabled === 1">🔔 已提醒</span>
+                <span v-if="task.reminder_enabled === 1">🔔</span>
+                <span v-if="task.is_show_desk === 1">📌</span>
+                <span v-if="task.due_date">截止: {{ formatDate(task.due_date) }}</span>
+                <span>创建: {{ formatDate(task.created_at) }}</span>
+                <span v-if="task.status === 'completed' && task.completed_at">完成: {{ formatDate(task.completed_at) }}</span>
               </div>
             </div>
 
@@ -207,9 +209,22 @@ const contextMenuTask = ref(null)
 
 function showContextMenu(event, task) {
   event.preventDefault()
-  contextMenuTask.value = task
-  contextMenuPosition.value = { x: event.clientX, y: event.clientY }
-  contextMenuVisible.value = true
+  event.stopPropagation()
+  // 如果已有菜单打开，先关闭再重新打开，确保在新任务上立即弹出
+  if (contextMenuVisible.value) {
+    contextMenuVisible.value = false
+    contextMenuTask.value = null
+    // 使用 requestAnimationFrame 确保 DOM 完全更新后再打开新菜单
+    requestAnimationFrame(() => {
+      contextMenuTask.value = task
+      contextMenuPosition.value = { x: event.clientX, y: event.clientY }
+      contextMenuVisible.value = true
+    })
+  } else {
+    contextMenuTask.value = task
+    contextMenuPosition.value = { x: event.clientX, y: event.clientY }
+    contextMenuVisible.value = true
+  }
 }
 
 function hideContextMenu() {
@@ -253,9 +268,17 @@ async function handleContextMenuAction({ type, task }) {
 }
 
 async function softDeleteTask(task) {
-  if (!confirm('确定要删除这个任务吗？')) return
+  const confirmed = await window.$confirm({
+    title: '确认删除',
+    message: '确定要删除这个任务吗？',
+    detail: '删除后任务将移动到回收站，您可以在回收站中恢复。',
+    type: 'warning',
+    confirmText: '删除'
+  })
+  if (!confirmed) return
   try {
     await window.electronAPI.updateTask(task.id, { is_deleted: 1, is_show_desk: 0 })
+    window.electronAPI.send('hide-note', { id: task.id, taskId: task.id })
     await loadTasks()
   } catch (e) { console.error(e) }
 }
@@ -288,14 +311,20 @@ function getFilterCount(key) {
 const filteredTasks = computed(() => {
   let tasks = [...allTasks.value]
 
+  // 回收站只显示已删除任务，其它过滤器排除已删除任务
   switch (currentFilter.value) {
-    case 'pending': tasks = tasks.filter(t => t.status === 'pending'); break
-    case 'in_progress': tasks = tasks.filter(t => t.status === 'in_progress'); break
-    case 'overdue': tasks = tasks.filter(t => t.status === 'overdue'); break
-    case 'high': tasks = tasks.filter(t => t.priority === 'high'); break
-    case 'completed': tasks = tasks.filter(t => t.is_completed === 1); break
-    case 'desktop': tasks = tasks.filter(t => t.is_show_desk === 1 && t.is_deleted !== 1); break
     case 'deleted': tasks = tasks.filter(t => t.is_deleted === 1); break
+    case 'desktop': tasks = tasks.filter(t => t.is_show_desk === 1 && t.is_deleted !== 1); break
+    default:
+      // 所有非回收站过滤器都排除已删除任务
+      tasks = tasks.filter(t => t.is_deleted !== 1)
+      switch (currentFilter.value) {
+        case 'pending': tasks = tasks.filter(t => t.status === 'pending'); break
+        case 'in_progress': tasks = tasks.filter(t => t.status === 'in_progress'); break
+        case 'overdue': tasks = tasks.filter(t => t.status === 'overdue'); break
+        case 'high': tasks = tasks.filter(t => t.priority === 'high'); break
+        case 'completed': tasks = tasks.filter(t => t.is_completed === 1); break
+      }
   }
 
   if (searchKeyword.value.trim()) {
@@ -399,10 +428,18 @@ async function batchComplete() {
 }
 
 async function batchDelete() {
-  if (!confirm(`确定要删除选中的 ${selectedIds.value.size} 个任务吗？`)) return
+  const confirmed = await window.$confirm({
+    title: '确认批量删除',
+    message: `确定要删除选中的 ${selectedIds.value.size} 个任务吗？`,
+    detail: '删除后任务将移动到回收站，您可以在回收站中恢复。',
+    type: 'warning',
+    confirmText: '删除'
+  })
+  if (!confirmed) return
   for (const id of selectedIds.value) {
     try {
       await window.electronAPI.updateTask(id, { is_deleted: 1, is_show_desk: 0 })
+      window.electronAPI.send('hide-note', { id, taskId: id })
     } catch (e) { console.error(e) }
   }
   clearSelection()
@@ -420,7 +457,14 @@ async function batchRestore() {
 }
 
 async function batchPermanentDelete() {
-  if (!confirm(`确定要彻底删除选中的 ${selectedIds.value.size} 个任务吗？此操作不可恢复！`)) return
+  const confirmed = await window.$confirm({
+    title: '确认彻底删除',
+    message: `确定要彻底删除选中的 ${selectedIds.value.size} 个任务吗？`,
+    detail: '此操作不可恢复，请谨慎操作！',
+    type: 'danger',
+    confirmText: '彻底删除'
+  })
+  if (!confirmed) return
   for (const id of selectedIds.value) {
     try {
       await window.electronAPI.deleteTask(id)
@@ -449,7 +493,14 @@ async function restoreTask(task) {
 }
 
 async function permanentDelete(task) {
-  if (!confirm('确定要彻底删除这个任务吗？此操作不可恢复！')) return
+  const confirmed = await window.$confirm({
+    title: '确认彻底删除',
+    message: '确定要彻底删除这个任务吗？',
+    detail: '此操作不可恢复，请谨慎操作！',
+    type: 'danger',
+    confirmText: '彻底删除'
+  })
+  if (!confirmed) return
   try {
     await window.electronAPI.deleteTask(task.id)
     await loadTasks()
@@ -555,7 +606,13 @@ async function saveContentEdit() {
     await loadTasks()
   } catch (e) {
     console.error('更新任务内容失败:', e)
-    alert('更新任务内容失败')
+    await window.$confirm({
+      title: '更新失败',
+      message: '更新任务内容失败',
+      type: 'warning',
+      confirmText: '知道了',
+      cancelText: ''
+    })
   }
 }
 

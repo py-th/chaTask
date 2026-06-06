@@ -48,6 +48,7 @@
       :screenshot-mode="screenshotMode"
     />
 
+    <ConfirmDialog ref="confirmDialogRef" />
   </div>
 </template>
 
@@ -57,6 +58,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 import Sidebar from './components/common/Sidebar.vue'
 import StatusBar from './components/common/StatusBar.vue'
+import ConfirmDialog from './components/common/ConfirmDialog.vue'
 import Dashboard from './views/Dashboard.vue'
 import TaskList from './views/TaskList.vue'
 import TaskTimeline from './views/TaskTimeline.vue'
@@ -93,6 +95,19 @@ const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/s
 const currentView = ref('dashboard')
 const currentComponent = computed(() => viewComponents[currentView.value] || Dashboard)
 const viewMeta = computed(() => viewMetaMap[currentView.value] || viewMetaMap.dashboard)
+const confirmDialogRef = ref(null)
+
+// 全局确认对话框方法
+async function $confirm(options) {
+  if (!confirmDialogRef.value) {
+    console.error('ConfirmDialog 未挂载')
+    return false
+  }
+  return await confirmDialogRef.value.show(options)
+}
+
+// 暴露到全局，方便各组件调用
+window.$confirm = $confirm
 
 const statusCounts = reactive({
   total: 0,
@@ -144,7 +159,14 @@ async function onIntegratedExtractionResult(data) {
   processing.value = false
 
   if (!data.success) {
-    alert(`识别失败\n原因: ${data.error || '模型未检测到有效内容'}\n建议: 确保截图包含完整的聊天信息`)
+    await window.$confirm({
+      title: '识别失败',
+      message: `原因: ${data.error || '模型未检测到有效内容'}`,
+      detail: '建议: 确保截图包含完整的聊天信息',
+      type: 'warning',
+      confirmText: '知道了',
+      cancelText: ''
+    })
     return
   }
 
@@ -154,7 +176,14 @@ async function onIntegratedExtractionResult(data) {
   }
 
   if (!data.messages || data.messages.length === 0) {
-    alert('未识别到有效的消息内容，请重试')
+    await window.$confirm({
+      title: '识别失败',
+      message: '未识别到有效的消息内容',
+      detail: '请确保截图包含完整的聊天信息后重试',
+      type: 'warning',
+      confirmText: '知道了',
+      cancelText: ''
+    })
     return
   }
 

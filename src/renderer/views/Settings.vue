@@ -575,7 +575,14 @@ async function importData() {
 }
 
 async function resetSettings() {
-  if (!confirm('确定要将所有设置恢复为默认值吗？')) return
+  const confirmed = await window.$confirm({
+    title: '恢复默认设置',
+    message: '确定要将所有设置恢复为默认值吗？',
+    detail: '此操作将重置所有个性化设置，任务数据不会受到影响。',
+    type: 'warning',
+    confirmText: '恢复'
+  })
+  if (!confirmed) return
   try {
     await window.electronAPI.resetSettings()
     dataMessage.value = '设置已恢复为默认值'
@@ -589,7 +596,14 @@ async function resetSettings() {
 }
 
 async function clearAllData() {
-  if (!confirm('确定要清空所有数据吗？此操作不可恢复！')) return
+  const confirmed = await window.$confirm({
+    title: '清空所有数据',
+    message: '确定要清空所有数据吗？',
+    detail: '此操作不可恢复，所有任务、联系人等数据将被永久删除！',
+    type: 'danger',
+    confirmText: '清空'
+  })
+  if (!confirmed) return
   try {
     const result = await window.electronAPI.clearAllData()
     if (result.success) {

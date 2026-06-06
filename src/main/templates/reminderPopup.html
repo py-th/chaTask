@@ -289,12 +289,38 @@
       currentNoteId = data.noteId;
       actionHandled = false;
 
+      // 提醒方式文本映射
+      const wayMap = {
+        'popup': '弹窗',
+        'sound': '声音',
+        'silent': '静默'
+      };
+      const repeatTypeMap = {
+        'once': '单次',
+        'daily': '每天',
+        'weekly': '每周',
+        'monthly': '每月',
+        'custom': '自定义'
+      };
+
       document.getElementById('popupTaskContent').textContent = data.taskContent || '无内容';
-      document.getElementById('popupTime').textContent = data.reminderTime
-        ? `${new Date(data.scheduledTime).toLocaleDateString()} ${data.reminderTime}`
-        : data.scheduledTime
-          ? new Date(data.scheduledTime).toLocaleString()
-          : '';
+
+      // 构建时间显示：日期时间 + 提醒方式 + 重复类型
+      let timeText = '';
+      if (data.reminderTime) {
+        timeText = `${new Date(data.scheduledTime).toLocaleDateString()} ${data.reminderTime}`;
+      } else if (data.scheduledTime) {
+        timeText = new Date(data.scheduledTime).toLocaleString();
+      }
+      const wayText = wayMap[data.reminderWay] || data.reminderWay || '';
+      const repeatText = repeatTypeMap[data.repeatType] || data.repeatType || '';
+      if (wayText) {
+        timeText += ` · ${wayText}`;
+      }
+      if (repeatText) {
+        timeText += ` · ${repeatText}`;
+      }
+      document.getElementById('popupTime').textContent = timeText;
 
       if (data.senderName) {
         document.getElementById('popupSender').style.display = 'flex';

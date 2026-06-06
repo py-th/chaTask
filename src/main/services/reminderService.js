@@ -400,7 +400,9 @@ class ReminderService {
         senderName: rule.sender_name,
         senderAvatar: rule.sender_avatar,
         scheduledTime: scheduledTime.toISOString(),
-        reminderTime: rule.reminder_time
+        reminderTime: rule.reminder_time,
+        reminderWay: rule.reminder_way,
+        repeatType: rule.repeat_type
       });
     });
 

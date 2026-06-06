@@ -1,6 +1,7 @@
-const { Menu, dialog } = require('electron');
+const { Menu } = require('electron');
 const { updateTask } = require('../../database/repositories/taskRepository');
 const { deleteReminderRulesByTaskId, deleteReminderLogsByTaskId } = require('../../database/repositories/reminderRepository');
+const { showConfirmDialog } = require('../windows/confirmDialog');
 
 class StickyMenu {
   constructor(mainWindow, stickyManager, screenshotUtils) {
@@ -45,18 +46,16 @@ class StickyMenu {
       {
         label: '删除',
         click: async (_, win) => {
-          const result = await dialog.showMessageBox(win, {
-            type: 'question',
-            buttons: ['取消', '删除'],
-            defaultId: 0,
-            cancelId: 0,
+          const confirmed = await showConfirmDialog(win, {
             title: '确认删除',
             message: '确定要删除这个任务吗？',
-            detail: '删除后任务将移动到回收站，您可以在回收站中恢复。'
+            detail: '删除后任务将移动到回收站，您可以在回收站中恢复。',
+            type: 'warning',
+            confirmText: '删除',
+            cancelText: '取消'
           });
-          
-          // 用户点击"删除"（索引1）
-          if (result.response === 1) {
+
+          if (confirmed) {
             // 清理该任务的提醒规则和日志
             deleteReminderRulesByTaskId(taskId);
             deleteReminderLogsByTaskId(taskId);

@@ -139,13 +139,27 @@ async function contextRestoreTask(task) {
 }
 
 async function contextSoftDeleteTask(task) {
-  if (!confirm('确定要删除这个任务吗？')) return
+  const confirmed = await window.$confirm({
+    title: '确认删除',
+    message: '确定要删除这个任务吗？',
+    detail: '删除后任务将移动到回收站，您可以在回收站中恢复。',
+    type: 'warning',
+    confirmText: '删除'
+  })
+  if (!confirmed) return
   await window.electronAPI.updateTask(task.id, { is_deleted: 1, is_show_desk: 0 })
   await loadTasks()
 }
 
 async function contextPermanentDeleteTask(task) {
-  if (!confirm('确定要彻底删除这个任务吗？此操作不可恢复！')) return
+  const confirmed = await window.$confirm({
+    title: '确认彻底删除',
+    message: '确定要彻底删除这个任务吗？',
+    detail: '此操作不可恢复，请谨慎操作！',
+    type: 'danger',
+    confirmText: '彻底删除'
+  })
+  if (!confirmed) return
   await window.electronAPI.deleteTask(task.id)
   await loadTasks()
 }

@@ -292,21 +292,39 @@ async function submitContact() {
       closeModal()
       await loadData()
     } else {
-      alert(result.error || '操作失败')
+      await window.$confirm({
+        title: '操作失败',
+        message: result.error || '操作失败',
+        type: 'warning',
+        confirmText: '知道了',
+        cancelText: ''
+      })
     }
   } catch (err) {
     console.error('操作联系人失败:', err)
-    alert('操作失败')
+    await window.$confirm({
+      title: '操作失败',
+      message: '操作失败',
+      type: 'warning',
+      confirmText: '知道了',
+      cancelText: ''
+    })
   }
 }
 
 async function confirmDeleteContact(contact) {
   const taskCount = getTaskCount(contact.name)
-  const confirmMsg = taskCount > 0
-    ? `确定要删除联系人「${contact.name}」吗？\n\n该联系人有 ${taskCount} 条任务，删除后联系人及其所有任务将不可恢复！`
-    : `确定要删除联系人「${contact.name}」吗？\n\n删除后不可恢复！`
+  const message = taskCount > 0
+    ? `确定要删除联系人「${contact.name}」吗？该联系人有 ${taskCount} 条任务，删除后联系人及其所有任务将不可恢复！`
+    : `确定要删除联系人「${contact.name}」吗？删除后不可恢复！`
 
-  if (!confirm(confirmMsg)) return
+  const confirmed = await window.$confirm({
+    title: '确认删除联系人',
+    message,
+    type: 'danger',
+    confirmText: '删除'
+  })
+  if (!confirmed) return
 
   try {
     const result = await window.electronAPI.deleteContact({
@@ -316,11 +334,23 @@ async function confirmDeleteContact(contact) {
     if (result.success) {
       await loadData()
     } else {
-      alert(result.error || '删除失败')
+      await window.$confirm({
+        title: '删除失败',
+        message: result.error || '删除失败',
+        type: 'warning',
+        confirmText: '知道了',
+        cancelText: ''
+      })
     }
   } catch (err) {
     console.error('删除联系人失败:', err)
-    alert('删除失败')
+    await window.$confirm({
+      title: '删除失败',
+      message: '删除失败',
+      type: 'warning',
+      confirmText: '知道了',
+      cancelText: ''
+    })
   }
 }
 
@@ -348,7 +378,13 @@ async function saveTaskEdit(task) {
     task.content = newContent
   } catch (err) {
     console.error('更新任务失败:', err)
-    alert('更新任务失败')
+    await window.$confirm({
+      title: '更新失败',
+      message: '更新任务失败',
+      type: 'warning',
+      confirmText: '知道了',
+      cancelText: ''
+    })
   } finally {
     cancelTaskEdit()
   }
@@ -360,26 +396,52 @@ function cancelTaskEdit() {
 }
 
 async function completeTask(task) {
-  if (!confirm(`确定要将这条任务标记为完成吗？\n\n${task.content.substring(0, 50)}${task.content.length > 50 ? '...' : ''}`)) return
+  const confirmed = await window.$confirm({
+    title: '确认完成任务',
+    message: `确定要将这条任务标记为完成吗？`,
+    detail: `${task.content.substring(0, 50)}${task.content.length > 50 ? '...' : ''}`,
+    type: 'warning',
+    confirmText: '完成'
+  })
+  if (!confirmed) return
 
   try {
     await window.electronAPI.completeTask(task.id)
     await loadData()
   } catch (err) {
     console.error('标记完成任务失败:', err)
-    alert('标记完成失败')
+    await window.$confirm({
+      title: '标记失败',
+      message: '标记完成失败',
+      type: 'warning',
+      confirmText: '知道了',
+      cancelText: ''
+    })
   }
 }
 
 async function deleteTask(task) {
-  if (!confirm(`确定要将这条任务移入回收站吗？\n\n${task.content.substring(0, 50)}${task.content.length > 50 ? '...' : ''}\n\n可在任务列表的回收站中恢复。`)) return
+  const confirmed = await window.$confirm({
+    title: '确认移入回收站',
+    message: '确定要将这条任务移入回收站吗？',
+    detail: `${task.content.substring(0, 50)}${task.content.length > 50 ? '...' : ''}\n[Tips: 可以在任务列表的回收站中恢复]`,
+    type: 'warning',
+    confirmText: '移入回收站'
+  })
+  if (!confirmed) return
 
   try {
     await window.electronAPI.updateTask(task.id, { is_deleted: 1 })
     await loadData()
   } catch (err) {
     console.error('删除任务失败:', err)
-    alert('删除任务失败')
+    await window.$confirm({
+      title: '删除失败',
+      message: '删除任务失败',
+      type: 'warning',
+      confirmText: '知道了',
+      cancelText: ''
+    })
   }
 }
 
@@ -559,7 +621,6 @@ onUnmounted(() => {
 }
 
 .contact-task-count:hover {
-  background: var(--color-primary-light);
   border-color: var(--color-primary);
   color: var(--color-primary);
 }

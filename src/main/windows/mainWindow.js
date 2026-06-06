@@ -39,7 +39,7 @@ function createAppIcon() {
 
 function createMainWindow() {
   const win = new BrowserWindow({
-    width: 900,
+    width: 1200,
     height: 700,
     icon: createAppIcon(),
     webPreferences: {
