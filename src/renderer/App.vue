@@ -131,7 +131,15 @@ const latestScreenshot = ref(null)
 const fullWindowScreenshot = ref(null)
 const lastResult = ref(null)
 
+// 自动更新状态
+const updateInfo = ref(null)
+const updateDownloading = ref(false)
+const updateProgress = ref(0)
+
 let unsubscribeIntegrated = null
+let unsubscribeUpdateAvailable = null
+let unsubscribeUpdateProgress = null
+let unsubscribeUpdateDownloaded = null
 
 function switchView(viewId) {
   currentView.value = viewId
@@ -291,6 +299,25 @@ function watchSystemTheme(themeRef) {
   systemThemeListener = () => mediaQuery.removeEventListener('change', handler)
 }
 
+async function checkForUpdates() {
+  try {
+    const result = await window.electronAPI.checkForUpdates()
+    if (!result.success) {
+      console.log('检查更新失败:', result.error)
+    }
+  } catch (err) {
+    console.error('检查更新异常:', err)
+  }
+}
+
+async function installUpdate() {
+  try {
+    await window.electronAPI.installUpdate()
+  } catch (err) {
+    console.error('安装更新失败:', err)
+  }
+}
+
 onMounted(async () => {
   try {
     const settings = await window.electronAPI.getSettings()
@@ -309,6 +336,32 @@ onMounted(async () => {
     onIntegratedExtractionResult(data)
   })
 
+  // 自动更新事件监听
+  unsubscribeUpdateAvailable = window.electronAPI.onUpdateAvailable((info) => {
+    updateInfo.value = info
+    updateDownloading.value = true
+  })
+
+  unsubscribeUpdateProgress = window.electronAPI.onUpdateProgress((progress) => {
+    updateProgress.value = Math.round(progress.percent || 0)
+  })
+
+  unsubscribeUpdateDownloaded = window.electronAPI.onUpdateDownloaded((info) => {
+    updateInfo.value = info
+    updateDownloading.value = false
+    // 提示用户更新已下载
+    window.$confirm({
+      title: '更新已就绪',
+      message: `新版本 ${info.version} 已下载完成`,
+      detail: '点击确认立即安装更新，程序将自动重启',
+      type: 'info',
+      confirmText: '立即安装',
+      cancelText: '稍后'
+    }).then((confirmed) => {
+      if (confirmed) installUpdate()
+    })
+  })
+
   try {
     const screenshotConfig = await window.electronAPI.getScreenshotConfig()
     if (screenshotConfig) {
@@ -322,6 +375,9 @@ onMounted(async () => {
 onUnmounted(() => {
   if (unsubscribeIntegrated) unsubscribeIntegrated()
   if (systemThemeListener) systemThemeListener()
+  if (unsubscribeUpdateAvailable) unsubscribeUpdateAvailable()
+  if (unsubscribeUpdateProgress) unsubscribeUpdateProgress()
+  if (unsubscribeUpdateDownloaded) unsubscribeUpdateDownloaded()
 })
 </script>
 

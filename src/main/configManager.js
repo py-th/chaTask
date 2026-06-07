@@ -72,15 +72,12 @@ const userDefaults = {
     clipboardMaxHeight: 300
   },
   ocr: {
-    mode: 'local',
+    engine: 'paddle',
     language: 'ch',
-    cloud: {
-      enabled: false,
-      provider: 'baidu',
-      apiKey: '',
-      secretKey: '',
-      timeout: 10000
-    }
+    timeout: 10000,
+    baidu: { apiKey: '', secretKey: '' },
+    aliyun: { accessKeyId: '', accessKeySecret: '' },
+    tencent: { secretId: '', secretKey: '' }
   },
   shortcuts: {
     screenshot: 'Ctrl+Alt+S',
@@ -118,11 +115,56 @@ function deepMerge(target, source) {
   return result;
 }
 
+function migrateOcrConfig(ocrConfig) {
+  // 从旧格式迁移到新格式
+  if (!ocrConfig) return null;
+  
+  if (ocrConfig.mode !== undefined && ocrConfig.engine === undefined) {
+    const migrated = { ...ocrConfig };
+    // 转换模式到引擎
+    if (ocrConfig.mode === 'local') {
+      migrated.engine = 'paddle';
+    } else if (ocrConfig.mode === 'cloud') {
+      migrated.engine = ocrConfig.cloud?.provider || 'baidu';
+    }
+    
+    // 迁移 timeout
+    if (ocrConfig.cloud?.timeout) {
+      migrated.timeout = ocrConfig.cloud.timeout;
+    }
+    
+    // 迁移各提供商的配置
+    if (ocrConfig.cloud?.baidu) {
+      migrated.baidu = ocrConfig.cloud.baidu;
+    }
+    if (ocrConfig.cloud?.aliyun) {
+      migrated.aliyun = ocrConfig.cloud.aliyun;
+    }
+    if (ocrConfig.cloud?.tencent) {
+      migrated.tencent = ocrConfig.cloud.tencent;
+    }
+    
+    // 移除旧结构
+    delete migrated.mode;
+    delete migrated.cloud;
+    
+    return migrated;
+  }
+  
+  return ocrConfig;
+}
+
 function loadUserSettings() {
   try {
     if (fs.existsSync(settingsPath)) {
       const raw = fs.readFileSync(settingsPath, 'utf8');
-      const parsed = JSON.parse(raw);
+      let parsed = JSON.parse(raw);
+      
+      // 迁移 OCR 配置
+      if (parsed.ocr) {
+        parsed.ocr = migrateOcrConfig(parsed.ocr);
+      }
+      
       return deepMerge(userDefaults, parsed);
     }
   } catch (err) {

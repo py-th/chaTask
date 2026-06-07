@@ -1,5 +1,6 @@
 // src/main/index.js
-const { app, globalShortcut, ipcMain } = require('electron');
+const { app, globalShortcut, ipcMain, dialog } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const { createMainWindow } = require('./windows/mainWindow');
 const StickyNoteManager = require('./windows/stickyNote');
 const { ClipboardService } = require('./services/clipboardService');
@@ -304,6 +305,58 @@ app.whenReady().then(async () => {
     app.setLoginItemSettings({ openAtLogin: cfg.general.autoLaunch });
     return true;
   });
+
+  // 自动更新检查
+  ipcMain.handle('check-for-updates', async () => {
+    try {
+      const result = await autoUpdater.checkForUpdates();
+      return { success: true, updateInfo: result?.updateInfo || null };
+    } catch (err) {
+      console.error('[main] 检查更新失败:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('install-update', () => {
+    autoUpdater.quitAndInstall(false, true);
+    return true;
+  });
+
+  // 自动更新事件监听
+  autoUpdater.on('update-available', (info) => {
+    console.log('[main] 发现新版本:', info.version);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-available', info);
+    }
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    console.log('[main] 当前已是最新版本');
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-progress', progress);
+    }
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('[main] 更新已下载:', info.version);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-downloaded', info);
+    }
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('[main] 自动更新错误:', err);
+  });
+
+  // 启动后延迟检查更新（避免影响启动速度）
+  setTimeout(() => {
+    if (!process.env.NODE_ENV || process.env.NODE_ENV === 'production') {
+      autoUpdater.checkForUpdates().catch(() => {});
+    }
+  }, 30000);
 });
 
 app.on('window-all-closed', () => {

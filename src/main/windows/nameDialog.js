@@ -68,15 +68,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .dialog-close:hover { background: rgba(255,255,255,0.2); }
 .dialog-body { padding: 16px; flex: 1; overflow-y: auto; overflow-x: hidden; }
 
+/* 消息列表 */
+.msg-list { display: flex; flex-direction: column; gap: 12px; }
+.msg-card { border: 1px solid #eee; border-radius: 8px; padding: 12px; background: #fafafa; }
+.msg-card.active { border-color: #FFC107; background: #fffbf0; }
+.msg-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; color: #666; }
+.msg-card-header .msg-index { background: #FFC107; color: white; font-size: 11px; font-weight: 600; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.msg-card-header .msg-sender { font-weight: 500; color: #333; }
+
 /* 文本区域 */
-.msg-textarea { width: 100%; min-height: 80px; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: white; color: #333; outline: none; resize: vertical; box-sizing: border-box; margin-bottom: 12px; }
+.msg-textarea { width: 100%; min-height: 60px; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: white; color: #333; outline: none; resize: vertical; box-sizing: border-box; margin-bottom: 10px; }
 .msg-textarea:focus { border-color: #FFC107; }
 
 /* 信息行 */
-.info-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 13px; color: #666; }
+.info-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; color: #666; }
 .info-row .info-label { color: #999; white-space: nowrap; }
 .info-row .info-value { color: #333; }
-.info-bar { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; font-size: 13px; color: #666; flex-wrap: wrap; }
+.info-bar { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; font-size: 13px; color: #666; flex-wrap: wrap; }
 .info-bar .info-item { display: flex; align-items: center; gap: 4px; }
 .info-bar .info-item .info-label { color: #999; white-space: nowrap; }
 .info-bar .info-item .info-value { color: #333; }
@@ -135,7 +143,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   <span class="footer-info" id="footerInfo"></span>
   <div class="footer-btns">
     <button class="btn btn-cancel" onclick="window.__cancel()">取消</button>
-    <button class="btn btn-confirm" onclick="window.__confirmAll()">保存</button>
+    <button class="btn btn-confirm" onclick="window.__confirmAll()">保存全部</button>
   </div>
 </div>
 </div>
@@ -159,6 +167,27 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
     function e(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
+    // 存储每条消息的编辑状态
+    var _msgStates = [];
+
+    function initMsgStates(){
+      _msgStates = _messages.map(function(m, i){
+        var contactName = m.senderName || '';
+        var matchedContact = findContactByName(contactName);
+        var avatar = (matchedContact && matchedContact.avatarBase64) || m.avatarBase64 || _defaultAvatar;
+        return {
+          idx: m.idx,
+          name: contactName,
+          text: m.text || '',
+          avatar: avatar,
+          dueDate: null,
+          rawDate: m.rawDateText || null,
+          sourceTime: m.sourceTime || null,
+          avatarHash: m.avatarHash || ''
+        };
+      });
+    }
+
     function render(){
       var body=document.getElementById('dialogBody');
       var footerInfo=document.getElementById('footerInfo');
@@ -173,14 +202,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
         return;
       }
 
-      var m=_messages[0];
-      var contactName=m.senderName||'';
-      var matchedContact=findContactByName(contactName);
-      var avatar=(matchedContact&&matchedContact.avatarBase64)||m.avatarBase64||_defaultAvatar;
-      var rawDate=m.rawDateText||null;
-      var sourceDate=m.sourceTime?formatDateTime(m.sourceTime):'无';
-
-      var originalSenderName = m.senderName || '未知';
+      if(_msgStates.length === 0) initMsgStates();
 
       var screenshotHtml = '';
       if(_screenshotInfo && _screenshotInfo.localImageBase64){
@@ -208,38 +230,49 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
           '</div>';
       }
 
-      body.innerHTML=
-        '<textarea class="msg-textarea" id="msgText">'+e(m.text)+'</textarea>'+
-        '<div class="info-row">'+
-          '<span class="info-label">来自聊天：</span>'+
-          '<div class="contact-selector">'+
-            '<img class="contact-avatar" id="contactAvatar" src="'+avatar+'">'+
-            '<div class="contact-input-wrap custom-select">'+
-              '<input class="contact-input" id="contactInput" value="'+e(contactName)+'" placeholder="输入发送者名称" oninput="window.__onContactInput()">'+
-              '<button class="contact-dropdown-btn" onclick="window.__toggleDropdown(event)">▼</button>'+
-              '<div class="custom-options" id="contactOptions"></div>'+
+      var msgsHtml = '<div class="msg-list">';
+      for(var mi = 0; mi < _msgStates.length; mi++){
+        var st = _msgStates[mi];
+        var sourceDate = st.sourceTime ? formatDateTime(st.sourceTime) : '无';
+        msgsHtml +=
+          '<div class="msg-card">'+
+            '<div class="msg-card-header">'+
+              '<span class="msg-index">'+(mi+1)+'</span>'+
+              '<span class="msg-sender">消息 '+(mi+1)+'</span>'+
             '</div>'+
-          '</div>'+
-        '</div>'+
-        '<div class="info-bar">'+
-          '<div class="info-item">'+
-            '<span class="info-label">截止日期：</span>'+
-            '<input type="date" class="date-picker" id="dueDatePicker">'+
-          '</div>'+
-          '<div class="info-item">'+
-            '<span class="info-label">消息发送日期：</span>'+
-            '<span class="info-value">'+(rawDate?e(rawDate)+' ('+sourceDate+')':'无')+'</span>'+
-          '</div>'+
-        '</div>'+
-        screenshotHtml;
+            '<textarea class="msg-textarea" id="msgText_'+mi+'" oninput="window.__onTextChange('+mi+',this.value)">'+e(st.text)+'</textarea>'+
+            '<div class="info-row">'+
+              '<span class="info-label">来自聊天：</span>'+
+              '<div class="contact-selector">'+
+                '<img class="contact-avatar" id="contactAvatar_'+mi+'" src="'+st.avatar+'">'+
+                '<div class="contact-input-wrap custom-select">'+
+                  '<input class="contact-input" id="contactInput_'+mi+'" value="'+e(st.name)+'" placeholder="输入发送者名称" oninput="window.__onContactInput('+mi+')">'+
+                  '<button class="contact-dropdown-btn" onclick="window.__toggleDropdown(event,'+mi+')">▼</button>'+
+                  '<div class="custom-options" id="contactOptions_'+mi+'"></div>'+
+                '</div>'+
+              '</div>'+
+            '</div>'+
+            '<div class="info-bar">'+
+              '<div class="info-item">'+
+                '<span class="info-label">截止日期：</span>'+
+                '<input type="date" class="date-picker" id="dueDatePicker_'+mi+'" onchange="window.__onDueDateChange('+mi+',this.value)">'+ 
+              '</div>'+
+              '<div class="info-item">'+
+                '<span class="info-label">消息发送日期：</span>'+
+                '<span class="info-value">'+(st.rawDate?e(st.rawDate)+' ('+sourceDate+')':'无')+'</span>'+
+              '</div>'+
+            '</div>'+
+          '</div>';
+      }
+      msgsHtml += '</div>';
 
-      renderContactOptions();
+      body.innerHTML = msgsHtml + screenshotHtml;
 
-      if(footerInfo) footerInfo.textContent='来自聊天：'+originalSenderName+' ['+e(_imType)+']';
+      if(footerInfo) footerInfo.textContent='共 '+_msgStates.length+' 条消息 ['+e(_imType)+']';
     }
 
-    function renderContactOptions(){
-      var opts=document.getElementById('contactOptions');
+    function renderContactOptions(msgIdx){
+      var opts=document.getElementById('contactOptions_'+msgIdx);
       if(!opts) return;
       if(!_contacts || _contacts.length===0) {
         opts.innerHTML='<div class="custom-option" style="color:#999;">暂无联系人</div>';
@@ -247,7 +280,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       }
       opts.innerHTML=_contacts.map(function(c){
         var avatarSrc = c.avatarBase64 || _defaultAvatar;
-        return '<div class="custom-option" onclick="window.__selectContact('+JSON.stringify(c.name).replace(/"/g,'&quot;')+','+JSON.stringify(avatarSrc).replace(/"/g,'&quot;')+')">'+
+        return '<div class="custom-option" onclick="window.__selectContact('+msgIdx+','+JSON.stringify(c.name).replace(/"/g,'&quot;')+','+JSON.stringify(avatarSrc).replace(/"/g,'&quot;')+')">'+
           '<img src="'+avatarSrc+'"><span>'+e(c.name)+'</span></div>';
       }).join('');
     }
@@ -260,46 +293,71 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       return null;
     }
 
-    function onContactInput(){
-      var input=document.getElementById('contactInput');
-      var avatarImg=document.getElementById('contactAvatar');
+    function onTextChange(msgIdx, value){
+      if(_msgStates[msgIdx]) _msgStates[msgIdx].text = value;
+    }
+
+    function onDueDateChange(msgIdx, value){
+      if(_msgStates[msgIdx]) _msgStates[msgIdx].dueDate = value;
+    }
+
+    function onContactInput(msgIdx){
+      var input=document.getElementById('contactInput_'+msgIdx);
+      var avatarImg=document.getElementById('contactAvatar_'+msgIdx);
       if(!input || !avatarImg) return;
       var name=input.value.trim();
+      if(_msgStates[msgIdx]) _msgStates[msgIdx].name = name;
       var contact=findContactByName(name);
       if(contact && contact.avatarBase64){
         avatarImg.src=contact.avatarBase64;
-      }else if(_messages && _messages[0] && _messages[0].avatarBase64){
-        avatarImg.src=_messages[0].avatarBase64;
+        if(_msgStates[msgIdx]) _msgStates[msgIdx].avatar = contact.avatarBase64;
+      }else if(_messages && _messages[msgIdx] && _messages[msgIdx].avatarBase64){
+        avatarImg.src=_messages[msgIdx].avatarBase64;
+        if(_msgStates[msgIdx]) _msgStates[msgIdx].avatar = _messages[msgIdx].avatarBase64;
       }else{
         avatarImg.src=_defaultAvatar;
+        if(_msgStates[msgIdx]) _msgStates[msgIdx].avatar = _defaultAvatar;
       }
     }
 
-    function toggleDropdown(ev){
+    function toggleDropdown(ev, msgIdx){
       if(ev) ev.stopPropagation();
-      var opts=document.getElementById('contactOptions');
+      // 先关闭所有下拉
+      closeAllDropdowns();
+      var opts=document.getElementById('contactOptions_'+msgIdx);
       var overlay=document.getElementById('overlay');
       if(!opts) return;
-      if(opts.classList.contains('open')){
-        closeDropdown();
-      }else{
-        opts.classList.add('open');
-        if(overlay) overlay.classList.add('show');
+      renderContactOptions(msgIdx);
+      opts.classList.add('open');
+      if(overlay) overlay.classList.add('show');
+      _activeDropdown = msgIdx;
+    }
+
+    var _activeDropdown = -1;
+
+    function closeAllDropdowns(){
+      var overlays=document.getElementById('overlay');
+      for(var i=0;i<_msgStates.length;i++){
+        var opts=document.getElementById('contactOptions_'+i);
+        if(opts) opts.classList.remove('open');
       }
+      if(overlays) overlays.classList.remove('show');
+      _activeDropdown = -1;
     }
 
     function closeDropdown(){
-      var opts=document.getElementById('contactOptions');
-      var overlay=document.getElementById('overlay');
-      if(opts) opts.classList.remove('open');
-      if(overlay) overlay.classList.remove('show');
+      closeAllDropdowns();
     }
 
-    function selectContact(name,avatar){
-      var input=document.getElementById('contactInput');
-      var avatarImg=document.getElementById('contactAvatar');
+    function selectContact(msgIdx, name, avatar){
+      var input=document.getElementById('contactInput_'+msgIdx);
+      var avatarImg=document.getElementById('contactAvatar_'+msgIdx);
       if(input) input.value=name;
       if(avatarImg) avatarImg.src=avatar || _defaultAvatar;
+      if(_msgStates[msgIdx]){
+        _msgStates[msgIdx].name = name;
+        _msgStates[msgIdx].avatar = avatar || _defaultAvatar;
+      }
       closeDropdown();
     }
 
@@ -324,41 +382,47 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     }
 
     function confirmAll(){
-      var input=document.getElementById('contactInput');
-      var textarea=document.getElementById('msgText');
-      var dueDatePicker=document.getElementById('dueDatePicker');
-      var avatarImg=document.getElementById('contactAvatar');
-      if(!input || !textarea) return;
+      var results = [];
+      var contactUpdates = [];
 
-      var name=input.value.trim();
-      if(!name){ input.focus(); return; }
-
-      var text=textarea.value.trim();
-      var dueDate=dueDatePicker ? dueDatePicker.value : null;
-      var currentAvatar=avatarImg ? avatarImg.src : null;
-      var originalMsg=(_messages && _messages[0]) ? _messages[0] : {idx:0};
-
-      var result={
-        results:[{idx:originalMsg.idx, name:name, text:text, avatarBase64:currentAvatar || ''}],
-        contactUpdates:[]
-      };
-      if(dueDate) result.results[0].dueDate=dueDate;
-
-      var matchedContact=findContactByName(name);
-      if(matchedContact){
-        // 如果选择的是已有联系人，使用数据库中的头像
-        if(matchedContact.avatarBase64){
-          result.results[0].avatarBase64 = matchedContact.avatarBase64;
+      for(var i=0; i<_msgStates.length; i++){
+        var st = _msgStates[i];
+        var name = st.name ? st.name.trim() : '';
+        if(!name){
+          // 滚动到未填写的消息
+          var card = document.querySelectorAll('.msg-card')[i];
+          if(card) card.scrollIntoView({behavior:'smooth', block:'center'});
+          var input = document.getElementById('contactInput_'+i);
+          if(input) input.focus();
+          return;
         }
-        // 如果当前显示的头像与数据库不一致（且不是默认头像），更新联系人头像
-        if(currentAvatar && currentAvatar!==matchedContact.avatarBase64 && currentAvatar!==_defaultAvatar){
-          result.contactUpdates.push({
-            name:name,
-            avatarHash:originalMsg.avatarHash || '',
-            avatarBase64:currentAvatar
-          });
+
+        var resultItem = {
+          idx: st.idx,
+          name: name,
+          text: st.text ? st.text.trim() : '',
+          avatarBase64: st.avatar || ''
+        };
+        if(st.dueDate) resultItem.dueDate = st.dueDate;
+
+        var matchedContact = findContactByName(name);
+        if(matchedContact){
+          if(matchedContact.avatarBase64){
+            resultItem.avatarBase64 = matchedContact.avatarBase64;
+          }
+          if(st.avatar && st.avatar !== matchedContact.avatarBase64 && st.avatar !== _defaultAvatar){
+            contactUpdates.push({
+              name: name,
+              avatarHash: st.avatarHash || '',
+              avatarBase64: st.avatar
+            });
+          }
         }
+
+        results.push(resultItem);
       }
+
+      var result = { results: results, contactUpdates: contactUpdates };
 
       if(_ipc) {
         _ipc.send(_channel, result);
@@ -379,6 +443,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     // 暴露到全局
     window.__render = render;
     window.__onContactInput = onContactInput;
+    window.__onTextChange = onTextChange;
+    window.__onDueDateChange = onDueDateChange;
     window.__toggleDropdown = toggleDropdown;
     window.__closeDropdown = closeDropdown;
     window.__selectContact = selectContact;
@@ -387,6 +453,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     window.__cancel = cancel;
 
     // 初始化渲染
+    initMsgStates();
     render();
   } catch(err) {
     console.error('NameDialog初始化失败:', err);

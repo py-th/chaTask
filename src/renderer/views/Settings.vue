@@ -136,49 +136,65 @@
           <div class="setting-row">
             <div class="setting-info">
               <span class="setting-name">OCR 引擎</span>
-              <span class="setting-desc">本地使用 PaddleOCR，云端调用百度 OCR API</span>
+              <span class="setting-desc">本地使用 PaddleOCR，云端调用第三方 OCR API</span>
             </div>
-            <select v-model="settings.ocr.mode" @change="onOcrModeChange">
-              <option value="local">本地 (PaddleOCR)</option>
-              <option value="cloud">云端 (百度 OCR)</option>
+            <select v-model="settings.ocr.engine" @change="saveSettings">
+              <option value="paddle">本地 (PaddleOCR)</option>
+              <option value="baidu">百度云 OCR</option>
+              <option value="tencent">腾讯云 OCR</option>
+              <option value="aliyun">阿里云 OCR</option>
             </select>
           </div>
-          <div v-if="settings.ocr.mode === 'cloud'" class="setting-row">
-            <div class="setting-info">
-              <span class="setting-name">API Key</span>
-              <span class="setting-desc">百度 OCR API Key</span>
+          
+          <template v-if="settings.ocr.engine === 'baidu'">
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">API Key</span>
+                <span class="setting-desc">百度云 OCR API Key</span>
+              </div>
+              <input type="text" v-model="settings.ocr.baidu.apiKey" @change="saveSettings" placeholder="请输入 API Key" />
             </div>
-            <input
-              type="text"
-              v-model="settings.ocr.cloud.apiKey"
-              @change="saveSettings"
-              placeholder="请输入 API Key"
-            />
-          </div>
-          <div v-if="settings.ocr.mode === 'cloud'" class="setting-row">
-            <div class="setting-info">
-              <span class="setting-name">Secret Key</span>
-              <span class="setting-desc">百度 OCR Secret Key</span>
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">Secret Key</span>
+                <span class="setting-desc">百度云 OCR Secret Key</span>
+              </div>
+              <input type="password" v-model="settings.ocr.baidu.secretKey" @change="saveSettings" placeholder="请输入 Secret Key" />
             </div>
-            <input
-              type="password"
-              v-model="settings.ocr.cloud.secretKey"
-              @change="saveSettings"
-              placeholder="请输入 Secret Key"
-            />
-          </div>
-          <div v-if="settings.ocr.mode === 'cloud'" class="setting-row">
-            <div class="setting-info">
-              <span class="setting-name">超时时间</span>
-              <span class="setting-desc">云端请求超时时间 ({{ settings.ocr.cloud.timeout }}ms)</span>
+          </template>
+          <template v-if="settings.ocr.engine === 'aliyun'">
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">AccessKey ID</span>
+                <span class="setting-desc">阿里云 RAM 用户 AccessKey ID</span>
+              </div>
+              <input type="text" v-model="settings.ocr.aliyun.accessKeyId" @change="saveSettings" placeholder="请输入 AccessKey ID" />
             </div>
-            <select v-model.number="settings.ocr.cloud.timeout" @change="saveSettings">
-              <option :value="5000">5秒</option>
-              <option :value="10000">10秒</option>
-              <option :value="15000">15秒</option>
-              <option :value="30000">30秒</option>
-            </select>
-          </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">AccessKey Secret</span>
+                <span class="setting-desc">阿里云 RAM 用户 AccessKey Secret</span>
+              </div>
+              <input type="password" v-model="settings.ocr.aliyun.accessKeySecret" @change="saveSettings" placeholder="请输入 AccessKey Secret" />
+            </div>
+          </template>
+          <template v-if="settings.ocr.engine === 'tencent'">
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">SecretId</span>
+                <span class="setting-desc">腾讯云 API 密钥 SecretId</span>
+              </div>
+              <input type="text" v-model="settings.ocr.tencent.secretId" @change="saveSettings" placeholder="请输入 SecretId" />
+            </div>
+            <div class="setting-row">
+              <div class="setting-info">
+                <span class="setting-name">SecretKey</span>
+                <span class="setting-desc">腾讯云 API 密钥 SecretKey</span>
+              </div>
+              <input type="password" v-model="settings.ocr.tencent.secretKey" @change="saveSettings" placeholder="请输入 SecretKey" />
+            </div>
+          </template>
+          
           <div class="setting-row">
             <div class="setting-info">
               <span class="setting-name">识别语言</span>
@@ -188,6 +204,18 @@
               <option value="ch">中文</option>
               <option value="en">英文</option>
               <option value="ch_en">中英混合</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">超时时间</span>
+              <span class="setting-desc">云端请求超时时间 ({{ settings.ocr.timeout }}ms)</span>
+            </div>
+            <select v-model.number="settings.ocr.timeout" @change="saveSettings">
+              <option :value="5000">5秒</option>
+              <option :value="10000">10秒</option>
+              <option :value="15000">15秒</option>
+              <option :value="30000">30秒</option>
             </select>
           </div>
         </div>
@@ -443,8 +471,11 @@ const settings = reactive({
   sticky: { defaultOpacity: 100, edgeSnap: true, edgeSnapThreshold: 10, skipTaskbar: true },
   screenshot: { mode: 'shortcut', clipboardInterval: 1000, clipboardMinWidth: 50, clipboardMaxWidth: 500, clipboardMinHeight: 20, clipboardMaxHeight: 300 },
   ocr: {
-    mode: 'local',
-    cloud: { enabled: false, provider: 'baidu', apiKey: '', secretKey: '', timeout: 10000 },
+    engine: 'paddle',
+    timeout: 10000,
+    baidu: { apiKey: '', secretKey: '' },
+    aliyun: { accessKeyId: '', accessKeySecret: '' },
+    tencent: { secretId: '', secretKey: '' },
     language: 'ch'
   },
   yolo: { confThreshold: 0.5 },
@@ -488,11 +519,6 @@ async function onShortcutChange() {
   } catch (err) {
     console.error('更新快捷键失败:', err)
   }
-}
-
-function onOcrModeChange() {
-  settings.ocr.cloud.enabled = settings.ocr.mode === 'cloud'
-  saveSettings()
 }
 
 function onYoloConfChange() {
@@ -634,7 +660,6 @@ async function reloadSettings() {
 
 onMounted(async () => {
   await reloadSettings()
-  settings.ocr.cloud.enabled = settings.ocr.mode === 'cloud'
   applyTheme(settings.general.theme)
   watchSystemTheme()
 })
