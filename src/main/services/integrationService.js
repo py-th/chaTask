@@ -119,6 +119,7 @@ async function integrateExtractionResults(avatarTextResult, senderDateResult, sc
     success: messages.length > 0,
     messages: messages,
     localImageBase64: screenshotData.localImageBuffer.toString('base64'),
+    fullWindowBase64: screenshotData.fullWindowBuffer ? screenshotData.fullWindowBuffer.toString('base64') : null,
     screenshotInfo: {
       windowName: screenshotData.windowName,
       region: screenshotData.region

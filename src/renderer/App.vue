@@ -29,7 +29,16 @@
 
           <fieldset v-if="latestScreenshot" class="screenshot-preview card">
             <legend>截图预览：提取到 {{ lastResult.rawResults?.avatarText?.messageCount || 0 }} 条消息</legend>
-            <img :src="latestScreenshot" style="max-width: 300px; max-height: 200px;" />
+            <div style="display: flex; gap: 12px; align-items: flex-start;">
+              <div>
+                <p style="font-size: 12px; color: #999; margin: 0 0 4px 0;">局部截图</p>
+                <img :src="latestScreenshot" style="max-width: 280px; max-height: 180px; border: 1px solid #ddd; border-radius: 4px;" />
+              </div>
+              <div v-if="fullWindowScreenshot">
+                <p style="font-size: 12px; color: #999; margin: 0 0 4px 0;">完整窗口</p>
+                <img :src="fullWindowScreenshot" style="max-width: 280px; max-height: 180px; border: 1px solid #ddd; border-radius: 4px;" />
+              </div>
+            </div>
             <div v-if="lastResult" class="preview-stats">
               <p>头像/文本模型：{{ lastResult.rawDetections?.avatars || 0 }} 个头像，{{ lastResult.rawDetections?.texts || 0 }} 个文本框</p>
               <p>发送者/日期模型：{{ lastResult.rawResults?.senderDate?.senderCount || 0 }} 个发送者，{{ lastResult.rawResults?.senderDate?.dateCount || 0 }} 个日期</p>
@@ -119,6 +128,7 @@ const statusCounts = reactive({
 const screenshotMode = ref('shortcut')
 const processing = ref(false)
 const latestScreenshot = ref(null)
+const fullWindowScreenshot = ref(null)
 const lastResult = ref(null)
 
 let unsubscribeIntegrated = null
@@ -129,6 +139,7 @@ function switchView(viewId) {
 
 async function quickScreenshot() {
   try {
+    await window.electronAPI.minimizeWindow()
     await window.electronAPI.startDoubleScreenshot()
   } catch (err) {
     console.error('启动截图失败:', err)
@@ -159,6 +170,7 @@ async function onIntegratedExtractionResult(data) {
   processing.value = false
 
   if (!data.success) {
+    await window.electronAPI.showMainWindow()
     await window.$confirm({
       title: '识别失败',
       message: `原因: ${data.error || '模型未检测到有效内容'}`,
@@ -174,8 +186,14 @@ async function onIntegratedExtractionResult(data) {
   if (data.localImageBase64) {
     latestScreenshot.value = `data:image/png;base64,${data.localImageBase64}`
   }
+  if (data.fullWindowBase64) {
+    fullWindowScreenshot.value = `data:image/png;base64,${data.fullWindowBase64}`
+  } else {
+    fullWindowScreenshot.value = null
+  }
 
   if (!data.messages || data.messages.length === 0) {
+    await window.electronAPI.showMainWindow()
     await window.$confirm({
       title: '识别失败',
       message: '未识别到有效的消息内容',

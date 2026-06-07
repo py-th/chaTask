@@ -109,6 +109,13 @@ app.whenReady().then(async () => {
 
   registerIpcHandlers(mainWindow, stickyManager, screenshotUtils, reminderService);
 
+  ipcMain.handle('minimize-main-window', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.minimize();
+    }
+    return true;
+  });
+
   ipcMain.handle('show-main-window', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.setSkipTaskbar(false);
@@ -197,10 +204,20 @@ app.whenReady().then(async () => {
         if (unconfirmed.length > 0) {
           try {
             const contacts = db.prepare('SELECT * FROM contacts').all();
+            const screenshotInfo = {
+              localImageBase64: integratedData.localImageBase64,
+              messageCount: integratedData.messages?.length || 0,
+              avatarCount: integratedData.rawDetections?.avatars || 0,
+              textCount: integratedData.rawDetections?.texts || 0,
+              senderCount: integratedData.rawResults?.senderDate?.senderCount || 0,
+              dateCount: integratedData.rawResults?.senderDate?.dateCount || 0,
+              windowName: integratedData.screenshotInfo?.windowName || 'Unknown'
+            };
             const dialogResult = await showNameDialog(
               unconfirmed,
               contacts,
-              integratedData.screenshotInfo?.windowName || 'Unknown'
+              integratedData.screenshotInfo?.windowName || 'Unknown',
+              screenshotInfo
             );
             if (dialogResult && dialogResult.results && dialogResult.results.length > 0) {
               for (const item of dialogResult.results) {

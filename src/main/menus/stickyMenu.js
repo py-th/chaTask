@@ -141,7 +141,13 @@ class StickyMenu {
       {
         label: '便签管理器',
         click: () => {
-          console.log('打开便签管理器');
+          if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+            if (this.mainWindow.isMinimized()) {
+              this.mainWindow.restore();
+            }
+            this.mainWindow.show();
+            this.mainWindow.focus();
+          }
         }
       },
       {

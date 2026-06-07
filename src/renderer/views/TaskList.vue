@@ -63,9 +63,9 @@
               <div class="task-card-meta">
                 <span :class="getStatusTag(task)">{{ statusText(task.status) }}</span>
                 <span :class="getPriorityTag(task)">{{ priorityText(task.priority) }}</span>
-                <span v-if="task.reminder_enabled === 1">🔔</span>
-                <span v-if="task.is_show_desk === 1">📌</span>
-                <span v-if="task.source">来自：{{ task.source }}</span>
+                <span class="tag tag-pending" v-if="task.reminder_enabled === 1" >🔔</span>
+                <span class="tag tag-pending" v-if="task.is_show_desk === 1" >📌</span>
+                <span class="tag tag-pending"v-if="task.source">{{ task.source }}</span>
                 <span v-if="task.due_date">截止: {{ formatDate(task.due_date) }}</span>
                 <span>创建: {{ formatDate(task.created_at) }}</span>
                 <span v-if="task.status === 'completed' && task.completed_at">完成: {{ formatDate(task.completed_at) }}</span>
@@ -651,6 +651,7 @@ function getStatusTag(task) {
   if (task.is_completed === 1) return 'tag tag-done'
   if (task.status === 'overdue') return 'tag tag-overdue'
   if (task.status === 'in_progress') return 'tag tag-medium'
+  if (task.status === 'pending') return 'tag tag-pending'
   return 'tag'
 }
 
@@ -659,7 +660,7 @@ function getPriorityTag(task) {
     case 'high': return 'tag tag-high'
     case 'medium': return 'tag tag-medium'
     case 'low': return 'tag tag-low'
-    default: return 'tag'
+    default: return 'tag tag-pending'
   }
 }
 

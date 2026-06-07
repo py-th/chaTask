@@ -43,7 +43,7 @@
           </div>
           <!-- 悬浮操作按钮 -->
           <div class="contact-card-actions">
-            <button class="btn btn-xs btn-outline" @click.stop="openEditModal(contact)">✏️</button>
+            <button class="btn btn-xs btn-edit" @click.stop="openEditModal(contact)">✏️</button>
             <button class="btn btn-xs btn-danger" @click.stop="confirmDeleteContact(contact)">🗑️</button>
           </div>
         </div>
@@ -140,26 +140,32 @@
                     @keydown.esc="cancelTaskEdit"
                   />
                 </div>
-                <button
-                  v-show="hoveredTaskId === task.id && editingTaskId !== task.id && task.is_completed !== 1"
-                  class="btn btn-xs btn-success task-action-btn"
-                  @click.stop="completeTask(task)"
-                >
-                  ✅
-                </button>
-                <button
+                <div
                   v-show="hoveredTaskId === task.id && editingTaskId !== task.id"
-                  class="btn btn-xs btn-danger task-action-btn"
-                  @click.stop="deleteTask(task)"
+                  class="task-actions"
                 >
-                  🗑️
-                </button>
+                  <button
+                    v-if="task.is_completed !== 1"
+                    class="btn btn-xs btn-success task-action-btn"
+                    @click.stop="completeTask(task)"
+                  >
+                    ✅
+                  </button>
+                  <button
+                    v-if="task.is_deleted !== 1"
+                    class="btn btn-xs btn-danger task-action-btn"
+                    @click.stop="deleteTask(task)"
+                  >
+                    🗑️
+                  </button>
+                </div>
               </div>
               <div class="task-card-meta">
-                <span :class="getStatusTag(task)">{{ statusText(task.status) }}</span>
-                <span :class="getPriorityTag(task)">{{ priorityText(task.priority) }}</span>
-                <span v-if="task.due_date">📅 截止: {{ formatDate(task.due_date) }}</span>
-                <span>🕐 {{ formatDate(task.created_at) }}</span>
+                <span>创建: {{ formatDate(task.created_at) }}</span>
+                <span v-if="task.due_date">截止: {{ formatDate(task.due_date) }}</span>
+                <span v-if="task.completed_at">完成: {{ formatDate(task.completed_at) }}</span>
+                <span v-if="task.is_completed === 1">已完成</span>
+                <span v-if="task.is_deleted === 1">已删除</span>
               </div>
             </div>
           </div>
@@ -634,7 +640,7 @@ onUnmounted(() => {
 /* 悬浮操作按钮 */
 .contact-card-actions {
   position: absolute;
-  top: 8px;
+  bottom: 8px;
   right: 8px;
   display: flex;
   gap: 6px;
@@ -700,7 +706,7 @@ onUnmounted(() => {
 }
 
 .modal-body .task-card {
-  padding: 12px;
+  padding: 10px;
   position: relative;
 }
 
@@ -709,13 +715,13 @@ onUnmounted(() => {
   line-height: 1.5;
   word-break: break-all;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
 }
 
 .task-index {
   display: inline-block;
-  min-width: 24px;
+  min-width: 5px;
   color: var(--color-text-secondary);
   font-weight: 600;
   margin-right: 4px;
@@ -749,9 +755,13 @@ onUnmounted(() => {
   box-sizing: border-box;
 }
 
-.task-action-btn {
-  flex-shrink: 0;
-  margin-left: 4px;
+.task-actions {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  z-index: 10;
 }
 
 .modal-body .task-card-meta {

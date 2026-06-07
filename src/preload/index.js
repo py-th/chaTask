@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   finishScreenshot: (region) => ipcRenderer.invoke('finish-screenshot', region),
   cancelScreenshot: () => ipcRenderer.send('cancel-screenshot'),
   startDoubleScreenshot: () => ipcRenderer.invoke('start-double-screenshot'),
+  minimizeWindow: () => ipcRenderer.invoke('minimize-main-window'),
   showMainWindow: () => ipcRenderer.invoke('show-main-window'),
   onDoubleScreenshotResult: (callback) => {
     ipcRenderer.on('double-screenshot-result', (event, data) => callback(data));

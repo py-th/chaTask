@@ -12,21 +12,28 @@ function showConfirmDialog(parentWindow, options = {}) {
     }
     currentResolve = resolve;
 
-    const dialogWin = new BrowserWindow({
+    const dialogOptions = {
       width: 400,
       height: 220,
-      parent: parentWindow,
-      modal: true,
       frame: false,
       transparent: true,
       skipTaskbar: false,
       resizable: false,
       show: false,
+      alwaysOnTop: true,
       webPreferences: {
         nodeIntegration: true,
         contextIsolation: false
       }
-    });
+    };
+
+    // 如果有父窗口且未销毁，设置为模态对话框
+    if (parentWindow && !parentWindow.isDestroyed()) {
+      dialogOptions.parent = parentWindow;
+      dialogOptions.modal = true;
+    }
+
+    const dialogWin = new BrowserWindow(dialogOptions);
 
     currentDialog = dialogWin;
 

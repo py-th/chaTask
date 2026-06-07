@@ -2,7 +2,7 @@ const { BrowserWindow, ipcMain, app } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
-function showNameDialog(messages, contacts, windowName) {
+function showNameDialog(messages, contacts, windowName, screenshotInfo) {
   return new Promise((resolve) => {
     const channel = 'name-dialog-result-' + Date.now();
     const tempDir = app.getPath('temp');
@@ -55,6 +55,7 @@ function showNameDialog(messages, contacts, windowName) {
     })));
 
     const imType = windowName || '未知来源';
+    const screenshotJson = JSON.stringify(screenshotInfo || {});
 
     const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>确认发送者信息</title><style>
@@ -113,6 +114,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .btn-confirm:hover { background: #FFB300; }
 .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: none; z-index: 50; }
 .overlay.show { display: block; }
+
+/* 截图预览折叠面板 */
+.screenshot-collapse { margin-top: 8px; border: 1px solid #eee; border-radius: 6px; overflow: hidden; }
+.screenshot-collapse-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: #fafafa; cursor: pointer; font-size: 13px; color: #666; }
+.screenshot-collapse-header:hover { background: #f5f5f5; }
+.screenshot-collapse-header .collapse-title { display: flex; align-items: center; gap: 6px; }
+.screenshot-collapse-header .collapse-arrow { transition: transform 0.2s; font-size: 11px; }
+.screenshot-collapse-header.open .collapse-arrow { transform: rotate(90deg); }
+.screenshot-collapse-body { display: none; padding: 12px; background: #fafafa; border-top: 1px solid #eee; }
+.screenshot-collapse-body.open { display: block; }
+.screenshot-collapse-body img { max-width: 100%; max-height: 180px; border-radius: 4px; border: 1px solid #ddd; display: block; margin-bottom: 8px; }
+.screenshot-stats { font-size: 12px; color: #666; line-height: 1.8; }
+.screenshot-stats p { margin: 0; }
 </style></head><body>
 <div class="dialog-container">
 <div class="dialog-header"><span class="dialog-title">确认发送者信息</span><button class="dialog-close" onclick="window.__cancel()">×</button></div>
@@ -135,6 +149,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     var _channel = '${channel}';
     var _defaultAvatar = "${defaultAvatar}";
     var _imType = "${imType}";
+    var _screenshotInfo = ${screenshotJson};
     var _ipc = null;
     try {
       _ipc = require('electron').ipcRenderer;
@@ -167,6 +182,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
       var originalSenderName = m.senderName || '未知';
 
+      var screenshotHtml = '';
+      if(_screenshotInfo && _screenshotInfo.localImageBase64){
+        var msgCount = _screenshotInfo.messageCount || 0;
+        var avatarCount = _screenshotInfo.avatarCount || 0;
+        var textCount = _screenshotInfo.textCount || 0;
+        var senderCount = _screenshotInfo.senderCount || 0;
+        var dateCount = _screenshotInfo.dateCount || 0;
+        var srcWindow = _screenshotInfo.windowName || '未知';
+        screenshotHtml =
+          '<div class="screenshot-collapse">'+
+            '<div class="screenshot-collapse-header" id="screenshotHeader" onclick="window.__toggleScreenshot()">'+
+              '<span class="collapse-title">📷 截图预览 <span style="color:#999;font-size:12px;">(点击展开)</span></span>'+
+              '<span class="collapse-arrow">▶</span>'+
+            '</div>'+
+            '<div class="screenshot-collapse-body" id="screenshotBody">'+
+              '<img src="data:image/png;base64,'+_screenshotInfo.localImageBase64+'">'+
+              '<div class="screenshot-stats">'+
+                '<p>提取到 '+msgCount+' 条消息</p>'+
+                '<p>头像/文本模型识别：'+avatarCount+' 个头像，'+textCount+' 个文本框</p>'+
+                '<p>发送者/日期模型识别：'+senderCount+' 个发送者，'+dateCount+' 个日期</p>'+
+                '<p>来源窗口: '+e(srcWindow)+'</p>'+
+              '</div>'+
+            '</div>'+
+          '</div>';
+      }
+
       body.innerHTML=
         '<textarea class="msg-textarea" id="msgText">'+e(m.text)+'</textarea>'+
         '<div class="info-row">'+
@@ -189,7 +230,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
             '<span class="info-label">消息发送日期：</span>'+
             '<span class="info-value">'+(rawDate?e(rawDate)+' ('+sourceDate+')':'无')+'</span>'+
           '</div>'+
-        '</div>';
+        '</div>'+
+        screenshotHtml;
 
       renderContactOptions();
 
@@ -261,6 +303,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       closeDropdown();
     }
 
+    function toggleScreenshot(){
+      var header=document.getElementById('screenshotHeader');
+      var body=document.getElementById('screenshotBody');
+      if(!header || !body) return;
+      if(body.classList.contains('open')){
+        body.classList.remove('open');
+        header.classList.remove('open');
+      }else{
+        body.classList.add('open');
+        header.classList.add('open');
+      }
+    }
+
     function formatDateTime(isoStr){
       try{
         var d=new Date(isoStr);
@@ -327,6 +382,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     window.__toggleDropdown = toggleDropdown;
     window.__closeDropdown = closeDropdown;
     window.__selectContact = selectContact;
+    window.__toggleScreenshot = toggleScreenshot;
     window.__confirmAll = confirmAll;
     window.__cancel = cancel;
 
