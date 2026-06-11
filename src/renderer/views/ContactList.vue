@@ -122,7 +122,7 @@
               @mouseleave="hoveredTaskId = null"
             >
               <div class="task-card-content">
-                <span class="task-index">{{ index + 1 }}.</span>
+                <span class="task-index">{{ index + 1 }}</span>
                 <div class="task-text-wrapper" style="flex: 1;">
                   <span
                     v-if="editingTaskId !== task.id"
@@ -282,14 +282,14 @@ async function submitContact() {
         id: editingContactId.value,
         name: modalContact.value.name.trim(),
         avatarBase64: modalContact.value.avatarBase64 || '',
-        source: modalContact.value.source.trim() || 'manual',
+        source: modalContact.value.source.trim() || 'unknow',
         remark: modalContact.value.remark.trim() || ''
       })
     } else {
       result = await window.electronAPI.createContact({
         name: modalContact.value.name.trim(),
         avatarBase64: modalContact.value.avatarBase64 || '',
-        source: modalContact.value.source.trim() || 'manual',
+        source: modalContact.value.source.trim() || 'unknow',
         remark: modalContact.value.remark.trim() || ''
       })
     }
@@ -720,11 +720,17 @@ onUnmounted(() => {
 }
 
 .task-index {
-  display: inline-block;
-  min-width: 5px;
-  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
   font-weight: 600;
-  margin-right: 4px;
+  font-size: var(--font-size-sm);
+  margin-right: 8px;
   flex-shrink: 0;
 }
 

@@ -201,8 +201,12 @@ app.whenReady().then(async () => {
       );
 
       if (integratedData.success && integratedData.messages) {
+        const confirmMode = effectiveConfig.screenshot?.confirmMode || 'on_mismatch';
         const unconfirmed = integratedData.messages.filter(m => m.isNewContact || !m.senderName);
-        if (unconfirmed.length > 0) {
+        const shouldShowDialog = confirmMode === 'always' || unconfirmed.length > 0;
+        const dialogMessages = confirmMode === 'always' ? integratedData.messages : unconfirmed;
+
+        if (shouldShowDialog && dialogMessages.length > 0) {
           try {
             const contacts = db.prepare('SELECT * FROM contacts').all();
             const screenshotInfo = {
@@ -215,7 +219,7 @@ app.whenReady().then(async () => {
               windowName: integratedData.screenshotInfo?.windowName || 'Unknown'
             };
             const dialogResult = await showNameDialog(
-              unconfirmed,
+              dialogMessages,
               contacts,
               integratedData.screenshotInfo?.windowName || 'Unknown',
               screenshotInfo

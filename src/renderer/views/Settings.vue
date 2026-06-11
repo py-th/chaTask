@@ -28,6 +28,16 @@
           </div>
           <div class="setting-row">
             <div class="setting-info">
+              <span class="setting-name">截图确认模式</span>
+              <span class="setting-desc">识别成功后何时弹出确认对话框</span>
+            </div>
+            <select v-model="settings.screenshot.confirmMode" @change="saveSettings">
+              <option value="on_mismatch">仅匹配不到联系人时</option>
+              <option value="always">每次都确认</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
               <span class="setting-name">外观主题</span>
               <span class="setting-desc">切换主界面的颜色主题</span>
             </div>
@@ -469,7 +479,7 @@ const dataMsgType = ref('success')
 const settings = reactive({
   general: { autoLaunch: false, minimizeToTray: true, theme: 'system' },
   sticky: { defaultOpacity: 100, edgeSnap: true, edgeSnapThreshold: 10, skipTaskbar: true },
-  screenshot: { mode: 'shortcut', clipboardInterval: 1000, clipboardMinWidth: 50, clipboardMaxWidth: 500, clipboardMinHeight: 20, clipboardMaxHeight: 300 },
+  screenshot: { mode: 'shortcut', confirmMode: 'on_mismatch', clipboardInterval: 1000, clipboardMinWidth: 50, clipboardMaxWidth: 500, clipboardMinHeight: 20, clipboardMaxHeight: 300 },
   ocr: {
     engine: 'paddle',
     timeout: 10000,

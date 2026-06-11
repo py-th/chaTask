@@ -12,7 +12,7 @@ function saveContact(contact) {
     INSERT OR REPLACE INTO contacts (name, avatar_hash, avatar_base64, source, remark)
     VALUES (?, ?, ?, ?, ?)
   `);
-  return stmt.run(contact.name, contact.avatarHash, contact.avatarBase64, contact.source || 'manual', contact.remark || null);
+  return stmt.run(contact.name, contact.avatarHash, contact.avatarBase64, contact.source || 'unknow', contact.remark || null);
 }
 
 function createContact(contact) {
@@ -20,7 +20,7 @@ function createContact(contact) {
     INSERT INTO contacts (name, avatar_hash, avatar_base64, source, remark)
     VALUES (?, ?, ?, ?, ?)
   `);
-  return stmt.run(contact.name, contact.avatarHash, contact.avatarBase64, contact.source || 'manual', contact.remark || null);
+  return stmt.run(contact.name, contact.avatarHash, contact.avatarBase64, contact.source || 'unknow', contact.remark || null);
 }
 
 /**

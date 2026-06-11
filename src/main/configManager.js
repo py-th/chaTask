@@ -65,6 +65,7 @@ const userDefaults = {
   },
   screenshot: {
     mode: 'shortcut',
+    confirmMode: 'on_mismatch',
     clipboardInterval: 1000,
     clipboardMinWidth: 50,
     clipboardMaxWidth: 500,

@@ -87,7 +87,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // 提醒设置
-  openReminderDialog: (taskId) => ipcRenderer.send('open-reminder-dialog', { taskId }),
+  openReminderDialog: (taskId, noteId) => ipcRenderer.send('open-reminder-dialog', { taskId, noteId }),
   getReminderRule: (taskId) => ipcRenderer.invoke('get-reminder-rule', taskId),
 
   // 自动更新

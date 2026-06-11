@@ -11,6 +11,10 @@
           />
         </div>
         <div class="toolbar-actions">
+          <select v-model="filterSource" @change="onSourceFilterChange">
+            <option value="">全部来源</option>
+            <option v-for="s in sourceOptions" :key="s.value" :value="s.value">{{ s.value }} ({{ s.count }})</option>
+          </select>
           <select v-model="sortBy" @change="loadTasks">
             <option value="created_at_desc">创建时间(新→旧)</option>
             <option value="created_at_asc">创建时间(旧→新)</option>
@@ -196,6 +200,7 @@ const allTasks = ref([])
 const currentFilter = ref('all')
 const searchKeyword = ref('')
 const sortBy = ref('created_at_desc')
+const filterSource = ref('')
 const selectedIds = ref(new Set())
 const showDetail = ref(false)
 const detailTask = ref(null)
@@ -244,6 +249,9 @@ async function handleContextMenuAction({ type, task }) {
     case 'hideFromDesktop':
       await removeFromDesktop(task)
       break
+    case 'copyText':
+      await copyTaskText(task)
+      break
     case 'priority':
       // 优先级在详情中设置
       openDetail(task)
@@ -286,14 +294,23 @@ async function softDeleteTask(task) {
 
 const quickFilters = [
   { key: 'all', label: '全部' },
+  { key: 'desktop', label: '桌面便签' },
   { key: 'pending', label: '待办' },
   { key: 'in_progress', label: '进行中' },
   { key: 'overdue', label: '逾期' },
   { key: 'high', label: '高优先' },
   { key: 'completed', label: '已完成' },
-  { key: 'desktop', label: '桌面便签' },
   { key: 'deleted', label: '回收站' }
 ]
+
+// 动态获取来源选项（包含数量）
+const sourceOptions = computed(() => {
+  const sources = new Set(allTasks.value.map(t => t.source).filter(Boolean))
+  return Array.from(sources).map(s => ({
+    value: s,
+    count: allTasks.value.filter(t => t.source === s && t.is_deleted !== 1).length
+  }))
+})
 
 function getFilterCount(key) {
   switch (key) {
@@ -311,6 +328,11 @@ function getFilterCount(key) {
 
 const filteredTasks = computed(() => {
   let tasks = [...allTasks.value]
+
+  // 来源过滤（独立于状态过滤器）
+  if (filterSource.value) {
+    tasks = tasks.filter(t => t.source === filterSource.value)
+  }
 
   // 回收站只显示已删除任务，其它过滤器排除已删除任务
   switch (currentFilter.value) {
@@ -360,6 +382,10 @@ function onSearchInput() {
   selectedIds.value.clear()
 }
 
+function onSourceFilterChange() {
+  // 来源过滤通过 computed 属性自动处理
+}
+
 async function loadTasks() {
   try {
     const [normal, completed, deleted] = await Promise.all([
@@ -368,6 +394,16 @@ async function loadTasks() {
       window.electronAPI.getDeletedTasks()
     ])
     allTasks.value = [...normal, ...completed, ...deleted]
+
+    // 如果详情面板打开，刷新详情中的提醒规则
+    if (showDetail.value && detailTask.value) {
+      try {
+        const rule = await window.electronAPI.getReminderRule(detailTask.value.id)
+        detailTask.value.reminderRule = rule || null
+      } catch (e) {
+        console.error('刷新提醒规则失败:', e)
+      }
+    }
   } catch (err) {
     console.error('加载任务失败:', err)
   }
@@ -514,6 +550,15 @@ async function removeFromDesktop(task) {
     window.electronAPI.send('hide-note', { id: task.id, taskId: task.id })
     await loadTasks()
   } catch (e) { console.error(e) }
+}
+
+async function copyTaskText(task) {
+  try {
+    await navigator.clipboard.writeText(task.content)
+    console.log('任务文本已复制到剪贴板')
+  } catch (err) {
+    console.error('复制失败:', err)
+  }
 }
 
 async function createSticky(task) {

@@ -145,6 +145,16 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
       }
       reminderDialogWindows.delete(taskId);
     }
+
+    // 如果没有传递 noteId，通过 taskId 查找对应的便签
+    if (!noteId) {
+      for (const [id, note] of stickyManager.notes.entries()) {
+        if (note.taskId === taskId) {
+          noteId = id;
+          break;
+        }
+      }
+    }
     
     // 获取现有规则
     const existingRule = getReminderRuleByTaskId(taskId);

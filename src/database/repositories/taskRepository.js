@@ -15,7 +15,7 @@ function insertTask(task) {
   const createdAt = task.createdAt ? (task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt) : new Date().toISOString();
   return stmt.run(
     id,
-    task.source || 'manual',
+    task.source || 'unknow',
     task.senderAvatar || '',
     task.senderName || '',
     task.content,

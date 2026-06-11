@@ -66,7 +66,7 @@ function registerContactHandlers() {
         name: trimmedName,
         avatarHash,
         avatarBase64: processedBase64,
-        source: source || 'manual',
+        source: source || 'unknow',
         remark: remark || null
       });
       return { success: true, contactId: result.lastInsertRowid };
@@ -108,7 +108,7 @@ function registerContactHandlers() {
 
       const updates = {
         name: trimmedName,
-        source: source || 'manual',
+        source: source || 'unknow',
         remark: remark || null
       };
       if (processedBase64) {

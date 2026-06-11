@@ -29,6 +29,30 @@ function getNotificationIconPath() {
   return null;
 }
 
+function getStickyIconPath() {
+  if (process.resourcesPath) {
+    const prodPath = path.join(process.resourcesPath, 'resource', 'tray_icon48.png');
+    if (fs.existsSync(prodPath)) {
+      return prodPath;
+    }
+  }
+  const devPath = path.join(process.cwd(), 'public', 'resource', 'tray_icon48.png');
+  if (fs.existsSync(devPath)) {
+    return devPath;
+  }
+  if (process.resourcesPath) {
+    const prodPath32 = path.join(process.resourcesPath, 'resource', 'tray_icon32.png');
+    if (fs.existsSync(prodPath32)) {
+      return prodPath32;
+    }
+  }
+  const devPath32 = path.join(process.cwd(), 'public', 'resource', 'tray_icon32.png');
+  if (fs.existsSync(devPath32)) {
+    return devPath32;
+  }
+  return null;
+}
+
 let notificationIconPath = getNotificationIconPath();
 
 class ReminderService {
@@ -380,6 +404,7 @@ class ReminderService {
       alwaysOnTop: true,
       skipTaskbar: false,
       show: false,
+      icon: getStickyIconPath(),
       webPreferences: {
         nodeIntegration: true,
         contextIsolation: false

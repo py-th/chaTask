@@ -80,6 +80,13 @@ const menuItems = computed(() => {
       visible: !isDeleted && isOnDesktop
     },
     { type: 'separator' },
+    // 复制文本
+    {
+      icon: '📄',
+      label: '复制文本',
+      action: 'copyText',
+      visible: true
+    },
     // 提醒设置
     {
       icon: '🔔',

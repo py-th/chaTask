@@ -15,7 +15,7 @@ db.exec(`DROP TABLE IF EXISTS contacts`); */
 db.exec(`
   CREATE TABLE IF NOT EXISTS tasks (
     id TEXT PRIMARY KEY,                    -- UUID 唯一标识
-    source TEXT DEFAULT 'manual',           -- 来源: wechat/feishu/dingtalk/manual
+    source TEXT DEFAULT 'unknow',           -- 来源: wechat/feishu/dingtalk/unknow
     sender_avatar TEXT,                     -- 发送者头像 base64
     sender_name TEXT,                       -- 发送者名称
     content TEXT NOT NULL,                  -- 任务内容
@@ -131,7 +131,7 @@ db.exec(`
     name TEXT UNIQUE,
     avatar_hash TEXT,
     avatar_base64 TEXT,
-    source TEXT DEFAULT 'manual',           -- 联系人来源
+    source TEXT DEFAULT 'unknow',           -- 联系人来源
     remark TEXT,                            -- 备注
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
   )

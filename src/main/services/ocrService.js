@@ -66,6 +66,69 @@ let accessTokenCache = {
 // ============================================================
 
 let rapidOcrInstance = null;
+
+/**
+ * 判断是否为网络相关错误
+ */
+function isNetworkRelatedError(err) {
+  const message = (err.message || '').toLowerCase();
+  const code = (err.code || '').toLowerCase();
+  return code === 'econnrefused' || 
+         code === 'enetunreach' || 
+         code === 'ehostunreach' ||
+         code === 'enotfound' ||
+         code === 'enetreset' ||
+         code === 'econnreset' ||
+         message.includes('network') ||
+         message.includes('connection') ||
+         message.includes('网络');
+}
+
+/**
+ * 判断是否为配置相关错误
+ */
+function isConfigRelatedError(err) {
+  const message = (err.message || '').toLowerCase();
+  return message.includes('未配置') || 
+         message.includes('配置') ||
+         message.includes('api key') ||
+         message.includes('secret key') ||
+         message.includes('accesskey') ||
+         message.includes('access_key') ||
+         message.includes('invalid') ||
+         message.includes('unauthorized') ||
+         message.includes('auth');
+}
+
+/**
+ * 判断是否为超时相关错误
+ */
+function isTimeoutRelatedError(err) {
+  const message = (err.message || '').toLowerCase();
+  const code = (err.code || '').toLowerCase();
+  const name = (err.name || '').toLowerCase();
+  return code === 'etimedout' ||
+         code === 'econnaborted' ||
+         name === 'timeouterror' ||
+         name === 'abort' ||
+         message.includes('timeout') ||
+         message.includes('超时') ||
+         message.includes('timed out');
+}
+
+/**
+ * 判断是否为API限制相关错误
+ */
+function isApiLimitError(err) {
+  const message = (err.message || '').toLowerCase();
+  return message.includes('qps') ||
+         message.includes('limit') ||
+         message.includes('quota') ||
+         message.includes('rate') ||
+         message.includes('请求过于频繁') ||
+         message.includes('频率限制');
+}
+
 /**
  * 初始化 OCR 服务（主进程调用，不阻塞渲染进程）
  */
@@ -158,11 +221,31 @@ async function recognizeTextFromRegion(imageBuffer, region) {
       console.log('[OCR] ✅ 云端识别成功');
       return result;
     } catch (err) {
-      // 错误分类
-      const isNetworkError = isNetworkRelatedError(err);
-      const isConfigError = isConfigRelatedError(err);
-      const isTimeoutError = isTimeoutRelatedError(err);
-      const isApiLimitError = isApiLimitError(err);
+      // 错误分类 - 内联定义以避免函数顺序问题
+      const msg = (err.message || '').toLowerCase();
+      const code = (err.code || '').toLowerCase();
+      const name = (err.name || '').toLowerCase();
+      
+      const isNetworkError = code === 'econnrefused' || code === 'enetunreach' || 
+                             code === 'ehostunreach' || code === 'enotfound' ||
+                             code === 'enetreset' || code === 'econnreset' ||
+                             msg.includes('network') || msg.includes('connection') ||
+                             msg.includes('网络');
+      
+      const isConfigError = msg.includes('未配置') || msg.includes('配置') ||
+                            msg.includes('api key') || msg.includes('secret key') ||
+                            msg.includes('accesskey') || msg.includes('access_key') ||
+                            msg.includes('invalid') || msg.includes('unauthorized') ||
+                            msg.includes('auth');
+      
+      const isTimeoutError = code === 'etimedout' || code === 'econnaborted' ||
+                             name === 'timeouterror' || name === 'abort' ||
+                             msg.includes('timeout') || msg.includes('超时') ||
+                             msg.includes('timed out');
+      
+      const isApiLimitError = msg.includes('qps') || msg.includes('limit') ||
+                              msg.includes('quota') || msg.includes('rate') ||
+                              msg.includes('请求过于频繁') || msg.includes('频率限制');
       
       // 构建详细错误信息
       const errorCategory = isNetworkError ? '[网络错误]' : 
@@ -182,68 +265,6 @@ async function recognizeTextFromRegion(imageBuffer, region) {
     // 未启用云端或选择本地，直接使用本地 RapidOCR
     return await recognizeWithRapidOCR(croppedBuffer, width, height);
   }
-}
-
-/**
- * 判断是否为网络相关错误
- */
-function isNetworkRelatedError(err) {
-  const message = (err.message || '').toLowerCase();
-  const code = (err.code || '').toLowerCase();
-  return code === 'econnrefused' || 
-         code === 'enetunreach' || 
-         code === 'ehostunreach' ||
-         code === 'enotfound' ||
-         code === 'enetreset' ||
-         code === 'econnreset' ||
-         message.includes('network') ||
-         message.includes('connection') ||
-         message.includes('网络');
-}
-
-/**
- * 判断是否为配置相关错误
- */
-function isConfigRelatedError(err) {
-  const message = (err.message || '').toLowerCase();
-  return message.includes('未配置') || 
-         message.includes('配置') ||
-         message.includes('api key') ||
-         message.includes('secret key') ||
-         message.includes('accesskey') ||
-         message.includes('access_key') ||
-         message.includes('invalid') ||
-         message.includes('unauthorized') ||
-         message.includes('auth');
-}
-
-/**
- * 判断是否为超时相关错误
- */
-function isTimeoutRelatedError(err) {
-  const message = (err.message || '').toLowerCase();
-  const code = (err.code || '').toLowerCase();
-  const name = (err.name || '').toLowerCase();
-  return code === 'etimedout' ||
-         code === 'econnaborted' ||
-         name === 'timeouterror' ||
-         name === 'abort' ||
-         message.includes('timeout') ||
-         message.includes('超时') ||
-         message.includes('timed out');
-}
-
-/**
- * 判断是否为API限制相关错误
- */
-function isApiLimitError(err) {
-  const message = (err.message || '').toLowerCase();
-  return message.includes('qps') ||
-         message.includes('limit') ||
-         message.includes('quota') ||
-         message.includes('rate') ||
-         message.includes('请求过于频繁') ||
-         message.includes('频率限制');
 }
 
 /**
