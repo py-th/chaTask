@@ -58,6 +58,7 @@
     />
 
     <ConfirmDialog ref="confirmDialogRef" />
+    <GlobalToast ref="globalToastRef" />
   </div>
 </template>
 
@@ -68,6 +69,8 @@ import { v4 as uuidv4 } from 'uuid'
 import Sidebar from './components/common/Sidebar.vue'
 import StatusBar from './components/common/StatusBar.vue'
 import ConfirmDialog from './components/common/ConfirmDialog.vue'
+import GlobalToast from './components/common/GlobalToast.vue'
+import { toastBus } from './utils/toast.js'
 import Dashboard from './views/Dashboard.vue'
 import TaskList from './views/TaskList.vue'
 import TaskTimeline from './views/TaskTimeline.vue'
@@ -105,6 +108,7 @@ const currentView = ref('dashboard')
 const currentComponent = computed(() => viewComponents[currentView.value] || Dashboard)
 const viewMeta = computed(() => viewMetaMap[currentView.value] || viewMetaMap.dashboard)
 const confirmDialogRef = ref(null)
+const globalToastRef = ref(null)
 
 // 全局确认对话框方法
 async function $confirm(options) {
@@ -117,6 +121,12 @@ async function $confirm(options) {
 
 // 暴露到全局，方便各组件调用
 window.$confirm = $confirm
+window.$toast = {
+  success: (msg) => globalToastRef.value?.success(msg),
+  error: (msg) => globalToastRef.value?.error(msg),
+  warning: (msg) => globalToastRef.value?.warning(msg),
+  info: (msg) => globalToastRef.value?.info(msg)
+}
 
 const statusCounts = reactive({
   total: 0,
@@ -151,6 +161,7 @@ async function quickScreenshot() {
     await window.electronAPI.startDoubleScreenshot()
   } catch (err) {
     console.error('启动截图失败:', err)
+    window.$toast.error('截图启动失败')
   }
 }
 
@@ -171,6 +182,7 @@ async function refreshStatus() {
     Object.assign(statusCounts, { total, pending, overdue, todayCompleted })
   } catch (err) {
     console.error('刷新状态统计失败:', err)
+    window.$toast.error('刷新状态失败')
   }
 }
 
@@ -223,6 +235,7 @@ async function onIntegratedExtractionResult(data) {
         })
       } catch (err) {
         console.error('保存联系人失败:', err)
+        window.$toast.error('保存联系人失败')
       }
     }
     await createTask(
@@ -267,6 +280,7 @@ async function createTask(senderName, avatarBase64, displayContent, confidence, 
     }
   } catch (err) {
     console.error('创建任务失败:', err)
+    window.$toast.error('创建任务失败')
   }
 }
 
@@ -307,6 +321,7 @@ async function checkForUpdates() {
     }
   } catch (err) {
     console.error('检查更新异常:', err)
+    window.$toast.error('检查更新失败')
   }
 }
 
@@ -315,6 +330,7 @@ async function installUpdate() {
     await window.electronAPI.installUpdate()
   } catch (err) {
     console.error('安装更新失败:', err)
+    window.$toast.error('安装更新失败')
   }
 }
 
@@ -362,6 +378,13 @@ onMounted(async () => {
     })
   })
 
+  // 监听主进程发送的 Toast 通知
+  window.electronAPI.on('show-toast', (event, { type, message }) => {
+    if (window.$toast && window.$toast[type]) {
+      window.$toast[type](message)
+    }
+  })
+
   try {
     const screenshotConfig = await window.electronAPI.getScreenshotConfig()
     if (screenshotConfig) {
@@ -369,6 +392,7 @@ onMounted(async () => {
     }
   } catch (err) {
     console.error('获取截图配置失败:', err)
+    window.$toast.error('获取截图配置失败')
   }
 })
 

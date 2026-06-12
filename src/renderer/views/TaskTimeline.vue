@@ -262,6 +262,7 @@ onMounted(async () => {
     allTasks.value = [...normal, ...completed].filter(t => t.is_completed !== 1)
   } catch (err) {
     console.error('加载任务时间轴失败:', err)
+    window.$toast.error('加载任务时间轴失败')
   }
 })
 </script>

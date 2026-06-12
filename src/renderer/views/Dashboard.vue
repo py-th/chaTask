@@ -196,6 +196,7 @@ async function loadData() {
     })
   } catch (err) {
     console.error('加载看板数据失败:', err)
+    window.$toast.error('加载看板数据失败')
   }
 }
 

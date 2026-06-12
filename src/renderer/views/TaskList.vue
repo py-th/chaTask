@@ -289,7 +289,10 @@ async function softDeleteTask(task) {
     await window.electronAPI.updateTask(task.id, { is_deleted: 1, is_show_desk: 0 })
     window.electronAPI.send('hide-note', { id: task.id, taskId: task.id })
     await loadTasks()
-  } catch (e) { console.error(e) }
+  } catch (e) {
+    console.error(e)
+    window.$toast.error('刷新提醒规则失败')
+  }
 }
 
 const quickFilters = [
@@ -406,6 +409,7 @@ async function loadTasks() {
     }
   } catch (err) {
     console.error('加载任务失败:', err)
+    window.$toast.error('加载任务失败')
   }
 }
 
@@ -458,7 +462,10 @@ async function batchComplete() {
   for (const id of selectedIds.value) {
     try {
       await window.electronAPI.updateTask(id, { status: 'completed', is_completed: 1, is_show_desk: 0, completed_at: completedAt })
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      console.error(e)
+      window.$toast.error('批量完成失败')
+    }
   }
   clearSelection()
   await loadTasks()
@@ -477,7 +484,10 @@ async function batchDelete() {
     try {
       await window.electronAPI.updateTask(id, { is_deleted: 1, is_show_desk: 0 })
       window.electronAPI.send('hide-note', { id, taskId: id })
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      console.error(e)
+      window.$toast.error('批量删除失败')
+    }
   }
   clearSelection()
   await loadTasks()
@@ -487,7 +497,10 @@ async function batchRestore() {
   for (const id of selectedIds.value) {
     try {
       await window.electronAPI.updateTask(id, { is_deleted: 0 })
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      console.error(e)
+      window.$toast.error('批量恢复失败')
+    }
   }
   clearSelection()
   await loadTasks()
@@ -505,7 +518,10 @@ async function batchPermanentDelete() {
   for (const id of selectedIds.value) {
     try {
       await window.electronAPI.deleteTask(id)
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      console.error(e)
+      window.$toast.error('批量彻底删除失败')
+    }
   }
   clearSelection()
   await loadTasks()
@@ -516,7 +532,10 @@ async function batchRemoveFromDesktop() {
     try {
       await window.electronAPI.updateTask(id, { is_show_desk: 0 })
       window.electronAPI.send('hide-note', { id: id, taskId: id })
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      console.error(e)
+      window.$toast.error('批量移除桌面失败')
+    }
   }
   clearSelection()
   await loadTasks()
@@ -526,7 +545,10 @@ async function restoreTask(task) {
   try {
     await window.electronAPI.updateTask(task.id, { is_deleted: 0 })
     await loadTasks()
-  } catch (e) { console.error(e) }
+  } catch (e) {
+    console.error(e)
+    window.$toast.error('恢复任务失败')
+  }
 }
 
 async function permanentDelete(task) {
@@ -541,7 +563,10 @@ async function permanentDelete(task) {
   try {
     await window.electronAPI.deleteTask(task.id)
     await loadTasks()
-  } catch (e) { console.error(e) }
+  } catch (e) {
+    console.error(e)
+    window.$toast.error('彻底删除失败')
+  }
 }
 
 async function removeFromDesktop(task) {
@@ -549,15 +574,19 @@ async function removeFromDesktop(task) {
     await window.electronAPI.updateTask(task.id, { is_show_desk: 0 })
     window.electronAPI.send('hide-note', { id: task.id, taskId: task.id })
     await loadTasks()
-  } catch (e) { console.error(e) }
+  } catch (e) {
+    console.error(e)
+    window.$toast.error('移除桌面失败')
+  }
 }
 
 async function copyTaskText(task) {
   try {
     await navigator.clipboard.writeText(task.content)
-    console.log('任务文本已复制到剪贴板')
+    window.$toast.success('任务文本已复制')
   } catch (err) {
     console.error('复制失败:', err)
+    window.$toast.error('复制失败')
   }
 }
 
@@ -568,8 +597,12 @@ async function createSticky(task) {
       await window.electronAPI.createStickyNote({ content, avatar: task.sender_avatar, taskId: task.id })
       await window.electronAPI.updateTask(task.id, { is_show_desk: 1 })
       await loadTasks()
+      window.$toast.success('已添加到桌面')
     }
-  } catch (e) { console.error(e) }
+  } catch (e) {
+    console.error(e)
+    window.$toast.error('添加到桌面失败')
+  }
 }
 
 async function openDetail(task) {
@@ -627,7 +660,10 @@ async function saveDetail() {
     }
     await window.electronAPI.updateTask(id, updates)
     await loadTasks()
-  } catch (e) { console.error(e) }
+  } catch (e) {
+    console.error(e)
+    window.$toast.error('更新任务失败')
+  }
 }
 
 function startEditContent() {
@@ -652,13 +688,7 @@ async function saveContentEdit() {
     await loadTasks()
   } catch (e) {
     console.error('更新任务内容失败:', e)
-    await window.$confirm({
-      title: '更新失败',
-      message: '更新任务内容失败',
-      type: 'warning',
-      confirmText: '知道了',
-      cancelText: ''
-    })
+    window.$toast.error('更新任务内容失败')
   }
 }
 

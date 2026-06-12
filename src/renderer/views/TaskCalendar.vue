@@ -302,6 +302,7 @@ onMounted(async () => {
     buildTaskMap()
   } catch (err) {
     console.error('加载日历数据失败:', err)
+    window.$toast.error('加载日历数据失败')
   }
 })
 </script>

@@ -248,6 +248,7 @@ async function onDrop(e, quadrantId) {
     }
   } catch (err) {
     console.error('更新任务失败:', err)
+    window.$toast.error('更新任务失败')
   }
 
   draggingTask.value = null
@@ -285,6 +286,7 @@ onMounted(async () => {
     allTasks.value = normal.filter(t => t.is_completed !== 1 && t.is_deleted !== 1)
   } catch (err) {
     console.error('加载四象限数据失败:', err)
+    window.$toast.error('加载四象限数据失败')
   }
 })
 </script>

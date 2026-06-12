@@ -15,6 +15,12 @@ function registerStickyHandlers(mainWindow, stickyManager, screenshotUtils, remi
     }
   }
 
+  function sendToastToMainWindow(type, message) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('show-toast', { type, message });
+    }
+  }
+
   let currentDraggingNoteId = null;
   let reminderDialogWindows = new Map(); // taskId -> dialogWindow
 
@@ -249,6 +255,7 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
         reminder_rule_id: ruleId
       });
       notifyMainWindow();
+      sendToastToMainWindow('success', '提醒规则已保存');
 
       // 输出提醒规则日志
       console.log('========== 提醒规则已保存 ==========');
@@ -297,6 +304,7 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
       console.log('[Reminder] 提醒规则已保存:', ruleId);
     } catch (err) {
       console.error('[Reminder] 保存提醒规则失败:', err);
+      sendToastToMainWindow('error', '保存提醒规则失败');
     }
   });
   
@@ -318,21 +326,23 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
     try {
       deleteReminderRulesByTaskId(targetTaskId);
       deleteReminderLogsByTaskId(targetTaskId);
-      
-      await updateTask(targetTaskId, { 
+
+      await updateTask(targetTaskId, {
         reminder_enabled: 0,
         reminder_rule_id: null
       });
       notifyMainWindow();
-      
+      sendToastToMainWindow('success', '提醒规则已删除');
+
       const note = stickyManager.notes.get(targetNoteId);
       if (note && note.win && !note.win.isDestroyed()) {
         note.win.webContents.send('update-reminder-info', null);
       }
-      
+
       console.log('[Reminder] 提醒规则已删除');
     } catch (err) {
       console.error('[Reminder] 删除提醒规则失败:', err);
+      sendToastToMainWindow('error', '删除提醒规则失败');
     }
   });
   

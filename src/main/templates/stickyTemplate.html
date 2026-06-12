@@ -43,8 +43,8 @@
     .toolbar-up {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 8px;
+      justify-content: flex-start;
+      gap: 3px;
       padding-bottom: 4px;
       border-bottom: 1px dashed rgba(128, 128, 128, 0.4);
     }
@@ -60,7 +60,7 @@
     .info-item {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 2px;
       white-space: nowrap;
     }
 
@@ -313,7 +313,7 @@
       <div class="toolbar-up">
         <div class="info-item">
           <span class="label">👤</span>
-          <span class="value" id="contactName">{{senderName}}</span>
+          <span class="value" id="contactName">{{senderName}}•{{source}}</span>
         </div>
         <div class="info-item">
           <span class="label">⚡</span>

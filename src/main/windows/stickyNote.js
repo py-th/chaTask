@@ -128,6 +128,7 @@ class StickyNoteManager {
       const dueDateText = task.due_date ? new Date(task.due_date).toLocaleDateString() : '未设置';
       const content = escapeHtml(task.content);
       const senderName = escapeHtml(task.sender_name || '未知');
+      const source = escapeHtml(task.source || '未知');
       const statusText = getStatusText(task.status);
       const priorityText = getPriorityText(task.priority);
 
@@ -153,6 +154,7 @@ class StickyNoteManager {
         '{{avatarImg}}': avatarImg,
         '{{content}}': content,
         '{{senderName}}': senderName,
+        '{{source}}': source,
         '{{dueDate}}': task.due_date || '',
         '{{dueDateText}}': dueDateText,
         '{{statusText}}': statusText,

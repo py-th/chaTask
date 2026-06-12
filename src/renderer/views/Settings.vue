@@ -510,6 +510,7 @@ async function saveSettings() {
     await window.electronAPI.saveSettings(JSON.parse(JSON.stringify(settings)))
   } catch (err) {
     console.error('保存设置失败:', err)
+    window.$toast.error('保存设置失败')
   }
 }
 
@@ -519,6 +520,7 @@ async function onAutoLaunchChange() {
     await window.electronAPI.reloadAutoLaunch()
   } catch (err) {
     console.error('更新开机启动失败:', err)
+    window.$toast.error('更新开机启动失败')
   }
 }
 
@@ -528,6 +530,7 @@ async function onShortcutChange() {
     await window.electronAPI.reloadShortcuts()
   } catch (err) {
     console.error('更新快捷键失败:', err)
+    window.$toast.error('更新快捷键失败')
   }
 }
 
@@ -587,6 +590,7 @@ async function exportData() {
   } catch (err) {
     dataMessage.value = '导出失败: ' + err.message
     dataMsgType.value = 'error'
+    window.$toast.error('导出数据失败')
     setTimeout(() => { dataMessage.value = '' }, 5000)
   }
 }
@@ -606,6 +610,7 @@ async function importData() {
   } catch (err) {
     dataMessage.value = '导入失败: ' + err.message
     dataMsgType.value = 'error'
+    window.$toast.error('导入数据失败')
     setTimeout(() => { dataMessage.value = '' }, 5000)
   }
 }
@@ -628,6 +633,7 @@ async function resetSettings() {
   } catch (err) {
     dataMessage.value = '重置失败: ' + err.message
     dataMsgType.value = 'error'
+    window.$toast.error('重置设置失败')
   }
 }
 
@@ -650,6 +656,7 @@ async function clearAllData() {
   } catch (err) {
     dataMessage.value = '清空失败: ' + err.message
     dataMsgType.value = 'error'
+    window.$toast.error('清空数据失败')
     setTimeout(() => { dataMessage.value = '' }, 5000)
   }
 }
@@ -665,6 +672,7 @@ async function reloadSettings() {
     }
   } catch (err) {
     console.error('加载设置失败:', err)
+    window.$toast.error('加载设置失败')
   }
 }
 

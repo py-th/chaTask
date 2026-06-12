@@ -308,6 +308,7 @@ async function submitContact() {
     }
   } catch (err) {
     console.error('操作联系人失败:', err)
+    window.$toast.error('操作联系人失败')
     await window.$confirm({
       title: '操作失败',
       message: '操作失败',
@@ -350,6 +351,7 @@ async function confirmDeleteContact(contact) {
     }
   } catch (err) {
     console.error('删除联系人失败:', err)
+    window.$toast.error('删除联系人失败')
     await window.$confirm({
       title: '删除失败',
       message: '删除失败',
@@ -384,6 +386,7 @@ async function saveTaskEdit(task) {
     task.content = newContent
   } catch (err) {
     console.error('更新任务失败:', err)
+    window.$toast.error('更新任务失败')
     await window.$confirm({
       title: '更新失败',
       message: '更新任务失败',
@@ -416,6 +419,7 @@ async function completeTask(task) {
     await loadData()
   } catch (err) {
     console.error('标记完成任务失败:', err)
+    window.$toast.error('标记完成任务失败')
     await window.$confirm({
       title: '标记失败',
       message: '标记完成失败',
@@ -441,6 +445,7 @@ async function deleteTask(task) {
     await loadData()
   } catch (err) {
     console.error('删除任务失败:', err)
+    window.$toast.error('删除任务失败')
     await window.$confirm({
       title: '删除失败',
       message: '删除任务失败',
@@ -503,6 +508,7 @@ async function loadData() {
     allTasks.value = [...taskList, ...completedTasks, ...deletedTasks]
   } catch (err) {
     console.error('加载联系人数据失败:', err)
+    window.$toast.error('加载联系人数据失败')
   }
 }
 
