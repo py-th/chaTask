@@ -98,12 +98,28 @@ function deleteTasksByContactName(name) {
   return stmt.run(name);
 }
 
-/** 同步更新任务表中该联系人的名称和头像 */
-function syncContactToTasks(oldName, newName, newAvatar) {
+/** 同步更新任务表中该联系人的名称、头像和来源 */
+function syncContactToTasks(oldName, newName, newAvatar, newSource) {
+  const updates = [];
+  const values = [];
+  
+  updates.push('sender_name = ?');
+  values.push(newName);
+  
+  updates.push('sender_avatar = ?');
+  values.push(newAvatar || '');
+  
+  if (newSource !== undefined) {
+    updates.push('source = ?');
+    values.push(newSource);
+  }
+  
+  values.push(oldName);
+  
   const stmt = db.prepare(`
-    UPDATE tasks SET sender_name = ?, sender_avatar = ? WHERE sender_name = ?
+    UPDATE tasks SET ${updates.join(', ')} WHERE sender_name = ?
   `);
-  return stmt.run(newName, newAvatar || '', oldName);
+  return stmt.run(values);
 }
 
 module.exports = {

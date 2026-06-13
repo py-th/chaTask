@@ -9,6 +9,8 @@ const {
   updateTask,
   deleteTask
 } = require('../../database/repositories/taskRepository');
+const { saveContact, findContactByName } = require('../../database/repositories/contactRepository');
+const { computeImageHash } = require('../utils/hash');
 
 class TaskService {
   constructor(mainWindowGetter) {
@@ -31,6 +33,47 @@ class TaskService {
 
   async createTask(task) {
     const result = insertTask(task);
+    
+    // 如果有发送者名称，自动创建/更新联系人，保持 source 一致
+    if (task.senderName) {
+      try {
+        const existingContact = findContactByName(task.senderName);
+        
+        if (existingContact) {
+          // 如果联系人已存在，更新其 source 字段（保持一致）
+          const stmt = require('../../database/db').prepare(`
+            UPDATE contacts SET source = ? WHERE id = ?
+          `);
+          stmt.run(task.source || 'unknow', existingContact.id);
+        } else {
+          // 如果联系人不存在，创建新联系人
+          let avatarHash = null;
+          let processedBase64 = null;
+          
+          if (task.senderAvatar) {
+            try {
+              const base64Data = task.senderAvatar.replace(/^data:image\/\w+;base64,/, '');
+              const avatarBuffer = Buffer.from(base64Data, 'base64');
+              avatarHash = await computeImageHash(avatarBuffer);
+              processedBase64 = `data:image/png;base64,${base64Data}`;
+            } catch (err) {
+              console.error('[TaskService] 处理头像失败:', err);
+            }
+          }
+          
+          await saveContact({
+            name: task.senderName,
+            avatarHash,
+            avatarBase64: processedBase64,
+            source: task.source || 'unknow'
+          });
+          console.log(`[TaskService] 自动创建联系人: ${task.senderName}, source: ${task.source}`);
+        }
+      } catch (err) {
+        console.error('[TaskService] 同步联系人失败:', err);
+      }
+    }
+    
     this.notifyMainWindow();
     return result;
   }

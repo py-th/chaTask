@@ -36,6 +36,8 @@ function registerContactHandlers() {
   // 更新联系人头像（同一人换头像场景）
   ipcMain.handle('update-contact-avatar', async (event, { name, avatarHash, avatarBase64 }) => {
     await updateContactAvatar(name, avatarHash, avatarBase64);
+    // 同步更新任务表中该联系人的头像
+    syncContactToTasks(name, name, avatarBase64);
     return { success: true };
   });
 
@@ -117,9 +119,9 @@ function registerContactHandlers() {
       }
       updateContact(id, updates);
 
-      // 同步更新 tasks 表中该联系人的名称和头像
+      // 同步更新 tasks 表中该联系人的名称、头像和来源
       const newAvatar = processedBase64 || (oldContact ? oldContact.avatar_base64 : '');
-      syncContactToTasks(oldName, trimmedName, newAvatar);
+      syncContactToTasks(oldName, trimmedName, newAvatar, source);
 
       return { success: true };
     } catch (err) {

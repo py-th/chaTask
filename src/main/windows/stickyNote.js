@@ -72,25 +72,25 @@ class StickyNoteManager {
         });
       };
 
-      // 获取状态文本
+      // 获取状态图标（与折叠时头像上显示的一致）
       const getStatusText = (status) => {
         switch (status) {
-          case 'pending': return '待办';
-          case 'in_progress': return '进行中';
-          case 'completed': return '完成';
-          case 'overdue': return '逾期';
-          default: return '待办';
+          case 'pending': return '⏰';
+          case 'in_progress': return '⏳';
+          case 'completed': return '✅';
+          case 'overdue': return '⚠️';
+          default: return '⏰';
         }
       };
 
-      // 获取优先级文本
+      // 获取优先级图标
       const getPriorityText = (priority) => {
         switch (priority) {
-          case 'high': return '高';
-          case 'medium': return '中';
-          case 'low': return '低';
-          case 'none': return '无';
-          default: return '无';
+          case 'high': return '🔴';
+          case 'medium': return '🟡';
+          case 'low': return '🟢';
+          case 'none': return '⚪';
+          default: return '⚪';
         }
       };
 

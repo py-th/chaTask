@@ -74,12 +74,12 @@
       font-weight: 500;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 90px;
+      /*max-width: 90px;*/
     }
 
     .clickable {
       cursor: pointer;
-      padding: 2px 6px;
+      padding: 2px 3px;
       border-radius: 4px;
       background: rgba(255,255,255,0.3);
       transition: background 0.15s;
@@ -312,15 +312,12 @@
     <div class="toolbar">
       <div class="toolbar-up">
         <div class="info-item">
-          <span class="label">👤</span>
-          <span class="value" id="contactName">{{senderName}}•{{source}}</span>
+          <span class="value clickable" id="contactName">{{senderName}} [{{source}}]</span>
         </div>
         <div class="info-item">
-          <span class="label">⚡</span>
           <span class="value clickable" id="taskPriority">{{priorityText}}</span>
         </div>
         <div class="info-item">
-          <span class="label">📌</span>
           <span class="value clickable" id="taskStatus">{{statusText}}</span>
         </div>
       </div>

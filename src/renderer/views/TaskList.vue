@@ -285,6 +285,7 @@ async function softDeleteTask(task) {
     confirmText: '删除'
   })
   if (!confirmed) return
+  window.$toast.success('任务删除成功')
   try {
     await window.electronAPI.updateTask(task.id, { is_deleted: 1, is_show_desk: 0 })
     window.electronAPI.send('hide-note', { id: task.id, taskId: task.id })
