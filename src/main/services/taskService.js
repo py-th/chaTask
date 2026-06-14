@@ -37,6 +37,7 @@ class TaskService {
     // 如果有发送者名称，自动创建/更新联系人，保持 source 一致
     if (task.senderName) {
       try {
+        const { updateContactTaskCount } = require('../../database/repositories/contactRepository');
         const existingContact = findContactByName(task.senderName);
         
         if (existingContact) {
@@ -45,6 +46,9 @@ class TaskService {
             UPDATE contacts SET source = ? WHERE id = ?
           `);
           stmt.run(task.source || 'unknow', existingContact.id);
+          
+          // 更新联系人的任务计数
+          updateContactTaskCount(task.senderName);
         } else {
           // 如果联系人不存在，创建新联系人
           let avatarHash = null;
@@ -101,7 +105,22 @@ class TaskService {
   }
 
   async deleteTask(id) {
+    // 删除前获取任务信息，以便更新联系人任务计数
+    const task = getTaskById(id);
+    const senderName = task ? task.sender_name : null;
+    
     const result = await deleteTask(id);
+    
+    // 如果有发送者名称，更新其任务计数
+    if (senderName) {
+      try {
+        const { updateContactTaskCount } = require('../../database/repositories/contactRepository');
+        updateContactTaskCount(senderName);
+      } catch (err) {
+        console.error('[TaskService] 更新联系人任务计数失败:', err);
+      }
+    }
+    
     this.notifyMainWindow();
     return result;
   }
@@ -111,7 +130,23 @@ class TaskService {
   }
 
   async restoreTask(id) {
-    return await updateTask(id, { is_deleted: 0 });
+    // 恢复前获取任务信息，以便更新联系人任务计数
+    const task = getTaskById(id);
+    const senderName = task ? task.sender_name : null;
+    
+    const result = await updateTask(id, { is_deleted: 0 });
+    
+    // 如果有发送者名称，更新其任务计数
+    if (senderName) {
+      try {
+        const { updateContactTaskCount } = require('../../database/repositories/contactRepository');
+        updateContactTaskCount(senderName);
+      } catch (err) {
+        console.error('[TaskService] 更新联系人任务计数失败:', err);
+      }
+    }
+    
+    return result;
   }
 
   async completeTask(id) {

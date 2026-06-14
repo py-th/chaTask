@@ -5,22 +5,25 @@ const { v4: uuidv4 } = require('uuid'); // 需要安装 uuid: npm install uuid
 // 插入任务（新结构）
 function insertTask(task) {
   const id = task.id || uuidv4();
+  const now = new Date().toISOString();
   const stmt = db.prepare(`
     INSERT INTO tasks (
-      id, source, sender_avatar, sender_name, content, source_time, created_at,
+      id, parent_id, source, sender_avatar, sender_name, content, source_time, created_at, updated_at,
       due_date, reminder_time, priority, status, color, is_pinned, is_show_desk,
-      position_x, position_y, tags, attachments, is_completed, is_archived, completed_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      position_x, position_y, sort_order, tags, attachments, is_completed, is_archived, completed_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
-  const createdAt = task.createdAt ? (task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt) : new Date().toISOString();
+  const createdAt = task.createdAt ? (task.createdAt instanceof Date ? task.createdAt.toISOString() : task.createdAt) : now;
   return stmt.run(
     id,
+    task.parentId || null,  // 父任务ID
     task.source || 'unknow',
     task.senderAvatar || '',
     task.senderName || '',
     task.content,
     task.sourceTime ? (task.sourceTime instanceof Date ? task.sourceTime.toISOString() : task.sourceTime) : null,
     createdAt,
+    now,  // updated_at
     task.dueDate || null,
     task.reminderTime || null,
     task.priority || 'none',
@@ -30,6 +33,7 @@ function insertTask(task) {
     task.isShowDesk !== undefined ? (task.isShowDesk ? 1 : 0) : 1,
     task.positionX || null,
     task.positionY || null,
+    task.sortOrder || 0,  // 排序序号
     task.tags ? JSON.stringify(task.tags) : null,
     task.attachments ? JSON.stringify(task.attachments) : null,
     task.isCompleted ? 1 : 0,
@@ -39,22 +43,34 @@ function insertTask(task) {
 }
 // 获取所有正常任务（未删除、未归档、未完成）
 function getAllTasks() {
-  const stmt = db.prepare(`
+  const tasks = db.prepare(`
     SELECT * FROM tasks 
     WHERE is_archived = 0 AND is_deleted = 0 AND is_completed = 0 
     ORDER BY created_at DESC
-  `);
-  return stmt.all();
+  `).all();
+  return attachReminderRules(tasks);
 }
 
 // 获取已完成任务
 function getCompletedTasks() {
-  const stmt = db.prepare(`
+  const tasks = db.prepare(`
     SELECT * FROM tasks 
     WHERE is_completed = 1 AND is_deleted = 0 
     ORDER BY created_at DESC
-  `);
-  return stmt.all();
+  `).all();
+  return attachReminderRules(tasks);
+}
+
+// 为任务附加提醒规则
+function attachReminderRules(tasks) {
+  const { getReminderRuleByTaskId } = require('./reminderRepository');
+  return tasks.map(task => {
+    const rule = getReminderRuleByTaskId(task.id);
+    if (rule) {
+      return { ...task, reminderRule: rule };
+    }
+    return task;
+  });
 }
 
 // 获取回收站任务（已删除）
@@ -79,9 +95,14 @@ function updateTask(id, updates) {
   const fields = [];
   const values = [];
   for (const [key, value] of Object.entries(updates)) {
+    // 跳过 updated_at，让数据库自动处理
+    if (key === 'updated_at') continue;
     fields.push(`${key} = ?`);
     values.push(value);
   }
+  // 自动添加 updated_at
+  fields.push('updated_at = ?');
+  values.push(new Date().toISOString());
   values.push(id);
   const stmt = db.prepare(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`);
   return stmt.run(values);

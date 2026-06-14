@@ -32,7 +32,7 @@
               <div class="contact-card-name">
                 <strong>{{ contact.name || '未知' }}</strong>
                 <span class="contact-task-count" @click.stop="showContactTasks(contact)">
-                  {{ getTaskCount(contact.name) }} 条任务
+                  {{ contact.task_count || 0 }} 条任务
                 </span>
               </div>
               <div class="contact-card-meta">
@@ -84,7 +84,7 @@
           </div>
           <div class="form-group">
             <label>备注</label>
-            <textarea v-model="modalContact.remark" rows="3" placeholder="请输入备注..."></textarea>
+            <textarea v-model="modalContact.remark" rows="2" placeholder="请输入备注..."></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -121,51 +121,59 @@
               @mouseenter="hoveredTaskId = task.id"
               @mouseleave="hoveredTaskId = null"
             >
-              <div class="task-card-content">
-                <span class="task-index">{{ index + 1 }}</span>
-                <div class="task-text-wrapper" style="flex: 1;">
-                  <span
-                    v-if="editingTaskId !== task.id"
-                    class="task-text"
-                    @dblclick.stop="startEditTask(task)"
-                  >{{ task.content }}</span>
-                  <textarea
-                    v-else
-                    ref="taskEditInput"
-                    v-model="editingTaskContent"
-                    class="task-edit-textarea"
-                    rows="3"
-                    @blur="saveTaskEdit(task)"
-                    @keydown.enter.prevent="saveTaskEdit(task)"
-                    @keydown.esc="cancelTaskEdit"
-                  />
+              <div class="task-card-container">
+                <span v-if="editingTaskId === task.id" class="task-edit-hint">Ctrl+Enter 保存 · Esc 取消</span>
+                <div class="task-card-left">
+                  <span class="task-index">{{ index + 1 }}</span>
                 </div>
-                <div
-                  v-show="hoveredTaskId === task.id && editingTaskId !== task.id"
-                  class="task-actions"
-                >
-                  <button
-                    v-if="task.is_completed !== 1"
-                    class="btn btn-xs btn-success task-action-btn"
-                    @click.stop="completeTask(task)"
-                  >
-                    ✅
-                  </button>
-                  <button
-                    v-if="task.is_deleted !== 1"
-                    class="btn btn-xs btn-danger task-action-btn"
-                    @click.stop="deleteTask(task)"
-                  >
-                    🗑️
-                  </button>
+                <div class="task-card-right">
+                  <div class="task-card-content">
+                    <div class="task-text-wrapper">
+                      <span
+                        v-if="editingTaskId !== task.id"
+                        class="task-text"
+                        @dblclick.stop="startEditTask(task)"
+                      >{{ task.content }}</span>
+                      <textarea
+                        v-if="editingTaskId === task.id"
+                        :ref="el => { if (el) taskEditRefs.set(task.id, el) }"
+                        v-model="editingTaskContent"
+                        class="task-edit-textarea"
+                        rows="3"
+                        @blur="saveTaskEdit(task)"
+                        @keydown.enter.ctrl="saveTaskEdit(task)"
+                        @keydown.enter.meta="saveTaskEdit(task)"
+                        @keydown.esc="cancelTaskEdit"
+                      />
+                    </div>
+                    <div
+                      v-show="hoveredTaskId === task.id && editingTaskId !== task.id"
+                      class="task-actions"
+                    >
+                      <button
+                        v-if="task.is_completed !== 1"
+                        class="btn btn-xs btn-success task-action-btn"
+                        @click.stop="completeTask(task)"
+                      >
+                        ✅
+                      </button>
+                      <button
+                        v-if="task.is_deleted !== 1"
+                        class="btn btn-xs btn-danger task-action-btn"
+                        @click.stop="deleteTask(task)"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                  <div class="task-card-meta">
+                    <span>创建: {{ formatDate(task.created_at) }}</span>
+                    <span v-if="task.due_date">截止: {{ formatDate(task.due_date) }}</span>
+                    <span v-if="task.completed_at">完成: {{ formatDate(task.completed_at) }}</span>
+                    <span v-if="task.is_completed === 1">已完成</span>
+                    <span v-if="task.is_deleted === 1">已删除</span>
+                  </div>
                 </div>
-              </div>
-              <div class="task-card-meta">
-                <span>创建: {{ formatDate(task.created_at) }}</span>
-                <span v-if="task.due_date">截止: {{ formatDate(task.due_date) }}</span>
-                <span v-if="task.completed_at">完成: {{ formatDate(task.completed_at) }}</span>
-                <span v-if="task.is_completed === 1">已完成</span>
-                <span v-if="task.is_deleted === 1">已删除</span>
               </div>
             </div>
           </div>
@@ -202,7 +210,7 @@ const modalContact = ref({
 const hoveredTaskId = ref(null)
 const editingTaskId = ref(null)
 const editingTaskContent = ref('')
-const taskEditInput = ref(null)
+const taskEditRefs = ref(new Map())
 
 const filteredContacts = computed(() => {
   let list = [...contacts.value]
@@ -320,7 +328,7 @@ async function submitContact() {
 }
 
 async function confirmDeleteContact(contact) {
-  const taskCount = getTaskCount(contact.name)
+  const taskCount = contact.task_count || 0
   const message = taskCount > 0
     ? `确定要删除联系人「${contact.name}」吗？该联系人有 ${taskCount} 条任务，删除后联系人及其所有任务将不可恢复！`
     : `确定要删除联系人「${contact.name}」吗？删除后不可恢复！`
@@ -367,8 +375,9 @@ function startEditTask(task) {
   editingTaskId.value = task.id
   editingTaskContent.value = task.content
   nextTick(() => {
-    if (taskEditInput.value) {
-      taskEditInput.value.focus()
+    const inputEl = taskEditRefs.value.get(task.id)
+    if (inputEl) {
+      inputEl.focus()
     }
   })
 }
@@ -716,6 +725,26 @@ onUnmounted(() => {
   position: relative;
 }
 
+.modal-body .task-card-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  position: relative;
+}
+
+.modal-body .task-card-left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.modal-body .task-card-right {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
 .modal-body .task-card-content {
   margin-bottom: 6px;
   line-height: 1.5;
@@ -723,6 +752,12 @@ onUnmounted(() => {
   display: flex;
   align-items: flex-start;
   gap: 6px;
+  width: 100%;
+}
+
+.modal-body .task-card-content .task-text-wrapper {
+  flex: 1;
+  min-width: 0;
 }
 
 .task-index {
@@ -751,6 +786,10 @@ onUnmounted(() => {
   background: var(--color-border-light);
 }
 
+.task-text-wrapper {
+  width: 100%;
+}
+
 .task-edit-textarea {
   width: 100%;
   padding: 6px 10px;
@@ -765,6 +804,18 @@ onUnmounted(() => {
   font-family: inherit;
   line-height: 1.5;
   box-sizing: border-box;
+}
+
+.task-edit-hint {
+  position: absolute;
+  top: -20px;
+  right: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  pointer-events: none;
+  z-index: 10;
 }
 
 .task-actions {
@@ -786,18 +837,29 @@ onUnmounted(() => {
 
 /* 添加/编辑联系人弹窗 */
 .add-contact-panel {
-  width: 420px;
+  width: 380px;
+  max-height: none;
+  overflow: visible;
+  padding: 20px;
+}
+
+.add-contact-panel .modal-header {
+  margin-bottom: 12px;
+}
+
+.add-contact-panel .modal-body {
+  gap: 10px;
 }
 
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .form-group label {
   display: block;
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .form-group .required {
@@ -822,9 +884,9 @@ onUnmounted(() => {
   border-color: var(--color-primary);
 }
 
-.form-group textarea {
+.add-contact-panel .form-group textarea {
   resize: vertical;
-  min-height: 60px;
+  min-height: 40px;
 }
 
 .avatar-upload {
@@ -834,8 +896,8 @@ onUnmounted(() => {
 }
 
 .avatar-preview {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid var(--color-border);
@@ -846,8 +908,8 @@ onUnmounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 8px;
-  padding-top: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
   border-top: 1px solid var(--color-border-light);
 }
 </style>

@@ -98,6 +98,29 @@ function deleteTasksByContactName(name) {
   return stmt.run(name);
 }
 
+/** 更新指定联系人的任务计数 */
+function updateContactTaskCount(contactName) {
+  const countStmt = db.prepare(`
+    SELECT COUNT(*) as count FROM tasks 
+    WHERE sender_name = ? AND is_deleted = 0
+  `);
+  const result = countStmt.get(contactName);
+  const count = result ? result.count : 0;
+  
+  const updateStmt = db.prepare(`
+    UPDATE contacts SET task_count = ? WHERE name = ?
+  `);
+  return updateStmt.run(count, contactName);
+}
+
+/** 更新所有联系人的任务计数 */
+function updateAllContactTaskCounts() {
+  const contacts = db.prepare(`SELECT name FROM contacts`).all();
+  contacts.forEach(contact => {
+    updateContactTaskCount(contact.name);
+  });
+}
+
 /** 同步更新任务表中该联系人的名称、头像和来源 */
 function syncContactToTasks(oldName, newName, newAvatar, newSource) {
   const updates = [];
@@ -133,5 +156,7 @@ module.exports = {
   updateContact,
   deleteContact,
   deleteTasksByContactName,
-  syncContactToTasks
+  syncContactToTasks,
+  updateContactTaskCount,
+  updateAllContactTaskCounts
 };

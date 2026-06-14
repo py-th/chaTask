@@ -67,11 +67,17 @@
               <div class="task-card-meta">
                 <span :class="getStatusTag(task)">{{ statusText(task.status) }}</span>
                 <span :class="getPriorityTag(task)">{{ priorityText(task.priority) }}</span>
-                <span class="tag tag-pending" v-if="task.reminder_enabled === 1" >🔔</span>
+                <span v-if="task.reminderRule && formatNextReminder(task.reminderRule)" class="tag tag-pending">
+                  {{ formatNextReminder(task.reminderRule) }}
+                </span>
+                <span v-else-if="task.reminder_enabled === 1 && task.reminder_time" class="tag tag-pending">
+                  🔔 {{ formatDate(task.reminder_time) }}
+                </span>
                 <span class="tag tag-pending" v-if="task.is_show_desk === 1" >📌</span>
-                <span class="tag tag-pending"v-if="task.source">{{ task.source }}</span>
-                <span v-if="task.due_date">截止: {{ formatDate(task.due_date) }}</span>
+                <span class="tag tag-pending" v-if="task.source">{{ task.source }}</span>
                 <span>创建: {{ formatDate(task.created_at) }}</span>
+                <span v-if="task.due_date">截止: {{ formatDate(task.due_date) }}</span>
+                <span v-if="task.source_time">消息时间: {{ formatDate(task.source_time) }}</span>
                 <span v-if="task.status === 'completed' && task.completed_at">完成: {{ formatDate(task.completed_at) }}</span>
               </div>
             </div>
@@ -116,73 +122,96 @@
         <div v-if="detailTask" class="detail-body">
           <div class="detail-row">
             <label>发送者</label>
-            <span>{{ detailTask.sender_name || '未知' }}</span>
-          </div>
-          <div class="detail-row">
-            <label>内容</label>
-            <span
-              v-if="!editingDetailContent"
-              class="detail-content-text"
-              @dblclick="startEditContent"
-            >{{ detailTask.content }}</span>
-            <textarea
-              v-else
-              ref="detailContentInput"
-              v-model="detailTask.content"
-              class="detail-content-input"
-              rows="3"
-              @blur="saveContentEdit"
-              @keydown.enter.prevent="saveContentEdit"
-              @keydown.esc="cancelContentEdit"
-            />
-          </div>
-          <div class="detail-row">
-            <label>优先级</label>
-            <select v-model="detailTask.priority" @change="saveDetail">
-              <option value="high">高</option>
-              <option value="medium">中</option>
-              <option value="low">低</option>
-              <option value="none">无</option>
-            </select>
-          </div>
-          <div class="detail-row">
-            <label>状态</label>
-            <select v-model="detailTask.status" @change="saveDetail">
-              <option value="pending">待办</option>
-              <option value="in_progress">进行中</option>
-              <option value="completed">完成</option>
-              <option value="overdue">逾期</option>
-            </select>
-          </div>
-          <div class="detail-row">
-            <label>截止日期</label>
-            <input type="date" :value="detailTask.due_date ? detailTask.due_date.slice(0,10) : ''" @change="setDueDate" />
-          </div>
-          <div class="detail-row">
-            <label>提醒规则</label>
-            <div v-if="detailTask.reminderRule" class="reminder-rule-info" @click="openReminderFromDetail">
-              <span class="reminder-badge" :class="{ active: detailTask.reminderRule.is_enabled === 1 }">
-                {{ detailTask.reminderRule.is_enabled === 1 ? '🔔 已开启' : '🔕 已关闭' }}
-              </span>
-              <span class="reminder-type">{{ formatReminderType(detailTask.reminderRule.repeat_type) }}</span>
-              <span v-if="detailTask.reminderRule.reminder_time" class="reminder-time">
-                ⏰ {{ detailTask.reminderRule.reminder_time }}
-              </span>
-              <span class="reminder-way">{{ formatReminderWay(detailTask.reminderRule.reminder_way) }}</span>
-              <span class="reminder-edit-hint">点击修改</span>
-            </div>
-            <div v-else class="reminder-rule-info" @click="openReminderFromDetail">
-              <span class="reminder-badge">🔕 未设置</span>
-              <span class="reminder-edit-hint">点击设置</span>
+            <div class="detail-sender-info">
+              <img
+                v-if="detailTask.sender_avatar"
+                :src="detailTask.sender_avatar"
+                class="detail-sender-avatar"
+                alt=""
+              />
+              <span class="detail-sender-name">{{ detailTask.sender_name || '未知' }}</span>
+              <span v-if="detailTask.source" class="detail-sender-source">（{{ detailTask.source }}）</span>
             </div>
           </div>
-          <div class="detail-row">
-            <label>创建时间</label>
-            <span>{{ detailTask.created_at }}</span>
+          <div class="detail-row detail-content-row">
+            <div class="detail-row-header">
+              <label>内容</label>
+              <span v-if="editingDetailContent" class="detail-edit-hint">Ctrl+Enter 保存 · Esc 取消</span>
+            </div>
+            <div class="detail-content-wrapper">
+              <div class="detail-content-scroll">
+                <span
+                  v-if="!editingDetailContent"
+                  class="detail-content-text"
+                  @dblclick="startEditContent"
+                >{{ detailTask.content }}</span>
+                <textarea
+                  v-if="editingDetailContent"
+                  ref="detailContentInput"
+                  v-model="detailTask.content"
+                  class="detail-content-input"
+                  rows="3"
+                  @blur="saveContentEdit"
+                  @keydown.enter.ctrl="saveContentEdit"
+                  @keydown.enter.meta="saveContentEdit"
+                  @keydown.esc="cancelContentEdit"
+                />
+              </div>
+            </div>
           </div>
-          <div class="detail-row">
-            <label>消息时间</label>
-            <span>{{ detailTask.source_time || '无' }}</span>
+          <div class="detail-meta-grid">
+            <div class="detail-meta-item">
+              <label>优先级</label>
+              <select v-model="detailTask.priority" @change="saveDetail">
+                <option value="high">高</option>
+                <option value="medium">中</option>
+                <option value="low">低</option>
+                <option value="none">无</option>
+              </select>
+            </div>
+            <div class="detail-meta-item">
+              <label>状态</label>
+              <select v-model="detailTask.status" @change="saveDetail">
+                <option value="pending">待办</option>
+                <option value="in_progress">进行中</option>
+                <option value="completed">完成</option>
+                <option value="overdue">逾期</option>
+              </select>
+            </div>
+            <div class="detail-meta-item">
+              <label>截止日期</label>
+              <input type="date" :value="detailTask.due_date ? detailTask.due_date.slice(0,10) : ''" @change="setDueDate" />
+            </div>
+            <div class="detail-meta-item">
+              <label>提醒规则</label>
+              <div v-if="detailTask.reminderRule" class="reminder-rule-info" @click="openReminderFromDetail">
+                <span class="reminder-type">{{ formatReminderType(detailTask.reminderRule.repeat_type) }}</span>
+                <span v-if="detailTask.reminderRule.reminder_time" class="reminder-time">
+                  ⏰ {{ detailTask.reminderRule.reminder_time }}
+                </span>
+                <span class="reminder-edit-hint">点击修改</span>
+              </div>
+              <div v-else class="reminder-rule-info" @click="openReminderFromDetail">
+                <span class="reminder-badge">🔕 未设置</span>
+                <span class="reminder-edit-hint">点击设置</span>
+              </div>
+            </div>
+            <div class="detail-meta-item">
+              <label>创建时间</label>
+              <span>{{ formatDateTime(detailTask.created_at) }}</span>
+            </div>
+            <div class="detail-meta-item">
+              <label>更新时间</label>
+              <span>{{ detailTask.updated_at ? formatDateTime(detailTask.updated_at) : '无' }}</span>
+            </div>
+            <div class="detail-meta-item">
+              <label>消息时间</label>
+              <span>{{ detailTask.source_time ? formatDateTime(detailTask.source_time) : '无' }}</span>
+            </div>
+            <div class="detail-meta-item">
+              <label>完成时间</label>
+              <span>{{ detailTask.completed_at ? formatDateTime(detailTask.completed_at) : '无' }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -637,6 +666,196 @@ function formatReminderType(type) {
   return typeMap[type] || type
 }
 
+function calculateNextReminder(rule) {
+  if (!rule || !rule.reminder_time) return null;
+  
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const [hours, minutes] = rule.reminder_time.split(':').map(Number);
+
+  const parseDateLocal = (dateStr) => {
+    if (!dateStr) return null;
+    const parts = dateStr.split('-');
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  };
+
+  const startDate = rule.start_date ? parseDateLocal(rule.start_date) : null;
+
+  switch (rule.repeat_type) {
+    case 'once': {
+      if (!rule.start_date) return null;
+      const date = parseDateLocal(rule.start_date);
+      date.setHours(hours, minutes, 0, 0);
+      return date > now ? date : null;
+    }
+
+    case 'daily': {
+      let nextDate = new Date(today);
+      nextDate.setHours(hours, minutes, 0, 0);
+
+      if (nextDate <= now) {
+        nextDate.setDate(nextDate.getDate() + 1);
+      }
+
+      if (startDate) {
+        const startDateTime = new Date(startDate);
+        startDateTime.setHours(hours, minutes, 0, 0);
+        if (nextDate < startDateTime) {
+          nextDate = new Date(startDateTime);
+        }
+      }
+
+      if (rule.end_date) {
+        const endDate = parseDateLocal(rule.end_date);
+        endDate.setHours(23, 59, 59, 999);
+        if (nextDate > endDate) {
+          return null;
+        }
+      }
+
+      return nextDate;
+    }
+
+    case 'weekly': {
+      let nextDate = new Date(today);
+      nextDate.setHours(hours, minutes, 0, 0);
+
+      if (nextDate <= now) {
+        nextDate.setDate(nextDate.getDate() + (7 - nextDate.getDay() + 1) % 7 || 7);
+      }
+
+      if (startDate) {
+        const startDateTime = new Date(startDate);
+        startDateTime.setHours(hours, minutes, 0, 0);
+        if (nextDate < startDateTime) {
+          const diffDays = Math.ceil((startDateTime.getTime() - nextDate.getTime()) / (1000 * 60 * 60 * 24));
+          const weeks = Math.ceil(diffDays / 7);
+          nextDate.setDate(nextDate.getDate() + weeks * 7);
+        }
+      }
+
+      if (rule.end_date) {
+        const endDate = parseDateLocal(rule.end_date);
+        endDate.setHours(23, 59, 59, 999);
+        if (nextDate > endDate) {
+          return null;
+        }
+      }
+
+      return nextDate;
+    }
+
+    case 'monthly': {
+      let nextDate = new Date(today.getFullYear(), today.getMonth(), 1);
+      nextDate.setDate(Math.min(parseInt(rule.start_date?.split('-')[2] || 1), 28));
+      nextDate.setHours(hours, minutes, 0, 0);
+
+      if (nextDate <= now) {
+        nextDate = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 1);
+        nextDate.setDate(Math.min(parseInt(rule.start_date?.split('-')[2] || 1), 28));
+        nextDate.setHours(hours, minutes, 0, 0);
+      }
+
+      if (startDate) {
+        const startDateTime = new Date(startDate);
+        startDateTime.setHours(hours, minutes, 0, 0);
+        if (nextDate < startDateTime) {
+          nextDate = new Date(startDateTime.getFullYear(), startDateTime.getMonth(), Math.min(startDateTime.getDate(), 28));
+          nextDate.setHours(hours, minutes, 0, 0);
+        }
+      }
+
+      if (rule.end_date) {
+        const endDate = parseDateLocal(rule.end_date);
+        endDate.setHours(23, 59, 59, 999);
+        if (nextDate > endDate) {
+          return null;
+        }
+      }
+
+      return nextDate;
+    }
+
+    case 'custom': {
+      if (!rule.custom_days || rule.custom_days.length === 0) return null;
+
+      let nextDate = new Date(today);
+      nextDate.setHours(hours, minutes, 0, 0);
+
+      if (nextDate <= now) {
+        nextDate.setDate(nextDate.getDate() + 1);
+      }
+
+      const customDays = rule.custom_days.map(d => parseInt(d));
+      let found = false;
+      for (let i = 0; i < 365; i++) {
+        if (customDays.includes(nextDate.getDay())) {
+          found = true;
+          break;
+        }
+        nextDate.setDate(nextDate.getDate() + 1);
+      }
+
+      if (!found) return null;
+
+      if (startDate && nextDate < startDate) {
+        return null;
+      }
+
+      if (rule.end_date) {
+        const endDate = parseDateLocal(rule.end_date);
+        endDate.setHours(23, 59, 59, 999);
+        if (nextDate > endDate) {
+          return null;
+        }
+      }
+
+      return nextDate;
+    }
+
+    default:
+      return null;
+  }
+}
+
+function formatNextReminder(rule) {
+  const nextTime = calculateNextReminder(rule);
+  if (!nextTime) return null;
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const nextMidnight = new Date(nextTime.getFullYear(), nextTime.getMonth(), nextTime.getDate());
+  const diffDays = Math.round((nextMidnight.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24));
+
+  let dateText;
+  if (diffDays === 0) {
+    dateText = '今天';
+  } else if (diffDays === 1) {
+    dateText = '明天';
+  } else if (diffDays === 2) {
+    dateText = '后天';
+  } else {
+    dateText = `${nextTime.getMonth() + 1}月${nextTime.getDate()}日`;
+  }
+
+  const timeText = `${String(nextTime.getHours()).padStart(2, '0')}:${String(nextTime.getMinutes()).padStart(2, '0')}`;
+
+  switch (rule.repeat_type) {
+    case 'once':
+      return `🔔 ${dateText} ${timeText}`;
+    case 'daily':
+      return `🔔 每天 ${timeText}`;
+    case 'weekly':
+      return `🔔 每周 ${dateText} ${timeText}`;
+    case 'monthly':
+      return `🔔 每月 ${dateText} ${timeText}`;
+    case 'custom':
+      return `🔔 自选 ${dateText} ${timeText}`;
+    default:
+      return `🔔 ${dateText} ${timeText}`;
+  }
+}
+
 function formatReminderWay(way) {
   const wayMap = {
     'popup': '💬 弹窗',
@@ -743,6 +962,11 @@ function getPriorityTag(task) {
 function formatDate(dateStr) {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleDateString()
+}
+
+function formatDateTime(dateStr) {
+  if (!dateStr) return ''
+  return new Date(dateStr).toLocaleString()
 }
 
 let unregisterRefresh = null
@@ -927,22 +1151,22 @@ onUnmounted(() => {
 
 .detail-panel {
   width: 500px;
-  max-height: 80vh;
+  max-height: 85vh;
   overflow-y: auto;
-  padding: 24px;
+  padding: 20px;
 }
 
 .detail-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .detail-body {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .detail-row {
@@ -957,18 +1181,71 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
+.detail-sender-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-sender-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.detail-sender-name {
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
 .detail-row select,
 .detail-row input {
   width: 100%;
 }
 
+.detail-content-row {
+  position: relative;
+}
+
+.detail-content-wrapper {
+  width: 100%;
+}
+
+.detail-content-scroll {
+  max-height: 150px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 8px;
+  background: var(--color-bg-light);
+  border-radius: var(--radius-sm);
+}
+
+.detail-content-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.detail-content-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.detail-content-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.detail-content-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}
+
 .detail-content-text {
   cursor: text;
-  padding: 4px 6px;
+  padding: 6px 8px;
   border-radius: var(--radius-sm);
   transition: background var(--transition-fast);
-  line-height: 1.5;
+  line-height: 1.6;
   word-break: break-all;
+  display: block;
 }
 
 .detail-content-text:hover {
@@ -988,6 +1265,44 @@ onUnmounted(() => {
   min-height: 60px;
   font-family: inherit;
   line-height: 1.5;
+}
+
+.detail-row-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.detail-edit-hint {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  pointer-events: none;
+}
+
+.detail-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.detail-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-meta-item label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
+.detail-meta-item select,
+.detail-meta-item input {
+  width: 100%;
 }
 
 .reminder-rule-info {

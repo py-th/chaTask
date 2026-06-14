@@ -141,6 +141,12 @@
       color: #666;
     }
 
+    .popup-created-at {
+      font-size: 12px;
+      color: #999;
+      margin-left: 8px;
+    }
+
     .dialog-footer {
       display: flex;
       flex-direction: column;
@@ -243,6 +249,7 @@
         <div class="popup-sender" id="popupSender" style="display: none;">
           <img class="popup-sender-avatar" id="popupSenderAvatar" src="" alt="">
           <span class="popup-sender-name" id="popupSenderName"></span>
+          <span class="popup-created-at" id="popupCreatedAt"></span>
         </div>
       </div>
     </div>
@@ -329,6 +336,13 @@
           document.getElementById('popupSenderAvatar').src = data.senderAvatar;
         } else {
           document.getElementById('popupSenderAvatar').style.display = 'none';
+        }
+        // 显示创建日期
+        if (data.createdAt) {
+          const createdDate = new Date(data.createdAt);
+          const dateStr = createdDate.toLocaleDateString();
+          const timeStr = createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          document.getElementById('popupCreatedAt').textContent = `创建于 ${dateStr} ${timeStr}`;
         }
       }
     });

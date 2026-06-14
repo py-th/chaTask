@@ -335,7 +335,7 @@ class ReminderService {
 
     this.startAvatarBlink(taskId);
 
-    this.createPopupWindow(rule, scheduledTime, note);
+    this.createPopupWindow(rule, scheduledTime, note, task.created_at);
   }
 
   async triggerSnoozeReminder(log) {
@@ -370,10 +370,10 @@ class ReminderService {
       task_content: log.task_content,
       sender_name: log.sender_name,
       sender_avatar: log.sender_avatar
-    }, new Date(log.scheduled_time), note);
+    }, new Date(log.scheduled_time), note, task.created_at);
   }
 
-  createPopupWindow(rule, scheduledTime, note) {
+  createPopupWindow(rule, scheduledTime, note, createdAt) {
     const taskId = rule.task_id;
 
     if (this.popupWindows.has(taskId)) {
@@ -427,7 +427,8 @@ class ReminderService {
         scheduledTime: scheduledTime.toISOString(),
         reminderTime: rule.reminder_time,
         reminderWay: rule.reminder_way,
-        repeatType: rule.repeat_type
+        repeatType: rule.repeat_type,
+        createdAt: createdAt
       });
     });
 
