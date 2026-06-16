@@ -59,7 +59,10 @@
               @click.stop
               class="task-checkbox"
             />
-            <img :src="task.sender_avatar || defaultAvatar" class="task-avatar" />
+            <div class="avatar-wrapper">
+              <img :src="task.sender_avatar || defaultAvatar" class="task-avatar" />
+              <span v-if="task.is_show_desk === 1" class="desktop-badge">📌</span>
+            </div>
             <div class="task-card-info">
               <div class="task-card-text">
                 <strong>{{ task.sender_name || '未知' }}</strong>: {{ task.content }}
@@ -75,8 +78,8 @@
                 </span>
                 <span class="tag tag-pending" v-if="task.is_show_desk === 1" >📌</span>
                 <span class="tag tag-pending" v-if="task.source">{{ task.source }}</span>
+                <span class="tag tag-pending" v-if="task.due_date">截止: {{ formatDate(task.due_date) }}</span>
                 <span>创建: {{ formatDate(task.created_at) }}</span>
-                <span v-if="task.due_date">截止: {{ formatDate(task.due_date) }}</span>
                 <span v-if="task.source_time">消息时间: {{ formatDate(task.source_time) }}</span>
                 <span v-if="task.status === 'completed' && task.completed_at">完成: {{ formatDate(task.completed_at) }}</span>
               </div>
@@ -1077,6 +1080,10 @@ onUnmounted(() => {
 .task-checkbox {
   margin-top: 10px;
 }
+.avatar-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
 
 .task-avatar {
   width: 36px;
@@ -1084,6 +1091,20 @@ onUnmounted(() => {
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
+}
+
+.desktop-badge {
+  position: absolute;
+  top: -4px;      /* 调整到顶部 */
+  right: -4px;    /* 调整到右侧 */
+  font-size: 7px;
+  width: 10px;
+  height: 10px;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary);
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .task-card-info {

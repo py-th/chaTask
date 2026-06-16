@@ -1,5 +1,5 @@
 // src/main/index.js
-const { app, globalShortcut, ipcMain, dialog } = require('electron');
+const { app, globalShortcut, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const { createMainWindow } = require('./windows/mainWindow');
 const StickyNoteManager = require('./windows/stickyNote');
@@ -13,7 +13,6 @@ const { integrateExtractionResults } = require('./services/integrationService');
 const { initOCR } = require('./services/ocrService');
 const ReminderService = require('./services/reminderService');
 const { getDeskTasks } = require('../database/repositories/taskRepository');
-const { updateAllContactTaskCounts } = require('../database/repositories/contactRepository');
 const db = require('../database/db');
 const { getEffectiveConfig, loadUserSettings } = require('./configManager');
 const { createTray, updateTrayTooltip } = require('./tray');
@@ -65,14 +64,6 @@ app.whenReady().then(async () => {
   app.setName('ChaTask');
   if (process.platform === 'win32') {
     app.setAppUserModelId(process.execPath);
-  }
-  
-  // 更新所有联系人的任务计数
-  try {
-    updateAllContactTaskCounts();
-    console.log('[main] 已更新所有联系人的任务计数');
-  } catch (err) {
-    console.error('[main] 更新联系人任务计数失败:', err.message);
   }
   
   mainWindow = createMainWindow();

@@ -186,10 +186,6 @@ function migrateContactsTable() {
       db.exec(`ALTER TABLE contacts ADD COLUMN task_count INTEGER`);
       db.exec(`UPDATE contacts SET task_count = 0 WHERE task_count IS NULL`);
       console.log('[db] 迁移完成：task_count 列已添加');
-      // 更新所有联系人的任务计数
-      const { updateAllContactTaskCounts } = require('./repositories/contactRepository');
-      updateAllContactTaskCounts();
-      console.log('[db] 迁移：已更新所有联系人的任务计数');
     }
 
     if (!contactColumns.includes('updated_at')) {

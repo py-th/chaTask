@@ -127,7 +127,11 @@ class StickyNoteManager {
         // 截止日期文本
       const dueDateText = task.due_date ? new Date(task.due_date).toLocaleDateString() : '未设置';
       const content = escapeHtml(task.content);
-      const senderName = escapeHtml(task.sender_name || '未知');
+      let senderName = escapeHtml(task.sender_name || '未知');
+        // 截断发送者姓名，最多显示10个字符
+      if (senderName.length > 10) {
+        senderName = senderName.slice(0, 10) + '...';
+      }
       const source = escapeHtml(task.source || '未知');
       const statusText = getStatusText(task.status);
       const priorityText = getPriorityText(task.priority);

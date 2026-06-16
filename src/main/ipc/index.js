@@ -12,7 +12,7 @@ function registerIpcHandlers(mainWindow, stickyManager, screenshotUtils, reminde
   registerTaskHandlers(getMainWindow, stickyManager);
   registerContactHandlers();
   registerStickyHandlers(mainWindow, stickyManager, screenshotUtils, reminderService);
-  registerSettingsHandlers();
+  registerSettingsHandlers(stickyManager);
 }
 
 module.exports = { registerIpcHandlers };

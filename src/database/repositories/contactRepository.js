@@ -113,14 +113,6 @@ function updateContactTaskCount(contactName) {
   return updateStmt.run(count, contactName);
 }
 
-/** 更新所有联系人的任务计数 */
-function updateAllContactTaskCounts() {
-  const contacts = db.prepare(`SELECT name FROM contacts`).all();
-  contacts.forEach(contact => {
-    updateContactTaskCount(contact.name);
-  });
-}
-
 /** 同步更新任务表中该联系人的名称、头像和来源 */
 function syncContactToTasks(oldName, newName, newAvatar, newSource) {
   const updates = [];
@@ -157,6 +149,5 @@ module.exports = {
   deleteContact,
   deleteTasksByContactName,
   syncContactToTasks,
-  updateContactTaskCount,
-  updateAllContactTaskCounts
+  updateContactTaskCount
 };
