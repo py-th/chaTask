@@ -133,7 +133,7 @@
                 alt=""
               />
               <span class="detail-sender-name">{{ detailTask.sender_name || '未知' }}</span>
-              <span v-if="detailTask.source" class="detail-sender-source">（{{ detailTask.source }}）</span>
+              <span v-if="detailTask.source" class="detail-sender-source"> | {{ detailTask.source }}</span>
             </div>
           </div>
           <div class="detail-row detail-content-row">
@@ -1095,8 +1095,8 @@ onUnmounted(() => {
 
 .desktop-badge {
   position: absolute;
-  top: -4px;      /* 调整到顶部 */
-  right: -4px;    /* 调整到右侧 */
+  top: -1px;      /* 调整到顶部 */
+  right: 0px;    /* 调整到右侧 */
   font-size: 7px;
   width: 10px;
   height: 10px;

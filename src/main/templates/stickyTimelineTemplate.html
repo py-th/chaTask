@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>{{senderName}} - 时间轴</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+    body {
+      background: transparent;
+      font-family: system-ui, -apple-system, sans-serif;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+    }
+
+    .timeline-container {
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(4px);
+      border-radius: 12px;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    }
+
+    .timeline-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      flex-shrink: 0;
+    }
+
+    .timeline-header .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(0, 0, 0, 0.1);
+      flex-shrink: 0;
+      -webkit-user-drag: none;
+    }
+
+    .timeline-header .header-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .timeline-header .sender-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1D2129;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .timeline-header .task-count {
+      font-size: 11px;
+      color: #86909C;
+      margin-top: 1px;
+    }
+
+    .timeline-scroll {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 12px 8px 12px 12px;
+    }
+
+    .timeline-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .timeline-scroll::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 2px;
+    }
+
+    .timeline-track {
+      position: relative;
+      padding-left: 28px;
+    }
+
+    .timeline-line {
+      position: absolute;
+      left: 9px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, rgba(74, 144, 217, 0.6), rgba(74, 144, 217, 0.15));
+      border-radius: 1px;
+    }
+
+    .timeline-item {
+      position: relative;
+      margin-bottom: 16px;
+      cursor: default;
+    }
+
+    .timeline-item:last-child {
+      margin-bottom: 4px;
+    }
+
+    .timeline-dot {
+      position: absolute;
+      left: -28px;
+      top: 6px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #4A90D9;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.3);
+      z-index: 1;
+      transition: transform 0.15s ease;
+    }
+
+    .timeline-item:hover .timeline-dot {
+      transform: scale(1.3);
+    }
+
+    .timeline-item .task-time {
+      font-size: 11px;
+      color: #86909C;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .timeline-item .task-time .time-text {
+      white-space: nowrap;
+    }
+
+    .timeline-item .task-card {
+      background: rgba(248, 249, 250, 0.8);
+      border-radius: 8px;
+      padding: 8px 10px;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      transition: background 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .timeline-item:hover .task-card {
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .timeline-item .task-text {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #1D2129;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      outline: none;
+      padding: 2px 0;
+    }
+
+    .timeline-item .task-text:focus {
+      background: rgba(255, 249, 196, 0.6);
+      border-radius: 4px;
+      padding: 2px 4px;
+    }
+
+    .timeline-item .task-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .timeline-item .meta-badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    .meta-badge.priority-high {
+      background: rgba(245, 63, 63, 0.12);
+      color: #F53F3F;
+    }
+
+    .meta-badge.priority-medium {
+      background: rgba(255, 125, 0, 0.12);
+      color: #FF7D00;
+    }
+
+    .meta-badge.priority-low {
+      background: rgba(0, 180, 42, 0.12);
+      color: #00B42A;
+    }
+
+    .meta-badge.priority-none {
+      background: rgba(134, 144, 156, 0.12);
+      color: #86909C;
+    }
+
+    .meta-badge.status-completed {
+      background: rgba(0, 180, 42, 0.12);
+      color: #00B42A;
+    }
+
+    .meta-badge.status-pending {
+      background: rgba(74, 144, 217, 0.12);
+      color: #4A90D9;
+    }
+
+    .meta-badge.status-in_progress {
+      background: rgba(255, 125, 0, 0.12);
+      color: #FF7D00;
+    }
+
+    .meta-badge.status-overdue {
+      background: rgba(245, 63, 63, 0.12);
+      color: #F53F3F;
+    }
+
+    .meta-badge.reminder {
+      background: rgba(154, 106, 255, 0.12);
+      color: #9A6AFF;
+      cursor: pointer;
+    }
+
+    .meta-badge.reminder:hover {
+      background: rgba(154, 106, 255, 0.25);
+    }
+
+    .timeline-empty {
+      text-align: center;
+      padding: 30px 0;
+      color: #86909C;
+      font-size: 13px;
+    }
+
+    /* 完成状态的任务样式 */
+    .timeline-item.completed .task-text {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+
+    .timeline-item.completed .timeline-dot {
+      background: #00B42A;
+      box-shadow: 0 0 0 2px rgba(0, 180, 42, 0.3);
+    }
+  </style>
+</head>
+<body>
+  <div class="timeline-container">
+    <div class="timeline-header">
+      {{avatarImg}}
+      <div class="header-info">
+        <div class="sender-name">{{senderName}}</div>
+        <div class="task-count">共 {{taskCount}} 条任务</div>
+      </div>
+    </div>
+    <div class="timeline-scroll" id="timelineScroll">
+      {{timelineItems}}
+    </div>
+  </div>
+
+  <script>
+    window.noteId = {{noteId}};
+    window.senderName = "{{senderNameJs}}";
+    window.tasksData = {{tasksJson}};
+  </script>
+  <script src="stickyTimelineScript.js"></script>
+</body>
+</html>

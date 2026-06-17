@@ -38,6 +38,8 @@ class StickyNoteManager {
     this.nextId = 1;
     this.templatePath = path.join(__dirname, '../templates/stickyTemplate.html');
     this.scriptPath = path.join(__dirname, '../templates/stickyScript.js');
+    this.timelineTemplatePath = path.join(__dirname, '../templates/stickyTimelineTemplate.html');
+    this.timelineScriptPath = path.join(__dirname, '../templates/stickyTimelineScript.js');
     this.reminderService = reminderService;
     this.settings = {
       edgeSnap: true,
@@ -181,6 +183,170 @@ class StickyNoteManager {
       // 返回一个简单的错误页面
       return `<html><body><div>加载便签失败🤔</div></body></html>`;
     }
+  }
+
+  // 生成时间轴 HTML
+  generateTimelineHTML(tasks, senderName, senderAvatar, id) {
+    try {
+      let template = fs.readFileSync(this.timelineTemplatePath, 'utf8');
+      const scriptContent = fs.readFileSync(this.timelineScriptPath, 'utf8');
+
+      const escapeHtml = (str) => {
+        if (!str) return '';
+        return str.replace(/[&<>"'/]/g, (tag) => {
+          const escapeMap = { '&': '&amp;', '<': '&gt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;' };
+          return escapeMap[tag] || tag;
+        });
+      };
+
+      const getStatusText = (status) => {
+        switch (status) {
+          case 'pending': return '待办';
+          case 'in_progress': return '进行中';
+          case 'completed': return '已完成';
+          case 'overdue': return '逾期';
+          default: return '待办';
+        }
+      };
+
+      const getPriorityText = (priority) => {
+        switch (priority) {
+          case 'high': return '高';
+          case 'medium': return '中';
+          case 'low': return '低';
+          default: return '无';
+        }
+      };
+
+      // 头像
+      const defaultAvatarSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 45 45'%3E%3Ccircle cx='22.5' cy='22.5' r='22.5' fill='%23e8e8e8'/%3E%3Ccircle cx='22.5' cy='16.5' r='7' fill='none' stroke='%23888' stroke-width='2.5'/%3E%3Cpath d='M8 37.5Q22.5 26 37 37.5' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E";
+      const avatarImg = senderAvatar
+        ? `<img class="avatar" src="${escapeHtml(senderAvatar)}" />`
+        : `<img class="avatar" src="${defaultAvatarSvg}" />`;
+
+      // 构建任务列表 HTML
+      let timelineItemsHtml = '';
+      if (tasks.length > 0) {
+        timelineItemsHtml = '<div class="timeline-track"><div class="timeline-line"></div>';
+        for (const task of tasks) {
+          const timeStr = task.created_at ? new Date(task.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+          const isCompleted = task.status === 'completed' || task.is_completed === 1;
+          const completedClass = isCompleted ? ' completed' : '';
+          const reminderText = task.reminderRule && task.reminderRule.reminder_time
+            ? task.reminderRule.reminder_time.substring(0, 5)
+            : '';
+          timelineItemsHtml += `
+          <div class="timeline-item${completedClass}" data-task-id="${escapeHtml(task.id)}">
+            <div class="timeline-dot"></div>
+            <div class="task-time">
+              <span class="time-text">${timeStr}</span>
+            </div>
+            <div class="task-card">
+              <div class="task-text" contenteditable="false">${escapeHtml(task.content)}</div>
+              <div class="task-meta">
+                <span class="meta-badge priority-${task.priority}">${getPriorityText(task.priority)}</span>
+                <span class="meta-badge status-${task.status}">${getStatusText(task.status)}</span>
+                ${reminderText ? `<span class="meta-badge reminder" data-task-id="${escapeHtml(task.id)}">⏰ ${reminderText}</span>` : ''}
+              </div>
+            </div>
+          </div>`;
+        }
+        timelineItemsHtml += '</div>';
+      } else {
+        timelineItemsHtml = '<div class="timeline-empty">暂无任务</div>';
+      }
+
+      const displayName = escapeHtml(senderName || '未知');
+      const senderNameJs = (senderName || '未知').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+
+      const tasksJson = JSON.stringify(tasks.map(t => ({
+        id: t.id,
+        content: t.content,
+        status: t.status,
+        priority: t.priority,
+        created_at: t.created_at,
+        reminderTime: t.reminderRule ? t.reminderRule.reminder_time : null
+      })));
+
+      const replacements = {
+        '{{noteId}}': id,
+        '{{senderName}}': displayName,
+        '{{senderNameJs}}': senderNameJs,
+        '{{taskCount}}': tasks.length,
+        '{{avatarImg}}': avatarImg,
+        '{{timelineItems}}': timelineItemsHtml,
+        '{{tasksJson}}': tasksJson
+      };
+
+      for (const [placeholder, value] of Object.entries(replacements)) {
+        template = template.replace(new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), String(value));
+      }
+
+      template = template.replace('<script src="stickyTimelineScript.js"></script>', `<script>${scriptContent}</script>`);
+
+      return template;
+    } catch (error) {
+      console.error('生成时间轴便签 HTML 失败:', error);
+      return `<html><body><div>加载时间轴失败🤔</div></body></html>`;
+    }
+  }
+
+  async createTimelineNote(tasks, senderName, senderAvatar) {
+    const id = this.nextId++;
+    const userSettings = loadUserSettings();
+    const skipTaskbar = userSettings.sticky && userSettings.sticky.skipTaskbar !== false;
+
+    let taskbarIcon = this.stickyIcon;
+    if (senderAvatar && !senderAvatar.includes('svg+xml')) {
+      try {
+        if (senderAvatar.startsWith('data:image/')) {
+          taskbarIcon = nativeImage.createFromDataURL(senderAvatar);
+        } else {
+          const base64Data = senderAvatar.replace(/^data:image\/\w+;base64,/, '');
+          const buffer = Buffer.from(base64Data, 'base64');
+          taskbarIcon = nativeImage.createFromBuffer(buffer);
+        }
+      } catch (err) {
+        console.error('[StickyNote] 从头像创建时间轴图标失败:', err);
+        taskbarIcon = this.stickyIcon;
+      }
+    }
+
+    const win = new BrowserWindow({
+      width: 400,
+      height: 500,
+      alwaysOnTop: false,
+      frame: false,
+      transparent: true,
+      resizable: true,
+      movable: true,
+      skipTaskbar: skipTaskbar,
+      icon: taskbarIcon || undefined,
+      minWidth: 320,
+      minHeight: 200,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, '../../preload/index.js')
+      }
+    });
+
+    const html = this.generateTimelineHTML(tasks, senderName, senderAvatar, id);
+    win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
+
+    win.on('closed', () => this.notes.delete(id));
+
+    this.notes.set(id, {
+      win,
+      taskId: null,
+      isTimeline: true,
+      senderName: senderName,
+      isFolded: false,
+      originalBounds: null,
+      snapEdge: null,
+      isDragging: false
+    });
+    return id;
   }
 
   async createNote(task) {

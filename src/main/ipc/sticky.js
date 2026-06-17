@@ -1,8 +1,9 @@
 // src/main/ipc/sticky.js
 const { ipcMain, BrowserWindow, clipboard } = require('electron');
-const { updateTask, getTaskById } = require('../../database/repositories/taskRepository');
+const { updateTask, getTaskById, getTasksBySenderName } = require('../../database/repositories/taskRepository');
 const { saveReminderRule, deleteReminderRulesByTaskId, deleteReminderLogsByTaskId, getReminderRuleByTaskId } = require('../../database/repositories/reminderRepository');
 const { StickyMenu } = require('../menus');
+const { showConfirmDialog } = require('../windows/confirmDialog');
 const path = require('path');
 
 function registerStickyHandlers(mainWindow, stickyManager, screenshotUtils, reminderService) {
@@ -425,6 +426,164 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
     } catch (err) {
       console.error('[Sticky] 保存样式配置失败:', err);
     }
+  });
+
+  // ========== 时间轴便签 IPC ==========
+
+  // 打开时间轴便签
+  ipcMain.on('open-timeline-note', async (event, { noteId, taskId }) => {
+    try {
+      const task = await getTaskById(taskId);
+      if (!task) {
+        sendToastToMainWindow('error', '找不到任务信息');
+        return;
+      }
+      const senderName = task.sender_name;
+      if (!senderName) {
+        sendToastToMainWindow('error', '该任务没有关联联系人');
+        return;
+      }
+      const tasks = getTasksBySenderName(senderName);
+      if (tasks.length === 0) {
+        sendToastToMainWindow('info', '该联系人暂无其他任务');
+        return;
+      }
+      const noteId = stickyManager.createTimelineNote(tasks, senderName, task.sender_avatar);
+      console.log(`[Timeline] 时间轴便签已创建: noteId=${noteId}, sender=${senderName}, tasks=${tasks.length}`);
+    } catch (err) {
+      console.error('[Timeline] 创建时间轴便签失败:', err);
+      sendToastToMainWindow('error', '创建时间轴便签失败');
+    }
+  });
+
+  // 时间轴中更新任务文本
+  ipcMain.on('timeline-update-task-text', async (event, { noteId, taskId, content }) => {
+    try {
+      await updateTask(taskId, { content });
+      notifyMainWindow();
+      // 通知时间轴窗口更新显示
+      const note = stickyManager.notes.get(noteId);
+      if (note && note.win && !note.win.isDestroyed()) {
+        note.win.webContents.send('timeline-update-task-display', { taskId, content });
+      }
+    } catch (err) {
+      console.error('[Timeline] 更新任务文本失败:', err);
+    }
+  });
+
+  // 时间轴右键菜单
+  ipcMain.on('timeline-context-menu', async (event, { noteId, taskId, senderName }) => {
+    const { Menu } = require('electron');
+    const template = [];
+
+    if (taskId) {
+      // 点击了某条任务
+      template.push({
+        label: '删除此任务',
+        click: async () => {
+          const confirmed = await showConfirmDialog(
+            stickyManager.notes.get(noteId)?.win,
+            {
+              title: '确认删除',
+              message: '确定要删除这个任务吗？',
+              detail: '删除后任务将移动到回收站，您可以在回收站中恢复。',
+              type: 'warning',
+              confirmText: '删除',
+              cancelText: '取消'
+            }
+          );
+          if (confirmed) {
+            deleteReminderRulesByTaskId(taskId);
+            deleteReminderLogsByTaskId(taskId);
+            await updateTask(taskId, { is_deleted: 1, is_show_desk: 0 });
+            notifyMainWindow();
+            const note = stickyManager.notes.get(noteId);
+            if (note && note.win && !note.win.isDestroyed()) {
+              note.win.webContents.send('timeline-remove-task', taskId);
+            }
+          }
+        }
+      });
+      template.push({ type: 'separator' });
+    }
+
+    template.push({
+      label: '刷新时间轴',
+      click: async () => {
+        const note = stickyManager.notes.get(noteId);
+        if (note && note.win && !note.win.isDestroyed()) {
+          const tasks = getTasksBySenderName(note.senderName);
+          const html = stickyManager.generateTimelineHTML(tasks, note.senderName, null, noteId);
+          note.win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
+        }
+      }
+    });
+
+    template.push({
+      label: '关闭时间轴',
+      click: () => {
+        stickyManager.deleteNote(noteId);
+      }
+    });
+
+    const menu = Menu.buildFromTemplate(template);
+    menu.popup();
+  });
+
+  // 时间轴中打开提醒设置
+  ipcMain.on('timeline-open-reminder', async (event, { noteId, taskId }) => {
+    if (reminderDialogWindows.has(taskId)) {
+      const existingWin = reminderDialogWindows.get(taskId);
+      if (!existingWin.isDestroyed()) {
+        existingWin.close();
+      }
+      reminderDialogWindows.delete(taskId);
+    }
+
+    const existingRule = getReminderRuleByTaskId(taskId);
+
+    const dialogWin = new BrowserWindow({
+      width: 400,
+      height: 580,
+      frame: false,
+      transparent: true,
+      resizable: false,
+      alwaysOnTop: true,
+      movable: true,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, '../../preload/index.js')
+      }
+    });
+
+    const dialogPath = path.join(__dirname, '../templates/repeatRemindDialog.html');
+    dialogWin.loadFile(dialogPath);
+
+    reminderDialogWindows.set(taskId, dialogWin);
+
+    dialogWin.on('closed', () => {
+      reminderDialogWindows.delete(taskId);
+    });
+
+    dialogWin.webContents.on('did-finish-load', () => {
+      if (existingRule) {
+        dialogWin.webContents.send('load-reminder-data', {
+          repeatType: existingRule.repeat_type,
+          reminderTime: existingRule.reminder_time,
+          startDate: existingRule.start_date,
+          endDate: existingRule.end_date,
+          advanceMinutes: existingRule.advance_minutes,
+          reminderWay: existingRule.reminder_way,
+          reminderEnabled: existingRule.is_enabled === 1,
+          repeatConfig: existingRule.repeat_config ? JSON.parse(existingRule.repeat_config) : null,
+          customDates: existingRule.custom_dates ? JSON.parse(existingRule.custom_dates) : null
+        });
+      }
+    });
+
+    dialogWin.taskId = taskId;
+    dialogWin.noteId = noteId;
   });
 }
 

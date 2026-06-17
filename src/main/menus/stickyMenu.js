@@ -1,5 +1,5 @@
 const { Menu } = require('electron');
-const { updateTask } = require('../../database/repositories/taskRepository');
+const { updateTask, getTaskById, getTasksBySenderName } = require('../../database/repositories/taskRepository');
 const { deleteReminderRulesByTaskId, deleteReminderLogsByTaskId } = require('../../database/repositories/reminderRepository');
 const { showConfirmDialog } = require('../windows/confirmDialog');
 
@@ -31,6 +31,21 @@ class StickyMenu {
           }
           await updateTask(taskId, { is_pinned: newPinnedState ? 1 : 0 });
           this.notifyMainWindowUpdate();
+        }
+      },
+      {
+        label: '时间轴',
+        click: async () => {
+          try {
+            const task = await getTaskById(taskId);
+            if (!task || !task.sender_name) return;
+            const tasks = getTasksBySenderName(task.sender_name);
+            if (tasks.length > 0) {
+              this.stickyManager.createTimelineNote(tasks, task.sender_name, task.sender_avatar);
+            }
+          } catch (err) {
+            console.error('[StickyMenu] 创建时间轴失败:', err);
+          }
         }
       },
       {

@@ -113,10 +113,20 @@ function getTaskById(id) {
   return stmt.get(id);
 }
 
+// 获取某联系人的所有任务（排除已删除），按创建时间升序
+function getTasksBySenderName(senderName) {
+  const tasks = db.prepare(`
+    SELECT * FROM tasks 
+    WHERE sender_name = ? AND is_deleted = 0
+    ORDER BY created_at ASC
+  `).all(senderName);
+  return attachReminderRules(tasks);
+}
+
 // 彻底删除任务（不可恢复）
 function deleteTask(id) {
   const stmt = db.prepare(`DELETE FROM tasks WHERE id = ?`);
   return stmt.run(id);
 }
 
-module.exports = { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, getDeskTasks, updateTask, getTaskById, deleteTask };
+module.exports = { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, getDeskTasks, updateTask, getTaskById, getTasksBySenderName, deleteTask };
