@@ -1,6 +1,6 @@
 // src/main/ipc/sticky.js
 const { ipcMain, BrowserWindow, clipboard } = require('electron');
-const { updateTask, getTaskById, getTasksBySenderName } = require('../../database/repositories/taskRepository');
+const { updateTask, getTaskById, getTasksBySenderName, saveTimelineNote, deleteTimelineNote } = require('../../database/repositories/taskRepository');
 const { saveReminderRule, deleteReminderRulesByTaskId, deleteReminderLogsByTaskId, getReminderRuleByTaskId } = require('../../database/repositories/reminderRepository');
 const { StickyMenu } = require('../menus');
 const { showConfirmDialog } = require('../windows/confirmDialog');
@@ -19,6 +19,24 @@ function registerStickyHandlers(mainWindow, stickyManager, screenshotUtils, remi
   function sendToastToMainWindow(type, message) {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('show-toast', { type, message });
+    }
+  }
+
+  function refreshTimelineForSender(taskId, stickyManager, reminderService) {
+    try {
+      const task = getTaskById(taskId);
+      if (!task || !task.sender_name) return;
+      // 遍历所有便签，找到属于该联系人的时间轴便签并刷新
+      for (const [id, note] of stickyManager.notes.entries()) {
+        if (note.isTimeline && note.senderName === task.sender_name && note.win && !note.win.isDestroyed()) {
+          const tasks = getTasksBySenderName(note.senderName);
+          const html = stickyManager.generateTimelineHTML(tasks, note.senderName, note.senderAvatar, id);
+          note.win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
+          break;
+        }
+      }
+    } catch (err) {
+      console.error('[Timeline] 刷新时间轴提醒信息失败:', err);
     }
   }
 
@@ -121,7 +139,7 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
       const task = await getTaskById(taskId);
       if (!task) throw new Error('Task not found');
       const isCurrentlyPinned = task.is_pinned === 1;
-      const menu = stickyMenu.buildContextMenu(noteId, taskId, isCurrentlyPinned);
+      const menu = await stickyMenu.buildContextMenu(noteId, taskId, isCurrentlyPinned);
       menu.popup();
     } catch (error) {
       console.error('生成右键菜单失败:', error);
@@ -291,7 +309,13 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
               nextText = reminderService.getNextReminderText(rule);
             }
           }
-          note.win.webContents.send('update-reminder-info', nextText);
+          if (note.isTimeline) {
+            // 时间轴便签：局部更新，避免整页刷新闪烁
+            note.win.webContents.send('timeline-update-reminder', { taskId: targetTaskId, reminderText: nextText });
+          } else {
+            // 单个便签
+            note.win.webContents.send('update-reminder-info', nextText);
+          }
         }
       }
       
@@ -337,7 +361,13 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
 
       const note = stickyManager.notes.get(targetNoteId);
       if (note && note.win && !note.win.isDestroyed()) {
-        note.win.webContents.send('update-reminder-info', null);
+        if (note.isTimeline) {
+          // 时间轴便签：局部更新，避免整页刷新闪烁
+          note.win.webContents.send('timeline-update-reminder', { taskId: targetTaskId, reminderText: null });
+        } else {
+          // 单个便签
+          note.win.webContents.send('update-reminder-info', null);
+        }
       }
 
       console.log('[Reminder] 提醒规则已删除');
@@ -471,13 +501,33 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
     }
   });
 
+  // 时间轴中设置截止日期
+  ipcMain.on('timeline-set-due-date', async (event, { noteId, taskId, dueDate }) => {
+    try {
+      await updateTask(taskId, { due_date: dueDate || null });
+      notifyMainWindow();
+      console.log(`[Timeline] 截止日期已更新: taskId=${taskId}, dueDate=${dueDate || '无'}`);
+    } catch (err) {
+      console.error('[Timeline] 设置截止日期失败:', err);
+    }
+  });
+
   // 时间轴右键菜单
   ipcMain.on('timeline-context-menu', async (event, { noteId, taskId, senderName }) => {
     const { Menu } = require('electron');
     const template = [];
 
+    const note = stickyManager.notes.get(noteId);
+    const isPinned = note && note.win && !note.win.isDestroyed() ? note.win.isAlwaysOnTop() : false;
+
     if (taskId) {
       // 点击了某条任务
+      template.push({
+        label: '重复提醒',
+        click: () => {
+          openReminderDialog(noteId, taskId);
+        }
+      });
       template.push({
         label: '删除此任务',
         click: async () => {
@@ -507,14 +557,75 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
       template.push({ type: 'separator' });
     }
 
+    // 置顶
+    template.push({
+      label: isPinned ? '取消置顶' : '置顶',
+      click: () => {
+        const n = stickyManager.notes.get(noteId);
+        if (n && n.win && !n.win.isDestroyed()) {
+          const newPinned = !isPinned;
+          n.win.setAlwaysOnTop(newPinned);
+          // 同步到数据库
+          try {
+            const [x, y] = n.win.getPosition();
+            saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig, newPinned, x, y);
+          } catch (err) {
+            console.error('[Timeline] 保存置顶状态到数据库失败:', err);
+          }
+        }
+      }
+    });
+
+    template.push({ type: 'separator' });
+
+    // 透明度
+    template.push({
+      label: '透明度',
+      submenu: [100, 90, 80, 70, 60, 50].map(percent => ({
+        label: `${percent}%`,
+        click: () => {
+          const n = stickyManager.notes.get(noteId);
+          if (n && n.win && !n.win.isDestroyed()) {
+            n.win.webContents.send('timeline-update-opacity', percent / 100);
+          }
+        }
+      }))
+    });
+
+    // 背景颜色
+    const bgColors = [
+      { label: '白色', color: 'rgba(255, 255, 255, 0.92)' },
+      { label: '米黄', color: 'rgba(255, 251, 235, 0.92)' },
+      { label: '浅蓝', color: 'rgba(235, 245, 255, 0.92)' },
+      { label: '浅绿', color: 'rgba(235, 255, 240, 0.92)' },
+      { label: '浅粉', color: 'rgba(255, 240, 245, 0.92)' },
+      { label: '浅紫', color: 'rgba(248, 240, 255, 0.92)' },
+      { label: '浅灰', color: 'rgba(248, 248, 248, 0.92)' }
+    ];
+
+    template.push({
+      label: '背景颜色',
+      submenu: bgColors.map(item => ({
+        label: item.label,
+        click: () => {
+          const n = stickyManager.notes.get(noteId);
+          if (n && n.win && !n.win.isDestroyed()) {
+            n.win.webContents.send('timeline-update-bgcolor', item.color);
+          }
+        }
+      }))
+    });
+
+    template.push({ type: 'separator' });
+
     template.push({
       label: '刷新时间轴',
       click: async () => {
-        const note = stickyManager.notes.get(noteId);
-        if (note && note.win && !note.win.isDestroyed()) {
-          const tasks = getTasksBySenderName(note.senderName);
-          const html = stickyManager.generateTimelineHTML(tasks, note.senderName, null, noteId);
-          note.win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
+        const n = stickyManager.notes.get(noteId);
+        if (n && n.win && !n.win.isDestroyed()) {
+          const tasks = getTasksBySenderName(n.senderName);
+          const html = stickyManager.generateTimelineHTML(tasks, n.senderName, n.senderAvatar, noteId);
+          n.win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
         }
       }
     });
@@ -530,8 +641,24 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
     menu.popup();
   });
 
-  // 时间轴中打开提醒设置
-  ipcMain.on('timeline-open-reminder', async (event, { noteId, taskId }) => {
+  // 保存时间轴便签样式
+  ipcMain.on('save-timeline-style', (event, { noteId, styleConfig }) => {
+    const note = stickyManager.notes.get(noteId);
+    if (note) {
+      note.styleConfig = Object.assign({}, note.styleConfig, styleConfig);
+      console.log('[Timeline] 样式已保存:', noteId, note.styleConfig);
+      // 同步到数据库
+      try {
+        const win = note.win;
+        const [x, y] = win.getPosition();
+        saveTimelineNote(note.senderName, note.senderAvatar, note.styleConfig, win.isAlwaysOnTop(), x, y);
+      } catch (err) {
+        console.error('[Timeline] 保存样式到数据库失败:', err);
+      }
+    }
+  });
+
+  function openReminderDialog(noteId, taskId) {
     if (reminderDialogWindows.has(taskId)) {
       const existingWin = reminderDialogWindows.get(taskId);
       if (!existingWin.isDestroyed()) {
@@ -584,6 +711,11 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
 
     dialogWin.taskId = taskId;
     dialogWin.noteId = noteId;
+  }
+
+  // 时间轴中打开提醒设置
+  ipcMain.on('timeline-open-reminder', async (event, { noteId, taskId }) => {
+    openReminderDialog(noteId, taskId);
   });
 }
 

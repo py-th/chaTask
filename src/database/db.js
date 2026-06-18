@@ -199,7 +199,34 @@ function migrateContactsTable() {
   }
 }
 
+// 时间轴便签表
+function migrateTimelineNotesTable() {
+  try {
+    const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='timeline_notes'").get();
+    if (!tableExists) {
+      console.log('[db] 迁移：创建 timeline_notes 表');
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS timeline_notes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          sender_name TEXT NOT NULL UNIQUE,       -- 联系人名称
+          sender_avatar TEXT,                     -- 联系人头像
+          style_config TEXT DEFAULT '{}',         -- 样式配置 JSON
+          is_pinned INTEGER DEFAULT 0,            -- 是否置顶
+          position_x INTEGER,                     -- 窗口位置 X
+          position_y INTEGER,                     -- 窗口位置 Y
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      console.log('[db] 迁移完成：timeline_notes 表已创建');
+    }
+  } catch (err) {
+    console.error('[db] 时间轴便签表迁移失败:', err.message);
+  }
+}
+
 // 立即执行迁移
 migrateContactsTable();
+migrateTimelineNotesTable();
 
 module.exports = db;

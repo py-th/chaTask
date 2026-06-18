@@ -12,10 +12,11 @@
       height: 100%;
       overflow: hidden;
       display: flex;
+      border-radius: 12px;
     }
 
     .timeline-container {
-      background: rgba(255, 255, 255, 0.92);
+      background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(4px);
       border-radius: 12px;
       width: 100%;
@@ -24,6 +25,7 @@
       flex-direction: column;
       border: 1px solid rgba(0, 0, 0, 0.08);
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+      overflow: hidden;
     }
 
     .timeline-header {
@@ -69,7 +71,7 @@
       flex: 1;
       overflow-y: auto;
       overflow-x: hidden;
-      padding: 12px 8px 12px 12px;
+      padding: 10px 8px;
     }
 
     .timeline-scroll::-webkit-scrollbar {
@@ -88,7 +90,7 @@
 
     .timeline-line {
       position: absolute;
-      left: 9px;
+      left: 4px;
       top: 0;
       bottom: 0;
       width: 2px;
@@ -98,7 +100,7 @@
 
     .timeline-item {
       position: relative;
-      margin-bottom: 16px;
+      margin-bottom: 15px;
       cursor: default;
     }
 
@@ -109,7 +111,7 @@
     .timeline-dot {
       position: absolute;
       left: -28px;
-      top: 6px;
+      top: 2px;
       width: 10px;
       height: 10px;
       border-radius: 50%;
@@ -124,10 +126,16 @@
       transform: scale(1.3);
     }
 
+    .timeline-dot.has-due-date {
+      background: #F7B731;
+      box-shadow: 0 0 0 2px rgba(247, 183, 49, 0.3);
+    }
+
     .timeline-item .task-time {
       font-size: 11px;
       color: #86909C;
       margin-bottom: 4px;
+      margin-left: -10px;
       display: flex;
       align-items: center;
       gap: 6px;
@@ -137,10 +145,21 @@
       white-space: nowrap;
     }
 
+    .timeline-item .due-date-badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      white-space: nowrap;
+      background: rgba(247, 183, 49, 0.15);
+      color: #D63031;
+      font-weight: 500;
+    }
+
     .timeline-item .task-card {
       background: rgba(248, 249, 250, 0.8);
       border-radius: 8px;
       padding: 8px 10px;
+      margin-left: -20px;
       border: 1px solid rgba(0, 0, 0, 0.06);
       transition: background 0.15s ease, box-shadow 0.15s ease;
     }
@@ -249,6 +268,215 @@
       background: #00B42A;
       box-shadow: 0 0 0 2px rgba(0, 180, 42, 0.3);
     }
+
+    /* 样式面板 */
+    .style-panel {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.95);
+      width: 220px;
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      padding: 16px;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.2s ease;
+    }
+    .style-panel.show {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .style-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #1D2129;
+    }
+    .style-panel-header .close-btn {
+      cursor: pointer;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #86909C;
+    }
+    .style-panel-header .close-btn:hover {
+      background: rgba(0, 0, 0, 0.06);
+      color: #1D2129;
+    }
+    .style-row {
+      margin-bottom: 12px;
+    }
+    .style-row:last-child {
+      margin-bottom: 0;
+    }
+    .style-label {
+      font-size: 12px;
+      color: #86909C;
+      margin-bottom: 6px;
+      display: block;
+    }
+    .style-row input[type="range"] {
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      -webkit-appearance: none;
+      background: #E5E6EB;
+      outline: none;
+    }
+    .style-row input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #4A90D9;
+      cursor: pointer;
+    }
+    .style-value {
+      font-size: 11px;
+      color: #4A90D9;
+      margin-top: 4px;
+      text-align: right;
+    }
+    .style-row input[type="color"] {
+      width: 100%;
+      height: 32px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: none;
+    }
+    .style-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .style-actions button {
+      flex: 1;
+      padding: 6px 0;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .style-actions .btn-reset {
+      background: #F2F3F5;
+      color: #86909C;
+    }
+    .style-actions .btn-reset:hover {
+      background: #E5E6EB;
+    }
+    .style-actions .btn-confirm {
+      background: #4A90D9;
+      color: #fff;
+    }
+    .style-actions .btn-confirm:hover {
+      background: #3570B0;
+    }
+
+    /* 日期选择器弹层 */
+    .date-picker-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      z-index: 1001;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .date-picker-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .date-picker-card {
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 12px;
+      padding: 16px;
+      width: 220px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+    .date-picker-header {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1D2129;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .date-picker-header .close-btn {
+      cursor: pointer;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #86909C;
+    }
+    .date-picker-header .close-btn:hover {
+      background: rgba(0, 0, 0, 0.06);
+      color: #1D2129;
+    }
+    .date-picker-card input[type="date"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      border-radius: 8px;
+      font-size: 13px;
+      color: #1D2129;
+      outline: none;
+      margin-bottom: 12px;
+      background: #fff;
+    }
+    .date-picker-card input[type="date"]:focus {
+      border-color: #4A90D9;
+    }
+    .date-picker-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .date-picker-actions button {
+      flex: 1;
+      padding: 6px 0;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .date-picker-actions .btn-clear {
+      background: #F2F3F5;
+      color: #F53F3F;
+    }
+    .date-picker-actions .btn-clear:hover {
+      background: #FFE5E5;
+    }
+    .date-picker-actions .btn-confirm {
+      background: #4A90D9;
+      color: #fff;
+    }
+    .date-picker-actions .btn-confirm:hover {
+      background: #3570B0;
+    }
   </style>
 </head>
 <body>
@@ -265,10 +493,47 @@
     </div>
   </div>
 
+  <!-- 样式面板 -->
+  <div class="style-panel" id="stylePanel">
+    <div class="style-panel-header">
+      <span>样式设置</span>
+      <span class="close-btn" id="stylePanelClose">✕</span>
+    </div>
+    <div class="style-row">
+      <label class="style-label">透明度</label>
+      <input type="range" id="styleOpacity" min="0.3" max="1" step="0.05" value="1">
+      <div class="style-value" id="styleOpacityValue">100%</div>
+    </div>
+    <div class="style-row">
+      <label class="style-label">背景颜色</label>
+      <input type="color" id="styleBgColor" value="#ffffff">
+    </div>
+    <div class="style-actions">
+      <button class="btn-reset" id="styleReset">重置</button>
+      <button class="btn-confirm" id="styleConfirm">确定</button>
+    </div>
+  </div>
+
+  <!-- 日期选择器弹层 -->
+  <div class="date-picker-overlay" id="datePickerOverlay">
+    <div class="date-picker-card">
+      <div class="date-picker-header">
+        <span>设置截止日期</span>
+        <span class="close-btn" id="datePickerClose">✕</span>
+      </div>
+      <input type="date" id="datePickerInput">
+      <div class="date-picker-actions">
+        <button class="btn-clear" id="datePickerClear">清除日期</button>
+        <button class="btn-confirm" id="datePickerConfirm">确定</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     window.noteId = {{noteId}};
     window.senderName = "{{senderNameJs}}";
     window.tasksData = {{tasksJson}};
+    window.timelineStyleConfig = {{timelineStyleConfig}};
   </script>
   <script src="stickyTimelineScript.js"></script>
 </body>

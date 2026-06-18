@@ -129,4 +129,33 @@ function deleteTask(id) {
   return stmt.run(id);
 }
 
-module.exports = { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, getDeskTasks, updateTask, getTaskById, getTasksBySenderName, deleteTask };
+// ========== 时间轴便签持久化 ==========
+
+function getTimelineNotes() {
+  const stmt = db.prepare(`SELECT * FROM timeline_notes ORDER BY updated_at DESC`);
+  return stmt.all();
+}
+
+function saveTimelineNote(senderName, senderAvatar, styleConfig, isPinned, positionX, positionY) {
+  const now = new Date().toISOString();
+  const configStr = typeof styleConfig === 'string' ? styleConfig : JSON.stringify(styleConfig || {});
+  const stmt = db.prepare(`
+    INSERT INTO timeline_notes (sender_name, sender_avatar, style_config, is_pinned, position_x, position_y, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(sender_name) DO UPDATE SET
+      sender_avatar = excluded.sender_avatar,
+      style_config = excluded.style_config,
+      is_pinned = excluded.is_pinned,
+      position_x = excluded.position_x,
+      position_y = excluded.position_y,
+      updated_at = excluded.updated_at
+  `);
+  return stmt.run(senderName, senderAvatar || '', configStr, isPinned ? 1 : 0, positionX || null, positionY || null, now, now);
+}
+
+function deleteTimelineNote(senderName) {
+  const stmt = db.prepare(`DELETE FROM timeline_notes WHERE sender_name = ?`);
+  return stmt.run(senderName);
+}
+
+module.exports = { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, getDeskTasks, updateTask, getTaskById, getTasksBySenderName, deleteTask, getTimelineNotes, saveTimelineNote, deleteTimelineNote };

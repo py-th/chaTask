@@ -17,10 +17,22 @@ class StickyMenu {
     }
   }
 
-  buildContextMenu(noteId, taskId, isPinned) {
+  async buildContextMenu(noteId, taskId, isPinned) {
     const pinLabel = isPinned ? '取消置顶' : '置顶';
 
-    return Menu.buildFromTemplate([
+    // 检查该联系人是否有至少2条任务
+    let showTimeline = false;
+    try {
+      const task = await getTaskById(taskId);
+      if (task && task.sender_name) {
+        const tasks = getTasksBySenderName(task.sender_name);
+        showTimeline = tasks.length >= 2;
+      }
+    } catch (err) {
+      console.error('[StickyMenu] 检查任务数量失败:', err);
+    }
+
+    const template = [
       {
         label: pinLabel,
         click: async () => {
@@ -32,22 +44,10 @@ class StickyMenu {
           await updateTask(taskId, { is_pinned: newPinnedState ? 1 : 0 });
           this.notifyMainWindowUpdate();
         }
-      },
-      {
-        label: '时间轴',
-        click: async () => {
-          try {
-            const task = await getTaskById(taskId);
-            if (!task || !task.sender_name) return;
-            const tasks = getTasksBySenderName(task.sender_name);
-            if (tasks.length > 0) {
-              this.stickyManager.createTimelineNote(tasks, task.sender_name, task.sender_avatar);
-            }
-          } catch (err) {
-            console.error('[StickyMenu] 创建时间轴失败:', err);
-          }
-        }
-      },
+      }
+    ];
+
+    template.push(
       {
         label: '隐藏 🙈',
         click: async (_, win) => {
@@ -118,7 +118,35 @@ class StickyMenu {
             note.win.webContents.send('show-repeat-remind-picker');
           }
         }
-      },
+      }
+    );
+
+    if (showTimeline) {
+      template.push({
+        label: '时间轴',
+        click: async () => {
+          try {
+            const task = await getTaskById(taskId);
+            if (!task || !task.sender_name) return;
+            const tasks = getTasksBySenderName(task.sender_name);
+            if (tasks.length > 0) {
+              this.stickyManager.createTimelineNote(tasks, task.sender_name, task.sender_avatar);
+              // 隐藏原便签（该任务已在时间轴中显示）
+              await updateTask(taskId, { is_show_desk: 0 });
+              const note = this.stickyManager.notes.get(noteId);
+              if (note && note.win && !note.win.isDestroyed()) {
+                note.win.close();
+              }
+              this.notifyMainWindowUpdate();
+            }
+          } catch (err) {
+            console.error('[StickyMenu] 创建时间轴失败:', err);
+          }
+        }
+      });
+    }
+
+    template.push(
       { type: 'separator' },
       {
         label: '样式',
@@ -172,7 +200,9 @@ class StickyMenu {
           console.log('桌面倒计时，番茄时钟，定时关机');
         }
       }
-    ]);
+    );
+
+    return Menu.buildFromTemplate(template);
   }
 
   _buildPrioritySubmenu(noteId, taskId) {

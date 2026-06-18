@@ -3,7 +3,7 @@ const { BrowserWindow, screen, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { getReminderRuleByTaskId } = require('../../database/repositories/reminderRepository');
-const { updateTask } = require('../../database/repositories/taskRepository');
+const { updateTask, saveTimelineNote, deleteTimelineNote } = require('../../database/repositories/taskRepository');
 const { loadUserSettings } = require('../configManager');
 
 function getStickyIconPath() {
@@ -190,6 +190,8 @@ class StickyNoteManager {
     try {
       let template = fs.readFileSync(this.timelineTemplatePath, 'utf8');
       const scriptContent = fs.readFileSync(this.timelineScriptPath, 'utf8');
+      const note = this.notes.get(id);
+      const timelineStyleConfig = note && note.styleConfig ? note.styleConfig : { opacity: 1, bgColor: '' };
 
       const escapeHtml = (str) => {
         if (!str) return '';
@@ -232,14 +234,18 @@ class StickyNoteManager {
           const timeStr = task.created_at ? new Date(task.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
           const isCompleted = task.status === 'completed' || task.is_completed === 1;
           const completedClass = isCompleted ? ' completed' : '';
-          const reminderText = task.reminderRule && task.reminderRule.reminder_time
-            ? task.reminderRule.reminder_time.substring(0, 5)
+          const reminderText = task.reminderRule && this.reminderService
+            ? this.reminderService.getNextReminderText(task.reminderRule)
             : '';
+          const dueDate = task.due_date || '';
+          const dueDateText = dueDate ? new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) : '';
+          const dueDateTitle = dueDate ? `截止: ${new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN')}` : '点击设置截止日期';
           timelineItemsHtml += `
           <div class="timeline-item${completedClass}" data-task-id="${escapeHtml(task.id)}">
-            <div class="timeline-dot"></div>
+            <div class="timeline-dot" title="${dueDateTitle}" data-due-date="${escapeHtml(dueDate)}" style="cursor: pointer;"></div>
             <div class="task-time">
               <span class="time-text">${timeStr}</span>
+              ${dueDateText ? `<span class="due-date-badge">📅 ${dueDateText}</span>` : ''}
             </div>
             <div class="task-card">
               <div class="task-text" contenteditable="false">${escapeHtml(task.content)}</div>
@@ -265,6 +271,7 @@ class StickyNoteManager {
         status: t.status,
         priority: t.priority,
         created_at: t.created_at,
+        due_date: t.due_date || null,
         reminderTime: t.reminderRule ? t.reminderRule.reminder_time : null
       })));
 
@@ -275,7 +282,8 @@ class StickyNoteManager {
         '{{taskCount}}': tasks.length,
         '{{avatarImg}}': avatarImg,
         '{{timelineItems}}': timelineItemsHtml,
-        '{{tasksJson}}': tasksJson
+        '{{tasksJson}}': tasksJson,
+        '{{timelineStyleConfig}}': JSON.stringify(timelineStyleConfig)
       };
 
       for (const [placeholder, value] of Object.entries(replacements)) {
@@ -291,7 +299,7 @@ class StickyNoteManager {
     }
   }
 
-  async createTimelineNote(tasks, senderName, senderAvatar) {
+  createTimelineNote(tasks, senderName, senderAvatar, options = {}) {
     const id = this.nextId++;
     const userSettings = loadUserSettings();
     const skipTaskbar = userSettings.sticky && userSettings.sticky.skipTaskbar !== false;
@@ -312,9 +320,9 @@ class StickyNoteManager {
       }
     }
 
-    const win = new BrowserWindow({
-      width: 400,
-      height: 500,
+    const winOptions = {
+      width: 300,
+      height: 'auto',
       alwaysOnTop: false,
       frame: false,
       transparent: true,
@@ -322,30 +330,92 @@ class StickyNoteManager {
       movable: true,
       skipTaskbar: skipTaskbar,
       icon: taskbarIcon || undefined,
-      minWidth: 320,
+      minWidth: 300,
       minHeight: 200,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
         preload: path.join(__dirname, '../../preload/index.js')
       }
-    });
+    };
+
+    // 恢复位置和置顶状态
+    if (options.position && options.position.x != null && options.position.y != null) {
+      winOptions.x = options.position.x;
+      winOptions.y = options.position.y;
+    }
+    if (options.isPinned) {
+      winOptions.alwaysOnTop = true;
+    }
+
+    const win = new BrowserWindow(winOptions);
 
     const html = this.generateTimelineHTML(tasks, senderName, senderAvatar, id);
     win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
 
-    win.on('closed', () => this.notes.delete(id));
+    // 关闭前保存状态（close 事件时窗口还未销毁）
+    win.on('close', () => {
+      try {
+        const n = this.notes.get(id);
+        if (n && n.isTimeline) {
+          const [x, y] = win.getPosition();
+          saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig, win.isAlwaysOnTop(), x, y);
+        }
+      } catch (err) {
+        console.error('[StickyNote] 保存时间轴便签状态失败:', err);
+      }
+    });
+
+    win.on('closed', () => {
+      this.notes.delete(id);
+    });
+
+    // 监听位置变化，实时保存
+    win.on('moved', () => {
+      try {
+        const n = this.notes.get(id);
+        if (n && n.isTimeline) {
+          const [x, y] = win.getPosition();
+          saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig, win.isAlwaysOnTop(), x, y);
+        }
+      } catch (err) {
+        console.error('[StickyNote] 保存时间轴便签位置失败:', err);
+      }
+    });
+
+    const initialStyleConfig = options.styleConfig || { opacity: 1, bgColor: '' };
 
     this.notes.set(id, {
       win,
       taskId: null,
       isTimeline: true,
       senderName: senderName,
+      senderAvatar: senderAvatar,
       isFolded: false,
       originalBounds: null,
       snapEdge: null,
-      isDragging: false
+      isDragging: false,
+      styleConfig: initialStyleConfig
     });
+
+    // 应用恢复样式
+    if (initialStyleConfig && (initialStyleConfig.opacity !== 1 || initialStyleConfig.bgColor)) {
+      win.webContents.on('did-finish-load', () => {
+        win.webContents.send('timeline-update-opacity', initialStyleConfig.opacity);
+        if (initialStyleConfig.bgColor) {
+          win.webContents.send('timeline-update-bgcolor', initialStyleConfig.bgColor);
+        }
+      });
+    }
+
+    // 创建时保存到数据库
+    try {
+      const [x, y] = win.getPosition();
+      saveTimelineNote(senderName, senderAvatar, initialStyleConfig, win.isAlwaysOnTop(), x, y);
+    } catch (err) {
+      console.error('[StickyNote] 保存时间轴便签到数据库失败:', err);
+    }
+
     return id;
   }
 
@@ -500,11 +570,13 @@ class StickyNoteManager {
 
   checkEdgeSnap(win, id) {
     if (!this.settings.edgeSnap) return;
+    const note = this.notes.get(id);
+    if (!note || note.isDragging) return;
+    // 时间轴便签不参与贴边折叠
+    if (note.isTimeline) return;
     const bounds = win.getBounds();
     const workArea = this.getCurrentDisplayWorkArea(win);
     const threshold = this.settings.edgeSnapThreshold || 10;
-    const note = this.notes.get(id);
-    if (!note || note.isDragging) return;
 
     let snapEdge = null;
     let newX = bounds.x;
@@ -602,6 +674,13 @@ class StickyNoteManager {
   // 删除便签
   deleteNote(id) {
     const note = this.notes.get(id);
+    if (note && note.isTimeline) {
+      try {
+        deleteTimelineNote(note.senderName);
+      } catch (err) {
+        console.error('[StickyNote] 从数据库删除时间轴便签失败:', err);
+      }
+    }
     if (note && !note.win.isDestroyed()) note.win.close();
     this.notes.delete(id);
   }

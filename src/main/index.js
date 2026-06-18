@@ -12,7 +12,7 @@ const { showNameDialog } = require('./windows/nameDialog');
 const { integrateExtractionResults } = require('./services/integrationService');
 const { initOCR } = require('./services/ocrService');
 const ReminderService = require('./services/reminderService');
-const { getDeskTasks } = require('../database/repositories/taskRepository');
+const { getDeskTasks, getTimelineNotes, getTasksBySenderName } = require('../database/repositories/taskRepository');
 const db = require('../database/db');
 const { getEffectiveConfig, loadUserSettings } = require('./configManager');
 const { createTray, updateTrayTooltip } = require('./tray');
@@ -144,6 +144,40 @@ app.whenReady().then(async () => {
   } catch (err) {
     console.error('[main] 恢复桌面便签失败:', err);
   }
+
+  // 恢复时间轴便签
+  try {
+    const timelineNotes = getTimelineNotes();
+    console.log(`[main] 恢复时间轴便签: ${timelineNotes.length} 个`);
+    for (const note of timelineNotes) {
+      const tasks = getTasksBySenderName(note.sender_name);
+      if (tasks.length > 0) {
+        let styleConfig = null;
+        if (note.style_config) {
+          try {
+            styleConfig = JSON.parse(note.style_config);
+          } catch (e) {
+            console.error('[main] 解析时间轴便签样式配置失败:', e);
+          }
+        }
+        const options = {
+          position: (note.position_x != null && note.position_y != null)
+            ? { x: note.position_x, y: note.position_y }
+            : null,
+          isPinned: note.is_pinned === 1,
+          styleConfig: styleConfig || undefined
+        };
+        stickyManager.createTimelineNote(tasks, note.sender_name, note.sender_avatar, options);
+      } else {
+        // 该联系人没有任务，清理数据库记录
+        const { deleteTimelineNote } = require('../database/repositories/taskRepository');
+        deleteTimelineNote(note.sender_name);
+      }
+    }
+  } catch (err) {
+    console.error('[main] 恢复时间轴便签失败:', err);
+  }
+
   console.log('[main] 基础 IPC 处理器注册完成');
 
   try {
@@ -384,4 +418,18 @@ app.on('will-quit', () => {
 
 app.on('before-quit', () => {
   app.isQuitting = true;
+  // 程序退出前保存所有时间轴便签的位置和状态
+  try {
+    if (stickyManager && stickyManager.notes) {
+      for (const [id, note] of stickyManager.notes.entries()) {
+        if (note.isTimeline && note.win && !note.win.isDestroyed()) {
+          const [x, y] = note.win.getPosition();
+          const { saveTimelineNote } = require('../database/repositories/taskRepository');
+          saveTimelineNote(note.senderName, note.senderAvatar, note.styleConfig, note.win.isAlwaysOnTop(), x, y);
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[main] 退出前保存时间轴便签失败:', err);
+  }
 });
