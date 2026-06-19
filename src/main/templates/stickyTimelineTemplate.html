@@ -5,22 +5,21 @@
   <title>{{senderName}} - 时间轴</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+    html, body {
+      width: 100%;
+    }
     body {
       background: transparent;
       font-family: system-ui, -apple-system, sans-serif;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
       display: flex;
       border-radius: 12px;
     }
 
     .timeline-container {
-      background: rgba(255, 255, 255, 0.95);
+      background: rgba(255,249,196,0.95);
       backdrop-filter: blur(4px);
       border-radius: 12px;
       width: 100%;
-      height: 100%;
       display: flex;
       flex-direction: column;
       border: 1px solid rgba(0, 0, 0, 0.08);
@@ -33,7 +32,7 @@
       align-items: center;
       gap: 10px;
       padding: 10px 12px;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      border-bottom: 1px dashed rgba(128, 128, 128, 0.4);
       flex-shrink: 0;
     }
 
@@ -269,6 +268,17 @@
       box-shadow: 0 0 0 2px rgba(0, 180, 42, 0.3);
     }
 
+    /* 逾期状态 */
+    .timeline-item.overdue .timeline-dot,
+    .timeline-dot.is-overdue {
+      background: #F53F3F;
+      box-shadow: 0 0 0 2px rgba(245, 63, 63, 0.3);
+    }
+
+    .timeline-item.overdue .task-text {
+      color: #F53F3F;
+    }
+
     /* 样式面板 */
     .style-panel {
       position: fixed;
@@ -477,12 +487,66 @@
     .date-picker-actions .btn-confirm:hover {
       background: #3570B0;
     }
+
+    /* ========== 折叠模式样式 ========== */
+    /* 折叠状态：隐藏所有非头像内容 */
+    .timeline-container.folded-mode .timeline-scroll,
+    .timeline-container.folded-mode .header-info {
+      display: none !important;
+    }
+
+    .timeline-container.folded-mode {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 0;
+    }
+
+    .timeline-container.folded-mode .timeline-header {
+      border-bottom: none;
+      padding: 0;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* 圆角正方形头像 - 与单个便签的圆形区分 */
+    .timeline-container.folded-mode .timeline-header .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      border-width: 2px;
+      border-color: var(--fold-avatar-border, rgba(255, 249, 196, 0.95));
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    /* 任务数量徽章 - 头像内部正下方中间位置 */
+    .timeline-container.folded-mode .task-count-badge {
+      position: absolute;
+      bottom: -3px;
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 20px;
+      height: 20px;
+      background: linear-gradient(135deg, #4A90D9 0%, #3570B0 100%);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 5px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+      border: 1px solid #fff;
+      z-index: 2;
+    }
   </style>
 </head>
 <body>
   <div class="timeline-container">
     <div class="timeline-header">
       {{avatarImg}}
+      <div class="task-count-badge" style="display: none;">{{taskCount}}</div>
       <div class="header-info">
         <div class="sender-name">{{senderName}}</div>
         <div class="task-count">共 {{taskCount}} 条任务</div>

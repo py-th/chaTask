@@ -3,7 +3,7 @@ const { BrowserWindow, screen, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { getReminderRuleByTaskId } = require('../../database/repositories/reminderRepository');
-const { updateTask, saveTimelineNote, deleteTimelineNote } = require('../../database/repositories/taskRepository');
+const { updateTask, saveTimelineNote, deleteTimelineNote, hideTimelineNote, getTimelineSortOrder } = require('../../database/repositories/taskRepository');
 const { loadUserSettings } = require('../configManager');
 
 function getStickyIconPath() {
@@ -192,6 +192,23 @@ class StickyNoteManager {
       const scriptContent = fs.readFileSync(this.timelineScriptPath, 'utf8');
       const note = this.notes.get(id);
       const timelineStyleConfig = note && note.styleConfig ? note.styleConfig : { opacity: 1, bgColor: '' };
+      const sortOrder = note && note.sortOrder ? note.sortOrder : 'asc';
+
+      // 根据排序方式处理任务列表
+      let sortedTasks = [...tasks];
+      if (sortOrder === 'desc') {
+        sortedTasks.sort((a, b) => {
+          const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return dateB - dateA; // 降序：最新在前
+        });
+      } else {
+        sortedTasks.sort((a, b) => {
+          const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return dateA - dateB; // 升序：最旧在前
+        });
+      }
 
       const escapeHtml = (str) => {
         if (!str) return '';
@@ -228,21 +245,23 @@ class StickyNoteManager {
 
       // 构建任务列表 HTML
       let timelineItemsHtml = '';
-      if (tasks.length > 0) {
+      if (sortedTasks.length > 0) {
         timelineItemsHtml = '<div class="timeline-track"><div class="timeline-line"></div>';
-        for (const task of tasks) {
+        for (const task of sortedTasks) {
           const timeStr = task.created_at ? new Date(task.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
           const isCompleted = task.status === 'completed' || task.is_completed === 1;
-          const completedClass = isCompleted ? ' completed' : '';
+          const isOverdue = task.status === 'overdue';
+          const completedClass = isCompleted ? ' completed' : (isOverdue ? ' overdue' : '');
           const reminderText = task.reminderRule && this.reminderService
             ? this.reminderService.getNextReminderText(task.reminderRule)
             : '';
           const dueDate = task.due_date || '';
           const dueDateText = dueDate ? new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) : '';
           const dueDateTitle = dueDate ? `截止: ${new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN')}` : '点击设置截止日期';
+          const dueDateClass = dueDate ? ' has-due-date' : '';
           timelineItemsHtml += `
           <div class="timeline-item${completedClass}" data-task-id="${escapeHtml(task.id)}">
-            <div class="timeline-dot" title="${dueDateTitle}" data-due-date="${escapeHtml(dueDate)}" style="cursor: pointer;"></div>
+            <div class="timeline-dot${dueDateClass}${isOverdue ? ' is-overdue' : ''}" title="${dueDateTitle}" data-due-date="${escapeHtml(dueDate)}" style="cursor: pointer;"></div>
             <div class="task-time">
               <span class="time-text">${timeStr}</span>
               ${dueDateText ? `<span class="due-date-badge">📅 ${dueDateText}</span>` : ''}
@@ -265,7 +284,7 @@ class StickyNoteManager {
       const displayName = escapeHtml(senderName || '未知');
       const senderNameJs = (senderName || '未知').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
 
-      const tasksJson = JSON.stringify(tasks.map(t => ({
+      const tasksJson = JSON.stringify(sortedTasks.map(t => ({
         id: t.id,
         content: t.content,
         status: t.status,
@@ -279,7 +298,7 @@ class StickyNoteManager {
         '{{noteId}}': id,
         '{{senderName}}': displayName,
         '{{senderNameJs}}': senderNameJs,
-        '{{taskCount}}': tasks.length,
+        '{{taskCount}}': sortedTasks.length,
         '{{avatarImg}}': avatarImg,
         '{{timelineItems}}': timelineItemsHtml,
         '{{tasksJson}}': tasksJson,
@@ -322,11 +341,11 @@ class StickyNoteManager {
 
     const winOptions = {
       width: 300,
-      height: 'auto',
+      height: 400,
       alwaysOnTop: false,
       frame: false,
       transparent: true,
-      resizable: true,
+      resizable: false,
       movable: true,
       skipTaskbar: skipTaskbar,
       icon: taskbarIcon || undefined,
@@ -353,37 +372,32 @@ class StickyNoteManager {
     const html = this.generateTimelineHTML(tasks, senderName, senderAvatar, id);
     win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
 
-    // 关闭前保存状态（close 事件时窗口还未销毁）
-    win.on('close', () => {
+    // 保存位置和状态的辅助函数
+    const saveTimelineState = () => {
       try {
         const n = this.notes.get(id);
-        if (n && n.isTimeline) {
+        if (n && n.isTimeline && !win.isDestroyed() && !n._closing) {
           const [x, y] = win.getPosition();
-          saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig, win.isAlwaysOnTop(), x, y);
+          saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig,
+            win.isAlwaysOnTop(), x, y, n.sortOrder || 'asc');
         }
       } catch (err) {
         console.error('[StickyNote] 保存时间轴便签状态失败:', err);
       }
-    });
+    };
+
+    // 关闭前保存状态
+    win.on('close', saveTimelineState);
 
     win.on('closed', () => {
       this.notes.delete(id);
     });
 
     // 监听位置变化，实时保存
-    win.on('moved', () => {
-      try {
-        const n = this.notes.get(id);
-        if (n && n.isTimeline) {
-          const [x, y] = win.getPosition();
-          saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig, win.isAlwaysOnTop(), x, y);
-        }
-      } catch (err) {
-        console.error('[StickyNote] 保存时间轴便签位置失败:', err);
-      }
-    });
+    win.on('moved', saveTimelineState);
 
     const initialStyleConfig = options.styleConfig || { opacity: 1, bgColor: '' };
+    const initialSortOrder = options.sortOrder || getTimelineSortOrder(senderName) || 'asc';
 
     this.notes.set(id, {
       win,
@@ -395,23 +409,31 @@ class StickyNoteManager {
       originalBounds: null,
       snapEdge: null,
       isDragging: false,
-      styleConfig: initialStyleConfig
+      styleConfig: initialStyleConfig,
+      sortOrder: initialSortOrder,
+      _closing: false
     });
 
-    // 应用恢复样式
-    if (initialStyleConfig && (initialStyleConfig.opacity !== 1 || initialStyleConfig.bgColor)) {
-      win.webContents.on('did-finish-load', () => {
+    // 页面加载完成后，应用恢复样式
+    win.webContents.on('did-finish-load', () => {
+      // 应用恢复样式
+      if (initialStyleConfig && (initialStyleConfig.opacity !== 1 || initialStyleConfig.bgColor)) {
         win.webContents.send('timeline-update-opacity', initialStyleConfig.opacity);
         if (initialStyleConfig.bgColor) {
           win.webContents.send('timeline-update-bgcolor', initialStyleConfig.bgColor);
         }
-      });
-    }
+      }
+      // 应用排序方式
+      if (initialSortOrder !== 'asc') {
+        win.webContents.send('timeline-sort-tasks', initialSortOrder);
+      }
+    });
 
     // 创建时保存到数据库
     try {
       const [x, y] = win.getPosition();
-      saveTimelineNote(senderName, senderAvatar, initialStyleConfig, win.isAlwaysOnTop(), x, y);
+      saveTimelineNote(senderName, senderAvatar, initialStyleConfig,
+        win.isAlwaysOnTop(), x, y, initialSortOrder);
     } catch (err) {
       console.error('[StickyNote] 保存时间轴便签到数据库失败:', err);
     }
@@ -572,8 +594,6 @@ class StickyNoteManager {
     if (!this.settings.edgeSnap) return;
     const note = this.notes.get(id);
     if (!note || note.isDragging) return;
-    // 时间轴便签不参与贴边折叠
-    if (note.isTimeline) return;
     const bounds = win.getBounds();
     const workArea = this.getCurrentDisplayWorkArea(win);
     const threshold = this.settings.edgeSnapThreshold || 10;
@@ -629,6 +649,7 @@ class StickyNoteManager {
       height: currentBounds.height
     };
 
+    // 时间轴便签使用与单个便签相同的折叠尺寸，但通过圆角正方形头像区分
     const foldedSize = this.settings.foldedSize || 45;
     let newX = currentBounds.x;
     let newY = currentBounds.y;
@@ -645,8 +666,12 @@ class StickyNoteManager {
 
     // 设置折叠后的尺寸和位置
     win.setBounds({ width: foldedSize, height: foldedSize, x: newX, y: newY });
-    // 通知前端进入折叠模式
-    win.webContents.send('fold-note');
+    // 通知前端进入折叠模式（时间轴使用不同的事件名）
+    if (note.isTimeline) {
+      win.webContents.send('fold-timeline-note');
+    } else {
+      win.webContents.send('fold-note');
+    }
     note.isFolded = true;
     note.snapEdge = edge; // 记录贴边方向，供展开时使用（可选）
   }
@@ -664,8 +689,12 @@ class StickyNoteManager {
         height: note.originalBounds.height
     });
 
-    // 第二步：通知前端移除 folded-mode，显示内容
-    win.webContents.send('unfold-note');
+    // 第二步：通知前端移除 folded-mode，显示内容（时间轴使用不同的事件名）
+    if (note.isTimeline) {
+      win.webContents.send('unfold-timeline-note');
+    } else {
+      win.webContents.send('unfold-note');
+    }
 
     note.isFolded = false;
     note.snapEdge = null;
@@ -676,9 +705,10 @@ class StickyNoteManager {
     const note = this.notes.get(id);
     if (note && note.isTimeline) {
       try {
-        deleteTimelineNote(note.senderName);
+        note._closing = true;
+        hideTimelineNote(note.senderName);
       } catch (err) {
-        console.error('[StickyNote] 从数据库删除时间轴便签失败:', err);
+        console.error('[StickyNote] 隐藏时间轴便签失败:', err);
       }
     }
     if (note && !note.win.isDestroyed()) note.win.close();

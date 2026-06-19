@@ -16,6 +16,18 @@
     bgColor: ''
   }, window.timelineStyleConfig || {});
 
+  // 头像和徽章元素引用
+  const headerAvatar = document.querySelector('.timeline-header .avatar');
+  const taskCountBadge = document.querySelector('.task-count-badge');
+
+  // 更新折叠模式下的头像边框颜色（与时间轴背景色同步）
+  function updateFoldedAvatarBorder() {
+    const container = document.querySelector('.timeline-container');
+    if (!container || !headerAvatar) return;
+    const computedBg = window.getComputedStyle(container).backgroundColor;
+    headerAvatar.style.setProperty('--fold-avatar-border', computedBg);
+  }
+
   // 应用样式配置
   function applyStyleConfig(config) {
     const container = document.querySelector('.timeline-container');
@@ -24,8 +36,11 @@
     if (config.bgColor) {
       container.style.backgroundColor = config.bgColor;
     } else {
-      container.style.backgroundColor = 'rgba(255, 255, 255, 0.92)';
+      // 默认使用与桌面便签一致的浅黄色背景
+      container.style.backgroundColor = 'rgba(255, 249, 196, 0.95)';
     }
+    // 同步更新折叠模式下的头像边框颜色
+    updateFoldedAvatarBorder();
   }
 
   applyStyleConfig(styleConfig);
@@ -363,4 +378,142 @@
   electronAPI.on('timeline-update-due-date', function(event, data) {
     applyDueDate(data.taskId, data.dueDate);
   });
+
+  // ========== 折叠/展开事件监听 ==========
+  // 折叠时间轴便签
+  electronAPI.on('fold-timeline-note', function() {
+    const container = document.querySelector('.timeline-container');
+    if (container) {
+      container.classList.add('folded-mode');
+    }
+    if (taskCountBadge) {
+      taskCountBadge.style.display = 'flex';
+    }
+    // 折叠时更新头像边框颜色
+    updateFoldedAvatarBorder();
+    console.log('[Timeline] 已折叠');
+  });
+
+  // 展开时间轴便签
+  electronAPI.on('unfold-timeline-note', function() {
+    const container = document.querySelector('.timeline-container');
+    if (container) {
+      container.classList.remove('folded-mode');
+    }
+    if (taskCountBadge) {
+      taskCountBadge.style.display = 'none';
+    }
+    console.log('[Timeline] 已展开');
+  });
+
+  // ========== 排序功能 ==========
+  electronAPI.on('timeline-sort-tasks', function(event, order) {
+    // order: 'desc' 降序（最新在前）, 'asc' 升序（最旧在前）
+    if (!tasksData || tasksData.length <= 1) return;
+
+    // 根据创建日期排序
+    tasksData.sort(function(a, b) {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return order === 'desc' ? dateB - dateA : dateA - dateB;
+    });
+
+    // 重新渲染任务列表
+    renderTimelineItems(tasksData);
+    console.log('[Timeline] 任务已按日期' + (order === 'desc' ? '降序' : '升序') + '排序');
+  });
+
+  // 渲染时间轴任务列表
+  function renderTimelineItems(tasks) {
+    const timelineTrack = document.querySelector('.timeline-track');
+    if (!timelineTrack) return;
+
+    // 清空现有内容
+    timelineTrack.innerHTML = '<div class="timeline-line"></div>';
+
+    const escapeHtml = function(str) {
+      if (!str) return '';
+      return str.replace(/[&<>"'/]/g, function(tag) {
+        const escapeMap = { '&': '&amp;', '<': '&gt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;' };
+        return escapeMap[tag] || tag;
+      });
+    };
+
+    const getStatusText = function(status) {
+      switch (status) {
+        case 'pending': return '待办';
+        case 'in_progress': return '进行中';
+        case 'completed': return '已完成';
+        case 'overdue': return '逾期';
+        default: return '待办';
+      }
+    };
+
+    const getPriorityText = function(priority) {
+      switch (priority) {
+        case 'high': return '高';
+        case 'medium': return '中';
+        case 'low': return '低';
+        default: return '无';
+      }
+    };
+
+    tasks.forEach(function(task) {
+      const timeStr = task.created_at ? new Date(task.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+      const isCompleted = task.status === 'completed' || task.is_completed === 1;
+      const isOverdue = task.status === 'overdue';
+      const completedClass = isCompleted ? ' completed' : (isOverdue ? ' overdue' : '');
+      const dueDate = task.due_date || '';
+      const dueDateText = dueDate ? new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) : '';
+      const dueDateTitle = dueDate ? '截止: ' + new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN') : '点击设置截止日期';
+      const dueDateClass = dueDate ? ' has-due-date' : '';
+
+      const itemHtml = '<div class="timeline-item' + completedClass + '" data-task-id="' + escapeHtml(task.id) + '">' +
+        '<div class="timeline-dot' + dueDateClass + (isOverdue ? ' is-overdue' : '') + '" title="' + dueDateTitle + '" data-due-date="' + escapeHtml(dueDate) + '" style="cursor: pointer;"></div>' +
+        '<div class="task-time">' +
+          '<span class="time-text">' + timeStr + '</span>' +
+          (dueDateText ? '<span class="due-date-badge">📅 ' + dueDateText + '</span>' : '') +
+        '</div>' +
+        '<div class="task-card">' +
+          '<div class="task-text" contenteditable="false">' + escapeHtml(task.content) + '</div>' +
+          '<div class="task-meta">' +
+            '<span class="meta-badge priority-' + task.priority + '">' + getPriorityText(task.priority) + '</span>' +
+            '<span class="meta-badge status-' + task.status + '">' + getStatusText(task.status) + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+      timelineTrack.insertAdjacentHTML('beforeend', itemHtml);
+    });
+
+    // 更新任务计数
+    updateTaskCount();
+  }
+
+  // ========== 自动调整窗口高度 ==========
+  function autoResizeHeight() {
+    var container = document.querySelector('.timeline-container');
+    if (!container) return;
+    // 获取容器的实际渲染高度（因为移除了 height:100%，容器高度等于内容高度）
+    var contentHeight = container.getBoundingClientRect().height;
+    if (contentHeight > 0) {
+      electronAPI.send('resize-sticky', { id: noteId, height: Math.ceil(contentHeight) });
+    }
+  }
+
+  // 页面加载完成后立即调整一次
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(autoResizeHeight, 0);
+  } else {
+    window.addEventListener('DOMContentLoaded', autoResizeHeight);
+  }
+
+  // 监听内容变化，自动调整高度
+  var resizeObserver = new MutationObserver(function() {
+    autoResizeHeight();
+  });
+  var container = document.querySelector('.timeline-container');
+  if (container) {
+    resizeObserver.observe(container, { childList: true, subtree: true, characterData: true });
+  }
 })();

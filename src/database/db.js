@@ -212,6 +212,8 @@ function migrateTimelineNotesTable() {
           sender_avatar TEXT,                     -- 联系人头像
           style_config TEXT DEFAULT '{}',         -- 样式配置 JSON
           is_pinned INTEGER DEFAULT 0,            -- 是否置顶
+          is_visible INTEGER DEFAULT 1,           -- 是否显示（1=显示, 0=隐藏）
+          sort_order TEXT DEFAULT 'asc',         -- 排序方式 ('asc'=升序, 'desc'=降序)
           position_x INTEGER,                     -- 窗口位置 X
           position_y INTEGER,                     -- 窗口位置 Y
           created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -219,6 +221,25 @@ function migrateTimelineNotesTable() {
         )
       `);
       console.log('[db] 迁移完成：timeline_notes 表已创建');
+    } else {
+      // 增量迁移：添加缺失的列
+      const columns = db.prepare("PRAGMA table_info('timeline_notes')").all().map(c => c.name);
+      if (!columns.includes('is_visible')) {
+        try {
+          db.exec("ALTER TABLE timeline_notes ADD COLUMN is_visible INTEGER DEFAULT 1");
+          console.log('[db] 迁移完成：timeline_notes 表添加 is_visible 列');
+        } catch (err) {
+          console.error('[db] 迁移 timeline_notes.is_visible 失败:', err.message);
+        }
+      }
+      if (!columns.includes('sort_order')) {
+        try {
+          db.exec("ALTER TABLE timeline_notes ADD COLUMN sort_order TEXT DEFAULT 'asc'");
+          console.log('[db] 迁移完成：timeline_notes 表添加 sort_order 列');
+        } catch (err) {
+          console.error('[db] 迁移 timeline_notes.sort_order 失败:', err.message);
+        }
+      }
     }
   } catch (err) {
     console.error('[db] 时间轴便签表迁移失败:', err.message);

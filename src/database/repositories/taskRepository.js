@@ -132,25 +132,36 @@ function deleteTask(id) {
 // ========== 时间轴便签持久化 ==========
 
 function getTimelineNotes() {
-  const stmt = db.prepare(`SELECT * FROM timeline_notes ORDER BY updated_at DESC`);
+  const stmt = db.prepare(`SELECT * FROM timeline_notes WHERE is_visible = 1 ORDER BY updated_at DESC`);
   return stmt.all();
 }
 
-function saveTimelineNote(senderName, senderAvatar, styleConfig, isPinned, positionX, positionY) {
+// 获取某联系人的排序方式
+function getTimelineSortOrder(senderName) {
+  const stmt = db.prepare(`SELECT sort_order FROM timeline_notes WHERE sender_name = ?`);
+  const result = stmt.get(senderName);
+  return result ? result.sort_order : 'asc';
+}
+
+// 保存时间轴便签
+function saveTimelineNote(senderName, senderAvatar, styleConfig, isPinned, positionX, positionY, sortOrder) {
   const now = new Date().toISOString();
   const configStr = typeof styleConfig === 'string' ? styleConfig : JSON.stringify(styleConfig || {});
+  const order = sortOrder || 'asc';
   const stmt = db.prepare(`
-    INSERT INTO timeline_notes (sender_name, sender_avatar, style_config, is_pinned, position_x, position_y, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO timeline_notes (sender_name, sender_avatar, style_config, is_pinned, is_visible, sort_order, position_x, position_y, created_at, updated_at)
+    VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
     ON CONFLICT(sender_name) DO UPDATE SET
       sender_avatar = excluded.sender_avatar,
       style_config = excluded.style_config,
       is_pinned = excluded.is_pinned,
+      is_visible = 1,
+      sort_order = excluded.sort_order,
       position_x = excluded.position_x,
       position_y = excluded.position_y,
       updated_at = excluded.updated_at
   `);
-  return stmt.run(senderName, senderAvatar || '', configStr, isPinned ? 1 : 0, positionX || null, positionY || null, now, now);
+  return stmt.run(senderName, senderAvatar || '', configStr, isPinned ? 1 : 0, order, positionX || null, positionY || null, now, now);
 }
 
 function deleteTimelineNote(senderName) {
@@ -158,4 +169,9 @@ function deleteTimelineNote(senderName) {
   return stmt.run(senderName);
 }
 
-module.exports = { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, getDeskTasks, updateTask, getTaskById, getTasksBySenderName, deleteTask, getTimelineNotes, saveTimelineNote, deleteTimelineNote };
+function hideTimelineNote(senderName) {
+  const stmt = db.prepare(`UPDATE timeline_notes SET is_visible = 0 WHERE sender_name = ?`);
+  return stmt.run(senderName);
+}
+
+module.exports = { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, getDeskTasks, updateTask, getTaskById, getTasksBySenderName, deleteTask, getTimelineNotes, getTimelineSortOrder, saveTimelineNote, deleteTimelineNote, hideTimelineNote };

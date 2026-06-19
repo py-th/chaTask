@@ -165,7 +165,8 @@ app.whenReady().then(async () => {
             ? { x: note.position_x, y: note.position_y }
             : null,
           isPinned: note.is_pinned === 1,
-          styleConfig: styleConfig || undefined
+          styleConfig: styleConfig || undefined,
+          sortOrder: note.sort_order || 'asc'
         };
         stickyManager.createTimelineNote(tasks, note.sender_name, note.sender_avatar, options);
       } else {

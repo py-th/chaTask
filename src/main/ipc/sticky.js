@@ -618,6 +618,51 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
 
     template.push({ type: 'separator' });
 
+    // 排序
+    template.push({
+      label: '排序',
+      submenu: [
+        {
+          label: '日期降序',
+          click: () => {
+            const n = stickyManager.notes.get(noteId);
+            if (n && n.win && !n.win.isDestroyed()) {
+              n.win.webContents.send('timeline-sort-tasks', 'desc');
+              // 保存排序方式到数据库
+              n.sortOrder = 'desc';
+              try {
+                const [x, y] = n.win.getPosition();
+                saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig,
+                  n.win.isAlwaysOnTop(), x, y, 'desc');
+              } catch (err) {
+                console.error('[Timeline] 保存排序方式失败:', err);
+              }
+            }
+          }
+        },
+        {
+          label: '日期升序',
+          click: () => {
+            const n = stickyManager.notes.get(noteId);
+            if (n && n.win && !n.win.isDestroyed()) {
+              n.win.webContents.send('timeline-sort-tasks', 'asc');
+              // 保存排序方式到数据库
+              n.sortOrder = 'asc';
+              try {
+                const [x, y] = n.win.getPosition();
+                saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig,
+                  n.win.isAlwaysOnTop(), x, y, 'asc');
+              } catch (err) {
+                console.error('[Timeline] 保存排序方式失败:', err);
+              }
+            }
+          }
+        }
+      ]
+    });
+
+    template.push({ type: 'separator' });
+
     template.push({
       label: '刷新时间轴',
       click: async () => {
@@ -626,6 +671,20 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
           const tasks = getTasksBySenderName(n.senderName);
           const html = stickyManager.generateTimelineHTML(tasks, n.senderName, n.senderAvatar, noteId);
           n.win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
+        }
+      }
+    });
+
+    // 便签管理器
+    template.push({
+      label: '便签管理器',
+      click: () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          if (mainWindow.isMinimized()) {
+            mainWindow.restore();
+          }
+          mainWindow.show();
+          mainWindow.focus();
         }
       }
     });
