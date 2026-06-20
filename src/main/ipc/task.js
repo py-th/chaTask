@@ -60,11 +60,56 @@ function registerTaskHandlers(getMainWindow, stickyManager) {
 function syncStickyNoteUpdate(taskId, updates) {
   if (!stickyManagerRef || !stickyManagerRef.notes) return;
 
-  // 查找该任务对应的桌面便签
-  for (const [noteId, note] of stickyManagerRef.notes.entries()) {
-    if (note.taskId === taskId && note.win && !note.win.isDestroyed()) {
-      const wc = note.win.webContents;
+  // 获取任务信息用于时间轴更新
+  let taskSenderName = null;
+  for (const [, note] of stickyManagerRef.notes.entries()) {
+    if (note.taskId === taskId) {
+      // 对于单个便签，可以直接获取任务信息
+      break;
+    } else if (note.isTimeline) {
+      // 对于时间轴便签，需要记录 senderName
+      // 后续需要从数据库获取任务信息
+    }
+  }
 
+  // 遍历所有便签，更新相关的便签
+  for (const [noteId, note] of stickyManagerRef.notes.entries()) {
+    if (!note.win || note.win.isDestroyed()) continue;
+    const wc = note.win.webContents;
+
+    if (note.isTimeline) {
+      // 时间轴便签：检查该任务是否属于这个时间轴（同一联系人）
+      // 需要通过数据库查询任务的 sender_name 来匹配
+      // 这里我们向所有时间轴便签发送更新事件，由前端判断是否属于该时间轴
+      const updateEvent = {};
+      
+      if (updates.content !== undefined) {
+        updateEvent.content = updates.content;
+      }
+      if (updates.priority !== undefined) {
+        updateEvent.priority = updates.priority;
+      }
+      if (updates.status !== undefined) {
+        updateEvent.status = updates.status;
+      }
+      if (updates.due_date !== undefined) {
+        updateEvent.dueDate = updates.due_date;
+      }
+      if (updates.reminder_enabled !== undefined || updates.reminder_rule_id !== undefined) {
+        updateEvent.reminderChanged = true;
+      }
+
+      if (Object.keys(updateEvent).length > 0) {
+        updateEvent.taskId = taskId;
+        wc.send('timeline-update-task', updateEvent);
+      }
+
+      // 如果任务被删除，通知时间轴移除该任务
+      if (updates.is_deleted !== undefined && updates.is_deleted === 1) {
+        wc.send('timeline-remove-task', taskId);
+      }
+    } else if (note.taskId === taskId) {
+      // 单个便签：直接更新
       // 同步内容更新
       if (updates.content !== undefined) {
         wc.executeJavaScript(`
@@ -89,8 +134,6 @@ function syncStickyNoteUpdate(taskId, updates) {
       if (updates.due_date !== undefined) {
         wc.send('update-due-date', updates.due_date);
       }
-
-      break;
     }
   }
 }

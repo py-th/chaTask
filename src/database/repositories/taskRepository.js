@@ -118,7 +118,7 @@ function getTasksBySenderName(senderName) {
   const tasks = db.prepare(`
     SELECT * FROM tasks 
     WHERE sender_name = ? AND is_deleted = 0
-    ORDER BY created_at ASC
+    ORDER BY sort_order ASC, created_at ASC
   `).all(senderName);
   return attachReminderRules(tasks);
 }
@@ -174,4 +174,15 @@ function hideTimelineNote(senderName) {
   return stmt.run(senderName);
 }
 
-module.exports = { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, getDeskTasks, updateTask, getTaskById, getTasksBySenderName, deleteTask, getTimelineNotes, getTimelineSortOrder, saveTimelineNote, deleteTimelineNote, hideTimelineNote };
+// 批量更新任务的排序序号
+function updateTasksSortOrder(taskOrders) {
+  const stmt = db.prepare(`UPDATE tasks SET sort_order = ? WHERE id = ?`);
+  const updateMany = db.transaction((orders) => {
+    for (const { id, sort_order } of orders) {
+      stmt.run(sort_order, id);
+    }
+  });
+  updateMany(taskOrders);
+}
+
+module.exports = { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, getDeskTasks, updateTask, getTaskById, getTasksBySenderName, deleteTask, getTimelineNotes, getTimelineSortOrder, saveTimelineNote, deleteTimelineNote, hideTimelineNote, updateTasksSortOrder };

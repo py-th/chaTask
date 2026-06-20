@@ -45,13 +45,34 @@
 
   applyStyleConfig(styleConfig);
 
+  // 辅助函数：获取状态文本
+  function getStatusText(status) {
+    switch (status) {
+      case 'pending': return '待办';
+      case 'in_progress': return '进行中';
+      case 'completed': return '已完成';
+      case 'overdue': return '逾期';
+      default: return '待办';
+    }
+  }
+
+  // 辅助函数：获取优先级文本
+  function getPriorityText(priority) {
+    switch (priority) {
+      case 'high': return '高';
+      case 'medium': return '中';
+      case 'low': return '低';
+      default: return '无';
+    }
+  }
+
   // 拖拽相关
   let isDragging = false;
 
   document.addEventListener('mousedown', (e) => {
     if (e.button === 2) return;
-    // 如果点击的是可编辑文本、提醒图标或样式面板，不触发拖拽
-    if (e.target.closest('.task-text') || e.target.closest('.meta-badge.reminder') || e.target.closest('.style-panel')) return;
+    // 如果点击的是可编辑文本、提醒图标、样式面板或拖拽手柄，不触发窗口拖拽
+    if (e.target.closest('.task-text') || e.target.closest('.meta-badge.reminder') || e.target.closest('.style-panel') || e.target.closest('.drag-handle')) return;
     isDragging = true;
     electronAPI.send('start-sticky-drag', noteId, e.screenX, e.screenY);
   });
@@ -62,8 +83,10 @@
   });
 
   document.addEventListener('mouseup', () => {
-    isDragging = false;
-    electronAPI.send('sticky-drag-end', noteId);
+    if (isDragging) {
+      isDragging = false;
+      electronAPI.send('sticky-drag-end', noteId);
+    }
   });
 
   // 双击编辑文本
@@ -245,6 +268,106 @@
     if (task) task.content = content;
   });
 
+  // 监听主程序的任务更新（支持多种字段更新）
+  electronAPI.on('timeline-update-task', (event, { taskId, content, priority, status, dueDate, reminderChanged }) => {
+    const item = document.querySelector(`.timeline-item[data-task-id="${taskId}"]`);
+    if (!item) return;
+
+    // 更新内容
+    if (content !== undefined) {
+      const taskText = item.querySelector('.task-text');
+      if (taskText) {
+        taskText.textContent = content;
+      }
+      const task = tasksData.find(t => t.id === taskId);
+      if (task) task.content = content;
+    }
+
+    // 更新优先级
+    if (priority !== undefined) {
+      const priorityBadge = item.querySelector('.meta-badge[data-type="priority"]');
+      if (priorityBadge) {
+        // 移除旧的优先级类
+        priorityBadge.className = priorityBadge.className.replace(/priority-\w+/, '');
+        priorityBadge.classList.add('meta-badge', 'priority-' + priority);
+        priorityBadge.textContent = getPriorityText(priority);
+      }
+      const task = tasksData.find(t => t.id === taskId);
+      if (task) task.priority = priority;
+    }
+
+    // 更新状态
+    if (status !== undefined) {
+      // 更新状态徽章
+      const statusBadge = item.querySelector('.meta-badge[data-type="status"]');
+      if (statusBadge) {
+        // 移除旧的状态类
+        statusBadge.className = statusBadge.className.replace(/status-\w+/, '');
+        statusBadge.classList.add('meta-badge', 'status-' + status);
+        statusBadge.textContent = getStatusText(status);
+      }
+      // 更新任务状态样式
+      const isCompleted = status === 'completed';
+      const isOverdue = status === 'overdue';
+      item.classList.remove('completed', 'overdue');
+      if (isCompleted) {
+        item.classList.add('completed');
+      } else if (isOverdue) {
+        item.classList.add('overdue');
+      }
+      // 更新数据
+      const task = tasksData.find(t => t.id === taskId);
+      if (task) task.status = status;
+    }
+
+    // 更新截止日期
+    if (dueDate !== undefined) {
+      const dot = item.querySelector('.timeline-dot');
+      if (dot) {
+        const hasDueDate = !!dueDate;
+        if (hasDueDate) {
+          dot.classList.add('has-due-date');
+          dot.setAttribute('data-due-date', dueDate);
+          dot.setAttribute('title', '截止: ' + new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN'));
+        } else {
+          dot.classList.remove('has-due-date', 'is-overdue');
+          dot.removeAttribute('data-due-date');
+          dot.setAttribute('title', '点击设置截止日期');
+        }
+      }
+      // 更新时间显示区域的截止日期徽章
+      const dueBadge = item.querySelector('.due-date-badge');
+      if (dueDate) {
+        const dueDateText = new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+        if (dueBadge) {
+          dueBadge.textContent = '\uD83D\uDCC5 ' + dueDateText;
+        } else {
+          const timeDiv = item.querySelector('.task-time');
+          if (timeDiv) {
+            const newBadge = document.createElement('span');
+            newBadge.className = 'due-date-badge';
+            newBadge.textContent = '\uD83D\uDCC5 ' + dueDateText;
+            timeDiv.appendChild(newBadge);
+          }
+        }
+      } else if (dueBadge) {
+        dueBadge.remove();
+      }
+      // 更新数据
+      const task = tasksData.find(t => t.id === taskId);
+      if (task) task.due_date = dueDate;
+    }
+
+    // 提醒规则变更（需要刷新提醒显示）
+    if (reminderChanged) {
+      // 触发提醒信息刷新
+      const task = tasksData.find(t => t.id === taskId);
+      if (task && task.reminderTime) {
+        // 这里可以添加提醒信息的刷新逻辑
+      }
+    }
+  });
+
   // 监听更新提醒信息（局部更新，避免整页刷新闪烁）
   electronAPI.on('timeline-update-reminder', (event, { taskId, reminderText }) => {
     const item = document.querySelector(`.timeline-item[data-task-id="${taskId}"]`);
@@ -408,19 +531,37 @@
 
   // ========== 排序功能 ==========
   electronAPI.on('timeline-sort-tasks', function(event, order) {
-    // order: 'desc' 降序（最新在前）, 'asc' 升序（最旧在前）
-    if (!tasksData || tasksData.length <= 1) return;
+    // 退出自定义排序模式
+    var container = document.querySelector('.timeline-container');
+    if (container) container.classList.remove('sort-mode');
+    isCustomSortMode = false;
+    // 恢复滚动条
+    var scrollEl = document.getElementById('timelineScroll');
+    if (scrollEl) scrollEl.style.overflowY = '';
 
-    // 根据创建日期排序
-    tasksData.sort(function(a, b) {
-      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return order === 'desc' ? dateB - dateA : dateA - dateB;
-    });
+    if (!tasksData || tasksData.length <= 1) {
+      autoResizeHeight();
+      return;
+    }
 
-    // 重新渲染任务列表
-    renderTimelineItems(tasksData);
-    console.log('[Timeline] 任务已按日期' + (order === 'desc' ? '降序' : '升序') + '排序');
+    if (order === 'custom') {
+      // 自定义排序：按 sort_order 排序
+      tasksData.sort(function(a, b) {
+        return (a.sort_order || 0) - (b.sort_order || 0);
+      });
+      renderTimelineItems(tasksData);
+      console.log('[Timeline] 任务已按自定义顺序排序');
+    } else {
+      // 根据创建日期排序
+      tasksData.sort(function(a, b) {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return order === 'desc' ? dateB - dateA : dateA - dateB;
+      });
+      renderTimelineItems(tasksData);
+      console.log('[Timeline] 任务已按日期' + (order === 'desc' ? '降序' : '升序') + '排序');
+    }
+    autoResizeHeight(true);
   });
 
   // 渲染时间轴任务列表
@@ -439,25 +580,6 @@
       });
     };
 
-    const getStatusText = function(status) {
-      switch (status) {
-        case 'pending': return '待办';
-        case 'in_progress': return '进行中';
-        case 'completed': return '已完成';
-        case 'overdue': return '逾期';
-        default: return '待办';
-      }
-    };
-
-    const getPriorityText = function(priority) {
-      switch (priority) {
-        case 'high': return '高';
-        case 'medium': return '中';
-        case 'low': return '低';
-        default: return '无';
-      }
-    };
-
     tasks.forEach(function(task) {
       const timeStr = task.created_at ? new Date(task.created_at).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
       const isCompleted = task.status === 'completed' || task.is_completed === 1;
@@ -473,12 +595,13 @@
         '<div class="task-time">' +
           '<span class="time-text">' + timeStr + '</span>' +
           (dueDateText ? '<span class="due-date-badge">📅 ' + dueDateText + '</span>' : '') +
+          '<div class="drag-handle"><div class="grip-dots"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>' +
         '</div>' +
         '<div class="task-card">' +
           '<div class="task-text" contenteditable="false">' + escapeHtml(task.content) + '</div>' +
           '<div class="task-meta">' +
-            '<span class="meta-badge priority-' + task.priority + '">' + getPriorityText(task.priority) + '</span>' +
-            '<span class="meta-badge status-' + task.status + '">' + getStatusText(task.status) + '</span>' +
+            '<span class="meta-badge priority-' + task.priority + '" data-type="priority">' + getPriorityText(task.priority) + '</span>' +
+            '<span class="meta-badge status-' + task.status + '" data-type="status">' + getStatusText(task.status) + '</span>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -490,14 +613,199 @@
     updateTaskCount();
   }
 
-  // ========== 自动调整窗口高度 ==========
-  function autoResizeHeight() {
+  // ========== 自定义拖拽排序 ==========
+  var isCustomSortMode = false;
+  var dragState = null; // { taskId, startY, item, clone, offsetY, initialIndex }
+
+  // 进入自定义排序模式
+  electronAPI.on('timeline-enter-custom-sort', function() {
+    isCustomSortMode = true;
     var container = document.querySelector('.timeline-container');
-    if (!container) return;
-    // 获取容器的实际渲染高度（因为移除了 height:100%，容器高度等于内容高度）
-    var contentHeight = container.getBoundingClientRect().height;
-    if (contentHeight > 0) {
-      electronAPI.send('resize-sticky', { id: noteId, height: Math.ceil(contentHeight) });
+    if (container) container.classList.add('sort-mode');
+    // 进入排序模式时立即隐藏滚动条，防止调整高度前闪现
+    var scrollEl = document.getElementById('timelineScroll');
+    if (scrollEl) scrollEl.style.overflowY = 'hidden';
+    // 排序手柄显示后内容高度会变化，立即重新调整窗口高度（读取 scrollHeight 会强制同步布局）
+    autoResizeHeight(true);
+    console.log('[Timeline] 进入自定义排序模式');
+  });
+
+  // 退出自定义排序模式
+  function exitCustomSortMode() {
+    isCustomSortMode = false;
+    var container = document.querySelector('.timeline-container');
+    if (container) container.classList.remove('sort-mode');
+    // 恢复滚动条
+    var scrollEl = document.getElementById('timelineScroll');
+    if (scrollEl) scrollEl.style.overflowY = '';
+    // 退出排序模式后内容高度会变化，重新调整窗口高度
+    autoResizeHeight();
+    console.log('[Timeline] 退出自定义排序模式');
+  }
+
+  // 点击除拖拽图标外的任何地方退出自定义排序模式
+  document.addEventListener('click', function(e) {
+    if (!isCustomSortMode) return;
+    // 如果正在拖拽中，不退出
+    if (dragState) return;
+    // 只有点击拖拽手柄时不退出，其他任何地方都退出
+    if (e.target.closest('.drag-handle')) return;
+    exitCustomSortMode();
+  });
+
+  // 拖拽开始
+  document.addEventListener('mousedown', function(e) {
+    if (!isCustomSortMode) return;
+    var handle = e.target.closest('.drag-handle');
+    if (!handle) return;
+
+    // 阻止事件冒泡，防止触发窗口拖拽
+    e.preventDefault();
+    e.stopPropagation();
+
+    var item = handle.closest('.timeline-item');
+    if (!item) return;
+
+    var taskId = item.dataset.taskId;
+    var rect = item.getBoundingClientRect();
+    var track = item.parentNode;
+    var allItems = Array.from(track.querySelectorAll('.timeline-item'));
+
+    dragState = {
+      taskId: taskId,
+      item: item,
+      startY: e.clientY,
+      offsetY: e.clientY - rect.top,
+      initialIndex: allItems.indexOf(item)
+    };
+
+    // 添加拖拽样式
+    item.classList.add('dragging');
+
+    // 防止滚动条出现（同时隐藏 body 和 timeline-scroll 的滚动条）
+    document.body.style.overflow = 'hidden';
+    var scrollEl = document.getElementById('timelineScroll');
+    if (scrollEl) scrollEl.style.overflowY = 'hidden';
+  });
+
+  // 拖拽移动
+  document.addEventListener('mousemove', function(e) {
+    if (!dragState) return;
+    e.preventDefault();
+
+    var item = dragState.item;
+    var deltaY = e.clientY - dragState.startY;
+
+    // 移动拖拽中的卡片
+    item.style.transform = 'translateY(' + deltaY + 'px)';
+    item.style.transition = 'none';
+
+    // 计算当前悬停位置
+    var track = item.parentNode;
+    var items = Array.from(track.querySelectorAll('.timeline-item:not(.dragging)'));
+
+    // 清除所有 drag-over
+    items.forEach(function(el) { el.classList.remove('drag-over'); });
+
+    // 找到应该插入的位置
+    var itemRect = item.getBoundingClientRect();
+    var itemMid = itemRect.top + itemRect.height / 2 + deltaY;
+
+    var targetIndex = items.length;
+    for (var i = 0; i < items.length; i++) {
+      var otherRect = items[i].getBoundingClientRect();
+      var otherMid = otherRect.top + otherRect.height / 2;
+      if (itemMid < otherMid) {
+        targetIndex = i;
+        break;
+      }
+    }
+
+    // 记录目标位置，供 mouseup 使用
+    dragState.targetIndex = targetIndex;
+
+    // 高亮目标位置
+    if (targetIndex < items.length) {
+      items[targetIndex].classList.add('drag-over');
+    }
+  });
+
+  // 拖拽结束
+  document.addEventListener('mouseup', function(e) {
+    if (!dragState) return;
+    e.preventDefault();
+
+    var item = dragState.item;
+    var taskId = dragState.taskId;
+    var track = item.parentNode;
+
+    // 恢复样式
+    item.classList.remove('dragging');
+    item.style.transform = '';
+    item.style.transition = '';
+
+    // 恢复滚动
+    document.body.style.overflow = '';
+    var scrollEl = document.getElementById('timelineScroll');
+    if (scrollEl) scrollEl.style.overflowY = '';
+
+    // 清除所有 drag-over
+    var allItems = track.querySelectorAll('.timeline-item');
+    allItems.forEach(function(el) { el.classList.remove('drag-over'); });
+
+    // 使用 mousemove 中记录的目标位置
+    var targetIndex = dragState.targetIndex;
+    var initialIndex = dragState.initialIndex;
+
+    // 如果位置有变化，重新排序
+    if (targetIndex !== undefined && targetIndex !== initialIndex) {
+      var items = Array.from(track.querySelectorAll('.timeline-item'));
+      // 移动 DOM 元素
+      if (targetIndex < items.length) {
+        track.insertBefore(item, items[targetIndex]);
+      } else {
+        track.appendChild(item);
+      }
+
+      // 更新 tasksData 顺序
+      var movedTask = tasksData.find(function(t) { return t.id === taskId; });
+      if (movedTask) {
+        var dataIndex = tasksData.indexOf(movedTask);
+        tasksData.splice(dataIndex, 1);
+        tasksData.splice(targetIndex, 0, movedTask);
+
+        // 更新 sort_order 并保存到数据库
+        var taskOrders = [];
+        tasksData.forEach(function(t, idx) {
+          t.sort_order = idx;
+          taskOrders.push({ id: t.id, sort_order: idx });
+        });
+        electronAPI.send('timeline-save-custom-order', { noteId: noteId, taskOrders: taskOrders });
+        console.log('[Timeline] 自定义排序已更新');
+      }
+    }
+
+    dragState = null;
+  });
+
+  // ========== 自动调整窗口高度 ==========
+  var resizeTimeout = null;
+  function autoResizeHeight(immediate) {
+    if (resizeTimeout) clearTimeout(resizeTimeout);
+    var doResize = function() {
+      var container = document.querySelector('.timeline-container');
+      if (!container) return;
+      // 使用 body.scrollHeight 获取真实内容高度，不受当前窗口高度限制
+      var contentHeight = document.body.scrollHeight;
+      if (contentHeight > 0) {
+        electronAPI.send('resize-sticky', { id: noteId, height: Math.ceil(contentHeight) });
+      }
+      resizeTimeout = null;
+    };
+    if (immediate) {
+      doResize();
+    } else {
+      resizeTimeout = setTimeout(doResize, 50);
     }
   }
 
@@ -508,12 +816,12 @@
     window.addEventListener('DOMContentLoaded', autoResizeHeight);
   }
 
-  // 监听内容变化，自动调整高度
-  var resizeObserver = new MutationObserver(function() {
+  // 监听容器尺寸变化，自动调整高度（比 MutationObserver 更准确，能捕获图片加载、样式变化等）
+  var resizeObserver = new ResizeObserver(function() {
     autoResizeHeight();
   });
   var container = document.querySelector('.timeline-container');
   if (container) {
-    resizeObserver.observe(container, { childList: true, subtree: true, characterData: true });
+    resizeObserver.observe(container);
   }
 })();

@@ -13,6 +13,7 @@
       font-family: system-ui, -apple-system, sans-serif;
       display: flex;
       border-radius: 12px;
+      -webkit-app-region: no-drag;
     }
 
     .timeline-container {
@@ -34,6 +35,7 @@
       padding: 10px 12px;
       border-bottom: 1px dashed rgba(128, 128, 128, 0.4);
       flex-shrink: 0;
+      cursor: default;
     }
 
     .timeline-header .avatar {
@@ -138,6 +140,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      white-space: nowrap;
     }
 
     .timeline-item .task-time .time-text {
@@ -161,11 +164,82 @@
       margin-left: -20px;
       border: 1px solid rgba(0, 0, 0, 0.06);
       transition: background 0.15s ease, box-shadow 0.15s ease;
+      position: relative;
+      -webkit-app-region: no-drag;
     }
 
     .timeline-item:hover .task-card {
       background: rgba(255, 255, 255, 0.95);
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    /* 拖拽排序手柄 — 在任务时间行右侧，默认占位隐藏，避免排序模式切换时高度变化 */
+    .drag-handle {
+      display: flex;
+      visibility: hidden;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      cursor: grab;
+      opacity: 0.5;
+      border-radius: 4px;
+      transition: opacity 0.15s, background 0.15s, visibility 0.15s;
+      flex-shrink: 0;
+      margin-left: auto;
+      -webkit-app-region: no-drag;
+    }
+    .drag-handle:hover {
+      opacity: 1;
+      background: rgba(0, 0, 0, 0.06);
+    }
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+    .drag-handle .grip-dots {
+      display: flex;
+      flex-wrap: wrap;
+      width: 12px;
+      height: 12px;
+      gap: 2px;
+      align-content: center;
+      justify-content: center;
+    }
+    .drag-handle .grip-dots span {
+      width: 2px;
+      height: 2px;
+      border-radius: 50%;
+      background: #86909C;
+      display: block;
+    }
+
+    /* 自定义排序模式下显示手柄 */
+    .timeline-container.sort-mode .drag-handle {
+      visibility: visible;
+    }
+
+    /* 自定义排序模式下强制隐藏滚动条 */
+    .timeline-container.sort-mode .timeline-scroll {
+      overflow-y: hidden !important;
+    }
+    .timeline-container.sort-mode .timeline-scroll::-webkit-scrollbar {
+      display: none !important;
+    }
+
+    /* 拖拽中的任务卡片 */
+    .timeline-item.dragging {
+      opacity: 0.5;
+      z-index: 100;
+    }
+    .timeline-item.dragging .task-card {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    /* 拖拽时的占位区域 */
+    .timeline-item.drag-over {
+      border-top: 3px solid #4A90D9;
+      padding-top: 3px;
+      margin-top: -3px;
     }
 
     .timeline-item .task-text {
@@ -513,7 +587,7 @@
     .timeline-container.folded-mode .timeline-header .avatar {
       width: 40px;
       height: 40px;
-      border-radius: 6px;
+      border-radius: 3px;
       border-width: 2px;
       border-color: var(--fold-avatar-border, rgba(255, 249, 196, 0.95));
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -522,11 +596,11 @@
     /* 任务数量徽章 - 头像内部正下方中间位置 */
     .timeline-container.folded-mode .task-count-badge {
       position: absolute;
-      bottom: -3px;
+      bottom: -1px;
       left: 50%;
       transform: translateX(-50%);
-      min-width: 20px;
-      height: 20px;
+      min-width: 16px;
+      height: 16px;
       background: linear-gradient(135deg, #4A90D9 0%, #3570B0 100%);
       color: #fff;
       font-size: 11px;
@@ -535,7 +609,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 0 5px;
+      padding: 0 3px;
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
       border: 1px solid #fff;
       z-index: 2;

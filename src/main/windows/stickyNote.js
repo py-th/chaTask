@@ -186,22 +186,30 @@ class StickyNoteManager {
   }
 
   // 生成时间轴 HTML
-  generateTimelineHTML(tasks, senderName, senderAvatar, id) {
+  // sortOrder/styleConfig 可直接传入；若未传入则从 notes 缓存中读取（兼容旧调用）
+  generateTimelineHTML(tasks, senderName, senderAvatar, id, sortOrder, styleConfig) {
     try {
       let template = fs.readFileSync(this.timelineTemplatePath, 'utf8');
       const scriptContent = fs.readFileSync(this.timelineScriptPath, 'utf8');
       const note = this.notes.get(id);
-      const timelineStyleConfig = note && note.styleConfig ? note.styleConfig : { opacity: 1, bgColor: '' };
-      const sortOrder = note && note.sortOrder ? note.sortOrder : 'asc';
+      const timelineStyleConfig = styleConfig !== undefined
+        ? styleConfig
+        : (note && note.styleConfig ? note.styleConfig : { opacity: 1, bgColor: '' });
+      const finalSortOrder = sortOrder !== undefined
+        ? sortOrder
+        : (note && note.sortOrder ? note.sortOrder : 'asc');
 
       // 根据排序方式处理任务列表
       let sortedTasks = [...tasks];
-      if (sortOrder === 'desc') {
+      if (finalSortOrder === 'desc') {
         sortedTasks.sort((a, b) => {
           const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
           const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
           return dateB - dateA; // 降序：最新在前
         });
+      } else if (finalSortOrder === 'custom') {
+        // 自定义排序：保持数据库中的 sort_order 顺序（已在查询时排序）
+        sortedTasks.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
       } else {
         sortedTasks.sort((a, b) => {
           const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
@@ -265,12 +273,13 @@ class StickyNoteManager {
             <div class="task-time">
               <span class="time-text">${timeStr}</span>
               ${dueDateText ? `<span class="due-date-badge">📅 ${dueDateText}</span>` : ''}
+              <div class="drag-handle"><div class="grip-dots"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
             </div>
             <div class="task-card">
               <div class="task-text" contenteditable="false">${escapeHtml(task.content)}</div>
               <div class="task-meta">
-                <span class="meta-badge priority-${task.priority}">${getPriorityText(task.priority)}</span>
-                <span class="meta-badge status-${task.status}">${getStatusText(task.status)}</span>
+                <span class="meta-badge priority-${task.priority}" data-type="priority">${getPriorityText(task.priority)}</span>
+                <span class="meta-badge status-${task.status}" data-type="status">${getStatusText(task.status)}</span>
                 ${reminderText ? `<span class="meta-badge reminder" data-task-id="${escapeHtml(task.id)}">⏰ ${reminderText}</span>` : ''}
               </div>
             </div>
@@ -291,6 +300,7 @@ class StickyNoteManager {
         priority: t.priority,
         created_at: t.created_at,
         due_date: t.due_date || null,
+        sort_order: t.sort_order || 0,
         reminderTime: t.reminderRule ? t.reminderRule.reminder_time : null
       })));
 
@@ -369,7 +379,26 @@ class StickyNoteManager {
 
     const win = new BrowserWindow(winOptions);
 
-    const html = this.generateTimelineHTML(tasks, senderName, senderAvatar, id);
+    const initialStyleConfig = options.styleConfig || { opacity: 1, bgColor: '' };
+    const initialSortOrder = options.sortOrder || getTimelineSortOrder(senderName) || 'asc';
+
+    // 必须先在 notes 中注册，generateTimelineHTML 才能读取到 sortOrder/styleConfig
+    this.notes.set(id, {
+      win,
+      taskId: null,
+      isTimeline: true,
+      senderName: senderName,
+      senderAvatar: senderAvatar,
+      isFolded: false,
+      originalBounds: null,
+      snapEdge: null,
+      isDragging: false,
+      styleConfig: initialStyleConfig,
+      sortOrder: initialSortOrder,
+      _closing: false
+    });
+
+    const html = this.generateTimelineHTML(tasks, senderName, senderAvatar, id, initialSortOrder, initialStyleConfig);
     win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
 
     // 保存位置和状态的辅助函数
@@ -396,24 +425,6 @@ class StickyNoteManager {
     // 监听位置变化，实时保存
     win.on('moved', saveTimelineState);
 
-    const initialStyleConfig = options.styleConfig || { opacity: 1, bgColor: '' };
-    const initialSortOrder = options.sortOrder || getTimelineSortOrder(senderName) || 'asc';
-
-    this.notes.set(id, {
-      win,
-      taskId: null,
-      isTimeline: true,
-      senderName: senderName,
-      senderAvatar: senderAvatar,
-      isFolded: false,
-      originalBounds: null,
-      snapEdge: null,
-      isDragging: false,
-      styleConfig: initialStyleConfig,
-      sortOrder: initialSortOrder,
-      _closing: false
-    });
-
     // 页面加载完成后，应用恢复样式
     win.webContents.on('did-finish-load', () => {
       // 应用恢复样式
@@ -423,8 +434,8 @@ class StickyNoteManager {
           win.webContents.send('timeline-update-bgcolor', initialStyleConfig.bgColor);
         }
       }
-      // 应用排序方式
-      if (initialSortOrder !== 'asc') {
+      // 应用排序方式（custom 模式下 HTML 生成时已按 sort_order 排好序，无需前端再排序）
+      if (initialSortOrder !== 'asc' && initialSortOrder !== 'custom') {
         win.webContents.send('timeline-sort-tasks', initialSortOrder);
       }
     });

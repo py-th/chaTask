@@ -1,6 +1,6 @@
 // src/main/ipc/sticky.js
 const { ipcMain, BrowserWindow, clipboard } = require('electron');
-const { updateTask, getTaskById, getTasksBySenderName, saveTimelineNote, deleteTimelineNote } = require('../../database/repositories/taskRepository');
+const { updateTask, getTaskById, getTasksBySenderName, saveTimelineNote, deleteTimelineNote, updateTasksSortOrder } = require('../../database/repositories/taskRepository');
 const { saveReminderRule, deleteReminderRulesByTaskId, deleteReminderLogsByTaskId, getReminderRuleByTaskId } = require('../../database/repositories/reminderRepository');
 const { StickyMenu } = require('../menus');
 const { showConfirmDialog } = require('../windows/confirmDialog');
@@ -30,7 +30,7 @@ function registerStickyHandlers(mainWindow, stickyManager, screenshotUtils, remi
       for (const [id, note] of stickyManager.notes.entries()) {
         if (note.isTimeline && note.senderName === task.sender_name && note.win && !note.win.isDestroyed()) {
           const tasks = getTasksBySenderName(note.senderName);
-          const html = stickyManager.generateTimelineHTML(tasks, note.senderName, note.senderAvatar, id);
+          const html = stickyManager.generateTimelineHTML(tasks, note.senderName, note.senderAvatar, id, note.sortOrder, note.styleConfig);
           note.win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
           break;
         }
@@ -512,6 +512,31 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
     }
   });
 
+  // 时间轴中保存自定义排序
+  ipcMain.on('timeline-save-custom-order', async (event, { noteId, taskOrders }) => {
+    try {
+      updateTasksSortOrder(taskOrders);
+
+      // 同时更新时间轴便签的排序方式为 custom，确保下次加载时按自定义顺序渲染
+      const note = stickyManager.notes.get(noteId);
+      if (note && note.isTimeline) {
+        note.sortOrder = 'custom';
+        try {
+          const [x, y] = note.win.getPosition();
+          saveTimelineNote(note.senderName, note.senderAvatar, note.styleConfig,
+            note.win.isAlwaysOnTop(), x, y, 'custom');
+        } catch (err) {
+          console.error('[Timeline] 保存排序方式到数据库失败:', err);
+        }
+      }
+
+      notifyMainWindow();
+      console.log(`[Timeline] 自定义排序已保存: ${taskOrders.length} 个任务`);
+    } catch (err) {
+      console.error('[Timeline] 保存自定义排序失败:', err);
+    }
+  });
+
   // 时间轴右键菜单
   ipcMain.on('timeline-context-menu', async (event, { noteId, taskId, senderName }) => {
     const { Menu } = require('electron');
@@ -568,7 +593,7 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
           // 同步到数据库
           try {
             const [x, y] = n.win.getPosition();
-            saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig, newPinned, x, y);
+            saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig, newPinned, x, y, n.sortOrder || 'asc');
           } catch (err) {
             console.error('[Timeline] 保存置顶状态到数据库失败:', err);
           }
@@ -616,19 +641,34 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
       }))
     });
 
-    template.push({ type: 'separator' });
-
     // 排序
     template.push({
       label: '排序',
       submenu: [
+        {
+          label: '自定义排序',
+          click: () => {
+            const n = stickyManager.notes.get(noteId);
+            if (n && n.win && !n.win.isDestroyed()) {
+              n.sortOrder = 'custom';
+              n.win.webContents.send('timeline-enter-custom-sort');
+              // 保存排序方式到数据库
+              try {
+                const [x, y] = n.win.getPosition();
+                saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig,
+                  n.win.isAlwaysOnTop(), x, y, 'custom');
+              } catch (err) {
+                console.error('[Timeline] 保存排序方式失败:', err);
+              }
+            }
+          }
+        },
         {
           label: '日期降序',
           click: () => {
             const n = stickyManager.notes.get(noteId);
             if (n && n.win && !n.win.isDestroyed()) {
               n.win.webContents.send('timeline-sort-tasks', 'desc');
-              // 保存排序方式到数据库
               n.sortOrder = 'desc';
               try {
                 const [x, y] = n.win.getPosition();
@@ -646,7 +686,6 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
             const n = stickyManager.notes.get(noteId);
             if (n && n.win && !n.win.isDestroyed()) {
               n.win.webContents.send('timeline-sort-tasks', 'asc');
-              // 保存排序方式到数据库
               n.sortOrder = 'asc';
               try {
                 const [x, y] = n.win.getPosition();
@@ -664,12 +703,12 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
     template.push({ type: 'separator' });
 
     template.push({
-      label: '刷新时间轴',
+      label: '刷新',
       click: async () => {
         const n = stickyManager.notes.get(noteId);
         if (n && n.win && !n.win.isDestroyed()) {
           const tasks = getTasksBySenderName(n.senderName);
-          const html = stickyManager.generateTimelineHTML(tasks, n.senderName, n.senderAvatar, noteId);
+          const html = stickyManager.generateTimelineHTML(tasks, n.senderName, n.senderAvatar, noteId, n.sortOrder, n.styleConfig);
           n.win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
         }
       }
@@ -690,7 +729,7 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
     });
 
     template.push({
-      label: '关闭时间轴',
+      label: '关闭',
       click: () => {
         stickyManager.deleteNote(noteId);
       }
@@ -710,7 +749,7 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
       try {
         const win = note.win;
         const [x, y] = win.getPosition();
-        saveTimelineNote(note.senderName, note.senderAvatar, note.styleConfig, win.isAlwaysOnTop(), x, y);
+        saveTimelineNote(note.senderName, note.senderAvatar, note.styleConfig, win.isAlwaysOnTop(), x, y, note.sortOrder || 'asc');
       } catch (err) {
         console.error('[Timeline] 保存样式到数据库失败:', err);
       }

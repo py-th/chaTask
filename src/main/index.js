@@ -148,7 +148,7 @@ app.whenReady().then(async () => {
   // 恢复时间轴便签
   try {
     const timelineNotes = getTimelineNotes();
-    console.log(`[main] 恢复时间轴便签: ${timelineNotes.length} 个`);
+    let restoredTimelineCount = 0;
     for (const note of timelineNotes) {
       const tasks = getTasksBySenderName(note.sender_name);
       if (tasks.length > 0) {
@@ -169,12 +169,14 @@ app.whenReady().then(async () => {
           sortOrder: note.sort_order || 'asc'
         };
         stickyManager.createTimelineNote(tasks, note.sender_name, note.sender_avatar, options);
+        restoredTimelineCount++;
       } else {
         // 该联系人没有任务，清理数据库记录
         const { deleteTimelineNote } = require('../database/repositories/taskRepository');
         deleteTimelineNote(note.sender_name);
       }
     }
+    console.log(`[main] 恢复时间轴便签: ${restoredTimelineCount} 个（清理空任务便签 ${timelineNotes.length - restoredTimelineCount} 个）`);
   } catch (err) {
     console.error('[main] 恢复时间轴便签失败:', err);
   }
@@ -426,7 +428,7 @@ app.on('before-quit', () => {
         if (note.isTimeline && note.win && !note.win.isDestroyed()) {
           const [x, y] = note.win.getPosition();
           const { saveTimelineNote } = require('../database/repositories/taskRepository');
-          saveTimelineNote(note.senderName, note.senderAvatar, note.styleConfig, note.win.isAlwaysOnTop(), x, y);
+          saveTimelineNote(note.senderName, note.senderAvatar, note.styleConfig, note.win.isAlwaysOnTop(), x, y, note.sortOrder || 'asc');
         }
       }
     }
