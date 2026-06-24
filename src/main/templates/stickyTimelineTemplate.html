@@ -5,22 +5,20 @@
   <title>{{senderName}} - 时间轴</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
-    html, body {
-      width: 100%;
-    }
     body {
-      background: transparent;
-      font-family: system-ui, -apple-system, sans-serif;
-      display: flex;
-      border-radius: 12px;
-      -webkit-app-region: no-drag;
-    }
+       background:transparent;
+       font-family:system-ui;
+        width:100%;
+        height: 100%;
+        display:flex;
+        overflow:hidden; 
+      }
 
     .timeline-container {
       background: rgba(255,249,196,0.95);
-      backdrop-filter: blur(4px);
       border-radius: 12px;
       width: 100%;
+      height: 100%;
       display: flex;
       flex-direction: column;
       border: 1px solid rgba(0, 0, 0, 0.08);
@@ -39,8 +37,8 @@
     }
 
     .timeline-header .avatar {
-      width: 40px;
-      height: 40px;
+      width: 45px;
+      height: 45px;
       border-radius: 50%;
       object-fit: cover;
       border: 2px solid rgba(0, 0, 0, 0.1);
@@ -571,32 +569,45 @@
 
     .timeline-container.folded-mode {
       display: flex;
+      flex-direction: row;
       justify-content: center;
       align-items: center;
       padding: 0;
+      margin: 0;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      overflow: visible;
     }
 
     .timeline-container.folded-mode .timeline-header {
       border-bottom: none;
       padding: 0;
+      margin: 0;
       justify-content: center;
+      align-items: center;
       position: relative;
+      width: 45px;
+      height: 45px;
+      background: transparent;
     }
 
-    /* 圆角正方形头像 - 与单个便签的圆形区分 */
+    /* 圆角正方形头像 - 与单个便签的圆形区分，尺寸与折叠窗口一致 */
     .timeline-container.folded-mode .timeline-header .avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 3px;
-      border-width: 2px;
-      border-color: var(--fold-avatar-border, rgba(255, 249, 196, 0.95));
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      width: 45px;
+      height: 45px;
+      border-radius: 6px;
+      border: 2px solid rgba(255, 249, 196, 0.95);
+      /*box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+      box-shadow:0 0 4px rgba(0,0,0,0.12) !important;*/
+      object-fit: cover;
     }
 
-    /* 任务数量徽章 - 头像内部正下方中间位置 */
+    /* 任务数量徽章 - 头像底部中间位置 */
     .timeline-container.folded-mode .task-count-badge {
       position: absolute;
-      bottom: -1px;
+      bottom: 3px;
       left: 50%;
       transform: translateX(-50%);
       min-width: 16px;
@@ -610,9 +621,9 @@
       align-items: center;
       justify-content: center;
       padding: 0 3px;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
       border: 1px solid #fff;
-      z-index: 2;
+      z-index: 10;
     }
   </style>
 </head>

@@ -100,29 +100,33 @@
     const avatarImg = document.querySelector('.avatar-area img');
     if (avatarImg) avatarImg.style.border = '2px solid ' + color;
 
-    // 更新优先级图标显示
-    let priorityIcon = '';
-    if (priority === 'high') priorityIcon = '🔴';
-    else if (priority === 'medium') priorityIcon = '🟡';
-    else if (priority === 'low') priorityIcon = '🟢';
-    else priorityIcon = '⚪';
+    // 更新优先级徽章显示
+    let priorityText = '无';
+    if (priority === 'high') priorityText = '高';
+    else if (priority === 'medium') priorityText = '中';
+    else if (priority === 'low') priorityText = '低';
     const prioritySpan = document.getElementById('taskPriority');
-    if (prioritySpan) prioritySpan.innerText = priorityIcon;
+    if (prioritySpan) {
+      prioritySpan.innerText = priorityText;
+      prioritySpan.className = 'clickable meta-badge priority-' + priority;
+    }
   });
 
   electronAPI.on('update-status', (event, status) => {
     console.log('update-status received:', status);
-    let icon = '';
-    if (status === 'completed') icon = '✅';
-    else if (status === 'in_progress') icon = '⏳';
-    else if (status === 'pending') icon = '⏰';
-    else if (status === 'overdue') icon = '⚠️';
-    else icon = '⏰';
-    
+    let statusText = '待办';
+    let statusIcon = '⏰';
+    if (status === 'completed') { statusText = '已完成'; statusIcon = '✅'; }
+    else if (status === 'in_progress') { statusText = '进行中'; statusIcon = '⏳'; }
+    else if (status === 'overdue') { statusText = '逾期'; statusIcon = '⚠️'; }
+
     const statusDiv = document.querySelector('.status-icon');
-    if (statusDiv) statusDiv.innerText = icon;
+    if (statusDiv) statusDiv.innerText = statusIcon;
     const statusSpan = document.getElementById('taskStatus');
-    if (statusSpan) statusSpan.innerText = icon;
+    if (statusSpan) {
+      statusSpan.innerText = statusText;
+      statusSpan.className = 'clickable meta-badge status-' + status;
+    }
   });
 
   electronAPI.on('show-repeat-remind-picker', () => {

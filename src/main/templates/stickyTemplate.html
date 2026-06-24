@@ -94,6 +94,56 @@
     .clickable:hover {
       background: rgba(255,255,255,0.6);
     }
+
+    /* 工具栏徽章样式（与时间轴任务卡片一致） */
+    .meta-badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    .meta-badge.priority-high {
+      background: rgba(245, 63, 63, 0.12);
+      color: #F53F3F;
+    }
+
+    .meta-badge.priority-medium {
+      background: rgba(255, 125, 0, 0.12);
+      color: #FF7D00;
+    }
+
+    .meta-badge.priority-low {
+      background: rgba(0, 180, 42, 0.12);
+      color: #00B42A;
+    }
+
+    .meta-badge.priority-none {
+      background: rgba(134, 144, 156, 0.12);
+      color: #86909C;
+    }
+
+    .meta-badge.status-completed {
+      background: rgba(0, 180, 42, 0.12);
+      color: #00B42A;
+    }
+
+    .meta-badge.status-pending {
+      background: rgba(74, 144, 217, 0.12);
+      color: #4A90D9;
+    }
+
+    .meta-badge.status-in_progress {
+      background: rgba(255, 125, 0, 0.12);
+      color: #FF7D00;
+    }
+
+    .meta-badge.status-overdue {
+      background: rgba(245, 63, 63, 0.12);
+      color: #F53F3F;
+    }
+
     .datePickerPopup {
       display: none;
       border: 1px solid #ccc;
@@ -106,6 +156,21 @@
       backdrop-filter: blur(4px);
       font-size: 12px;
       margin-left: calc(45px + 6px + 3px); /* 与toolbar左对齐 */
+    }
+
+    .datePickerPopup input[type="date"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      border-radius: 8px;
+      font-size: 13px;
+      color: #1D2129;
+      outline: none;
+      margin-bottom: 12px;
+      background: #fff;
+    }
+    .datePickerPopup input[type="date"]:focus {
+      border-color: #4A90D9;
     }
     
     .sticky-container:hover .toolbar {
@@ -307,6 +372,30 @@
       background: #FF9800;
       color: #fff;
     }
+
+    .datePickerPopup button {
+      flex: 1;
+      padding: 6px 0;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .datePickerPopup .btn-clear {
+      background: #F2F3F5;
+      color: #F53F3F;
+    }
+    .datePickerPopup .btn-clear:hover {
+      background: #FFE5E5;
+    }
+    .datePickerPopup .btn-confirm {
+      background: #4A90D9;
+      color: #fff;
+    }
+    .datePickerPopup .btn-confirm:hover {
+      background: #3570B0;
+    }
   </style>
 </head>
 <body>
@@ -321,10 +410,10 @@
           <span class="value clickable" id="contactName">{{senderName}} [{{source}}]</span>
         </div>
         <div class="info-item">
-          <span class="value clickable" id="taskPriority">{{priorityText}}</span>
+          <span class="clickable meta-badge priority-{{priority}}" id="taskPriority">{{priorityText}}</span>
         </div>
         <div class="info-item">
-          <span class="value clickable" id="taskStatus">{{statusText}}</span>
+          <span class="clickable meta-badge status-{{status}}" id="taskStatus">{{statusText}}</span>
         </div>
       </div>
       <div class="toolbar-down">
@@ -337,10 +426,10 @@
     </div>
     <div class="datePickerPopup" id="datePickerPopup">
       <div style="margin-bottom: 10px;">📅 选择截止日期</div>
-      <input type="date" id="popupDatePicker" style="width: 100%; padding: 6px; margin-bottom: 10px;border-radius:5px;" />
+      <input type="date" id="popupDatePicker" />
       <div style="display: flex; justify-content: flex-end; gap: 8px;">
-        <button id="popupConfirmBtn">确认</button>
-        <button id="popupCancelBtn">取消</button>
+        <button id="popupConfirmBtn" class="btn-confirm">确认</button>
+        <button id="popupCancelBtn" class="btn-clear">取消</button>
       </div>
     </div>
     <div class="style-panel" id="stylePanel">

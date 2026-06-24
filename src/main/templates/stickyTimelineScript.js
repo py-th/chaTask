@@ -795,6 +795,8 @@
     var doResize = function() {
       var container = document.querySelector('.timeline-container');
       if (!container) return;
+      // 折叠模式下不调整窗口大小，避免将折叠窗口从 45x45 撑高到 60px 导致底部出现透明区域
+      if (container.classList.contains('folded-mode')) return;
       // 使用 body.scrollHeight 获取真实内容高度，不受当前窗口高度限制
       var contentHeight = document.body.scrollHeight;
       if (contentHeight > 0) {

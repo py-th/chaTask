@@ -75,7 +75,7 @@ class StickyNoteManager {
       };
 
       // 获取状态图标（与折叠时头像上显示的一致）
-      const getStatusText = (status) => {
+      const getStatusIcon = (status) => {
         switch (status) {
           case 'pending': return '⏰';
           case 'in_progress': return '⏳';
@@ -86,13 +86,35 @@ class StickyNoteManager {
       };
 
       // 获取优先级图标
-      const getPriorityText = (priority) => {
+      const getPriorityIcon = (priority) => {
         switch (priority) {
           case 'high': return '🔴';
           case 'medium': return '🟡';
           case 'low': return '🟢';
           case 'none': return '⚪';
           default: return '⚪';
+        }
+      };
+
+      // 获取状态文本（用于工具栏徽章）
+      const getStatusLabel = (status) => {
+        switch (status) {
+          case 'pending': return '待办';
+          case 'in_progress': return '进行中';
+          case 'completed': return '已完成';
+          case 'overdue': return '逾期';
+          default: return '待办';
+        }
+      };
+
+      // 获取优先级文本（用于工具栏徽章）
+      const getPriorityLabel = (priority) => {
+        switch (priority) {
+          case 'high': return '高';
+          case 'medium': return '中';
+          case 'low': return '低';
+          case 'none': return '无';
+          default: return '无';
         }
       };
 
@@ -135,8 +157,8 @@ class StickyNoteManager {
         senderName = senderName.slice(0, 10) + '...';
       }
       const source = escapeHtml(task.source || '未知');
-      const statusText = getStatusText(task.status);
-      const priorityText = getPriorityText(task.priority);
+      const statusText = getStatusLabel(task.status);
+      const priorityText = getPriorityLabel(task.priority);
 
       // 样式配置
       const styleConfig = task.style_config ? (typeof task.style_config === 'string' ? JSON.parse(task.style_config) : task.style_config) : {};
@@ -165,6 +187,8 @@ class StickyNoteManager {
         '{{dueDateText}}': dueDateText,
         '{{statusText}}': statusText,
         '{{priorityText}}': priorityText,
+        '{{priority}}': task.priority || 'none',
+        '{{status}}': task.status || 'pending',
         '{{opacity}}': task.opacity != null ? task.opacity : 1.0,
         '{{styleConfigJson}}': styleConfigJson
       };
@@ -348,7 +372,7 @@ class StickyNoteManager {
         taskbarIcon = this.stickyIcon;
       }
     }
-
+    // 创建时间轴便签窗口
     const winOptions = {
       width: 300,
       height: 400,
@@ -378,7 +402,10 @@ class StickyNoteManager {
     }
 
     const win = new BrowserWindow(winOptions);
-
+    // 关闭窗口阴影
+    //win.setFrame(false);
+    //win.setAlwaysOnTop(true);
+    win.setHasShadow(false);
     const initialStyleConfig = options.styleConfig || { opacity: 1, bgColor: '' };
     const initialSortOrder = options.sortOrder || getTimelineSortOrder(senderName) || 'asc';
 
@@ -474,7 +501,7 @@ class StickyNoteManager {
         taskbarIcon = this.stickyIcon;
       }
     }
-
+    // 创建便签窗口
     const win = new BrowserWindow({
       width: this.settings.defaultWidth || 300,
       height: this.settings.minHeight || 60,
@@ -546,13 +573,11 @@ class StickyNoteManager {
   resizeNote(id, height) {
     const note = this.notes.get(id);
     if (note && !note.win.isDestroyed()) {
+      // 折叠状态下不调整窗口大小，避免将 45x45 的折叠窗口撑高到 60px 导致底部出现透明区域
+      if (note.isFolded) return;
       const minHeight = this.settings.minHeight || 60;
       const newHeight = Math.max(minHeight, height);
       note.win.setBounds({ height: newHeight });
-      // 如果处于折叠状态，同步更新 originalBounds 的高度
-      if (note.isFolded) {
-        note.originalBounds.height = newHeight;
-      }
     }
   }
 
@@ -661,7 +686,7 @@ class StickyNoteManager {
     };
 
     // 时间轴便签使用与单个便签相同的折叠尺寸，但通过圆角正方形头像区分
-    const foldedSize = this.settings.foldedSize || 45;
+    const foldedSize = 45;
     let newX = currentBounds.x;
     let newY = currentBounds.y;
 
@@ -675,6 +700,8 @@ class StickyNoteManager {
       newY = 0;
     }
 
+    // 先解除最小尺寸限制，确保折叠窗口能真正变为 45x45
+    win.setMinimumSize(foldedSize, foldedSize);
     // 设置折叠后的尺寸和位置
     win.setBounds({ width: foldedSize, height: foldedSize, x: newX, y: newY });
     // 通知前端进入折叠模式（时间轴使用不同的事件名）
@@ -692,7 +719,11 @@ class StickyNoteManager {
     const note = this.notes.get(id);
     if (!note || !note.isFolded || !note.originalBounds) return;
 
-    // 第一步：立即恢复窗口到原始尺寸和位置（此时前端仍处于折叠模式，内容隐藏）
+    // 第一步：先恢复最小尺寸限制，再恢复窗口尺寸，避免 setBounds 被最小高度限制
+    const minWidth = this.settings.minWidth || 300;
+    const minHeight = note.isTimeline ? 200 : (this.settings.minHeight || 60);
+    win.setMinimumSize(minWidth, minHeight);
+    // 立即恢复窗口到原始尺寸和位置（此时前端仍处于折叠模式，内容隐藏）
     win.setBounds({
         x: note.originalBounds.x,
         y: note.originalBounds.y,

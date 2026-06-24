@@ -1219,6 +1219,9 @@ onUnmounted(() => {
   font-size: var(--font-size-base);
   color: var(--color-text);
 }
+.detail-sender-source {
+  opacity: 0.3;
+}
 
 .detail-row select,
 .detail-row input {
