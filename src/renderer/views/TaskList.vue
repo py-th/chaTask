@@ -141,7 +141,7 @@
               <label>内容</label>
               <span v-if="editingDetailContent" class="detail-edit-hint">Ctrl+Enter 保存 · Esc 取消</span>
             </div>
-            <div class="detail-content-wrapper">
+            <div class="detail-content-wrapper" title="双击编辑">
               <div class="detail-content-scroll">
                 <span
                   v-if="!editingDetailContent"
@@ -1221,6 +1221,7 @@ onUnmounted(() => {
 }
 .detail-sender-source {
   opacity: 0.3;
+  font-size: var(--font-size-xs);
 }
 
 .detail-row select,

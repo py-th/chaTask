@@ -21,11 +21,15 @@
   const taskCountBadge = document.querySelector('.task-count-badge');
 
   // 更新折叠模式下的头像边框颜色（与时间轴背景色同步）
+  // 关键：必须用 styleConfig.bgColor（原始背景色）而不是容器的 computed style，
+  // 因为折叠模式下 .timeline-container.folded-mode 的 background: transparent 会覆盖 inline 背景色，
+  // 此时 getComputedStyle 拿到的会是 rgba(0,0,0,0) 透明色，导致边框变透明。
   function updateFoldedAvatarBorder() {
-    const container = document.querySelector('.timeline-container');
-    if (!container || !headerAvatar) return;
-    const computedBg = window.getComputedStyle(container).backgroundColor;
-    headerAvatar.style.setProperty('--fold-avatar-border', computedBg);
+    if (!headerAvatar) return;
+    let borderColor = (styleConfig && styleConfig.bgColor)
+      ? styleConfig.bgColor
+      : 'rgba(255, 249, 196, 0.95)';  // 默认黄色，与 .timeline-container 默认背景一致
+    headerAvatar.style.setProperty('--fold-avatar-border', borderColor);
   }
 
   // 应用样式配置
