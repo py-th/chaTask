@@ -47,6 +47,83 @@
     updateFoldedAvatarBorder();
   }
 
+  // 折叠模式下头像等比例缩放
+  const BASE_FOLD_SIZE = 45;
+  const BASE_BORDER_WIDTH = 2;
+  const BASE_BORDER_RADIUS = 6;
+  const BASE_BADGE_MIN_WIDTH = 16;
+  const BASE_BADGE_HEIGHT = 16;
+  const BASE_BADGE_BOTTOM = 3;
+  const BASE_BADGE_FONT_SIZE = 11;
+  const BASE_BADGE_PADDING = 3;
+  const BASE_BADGE_BORDER_WIDTH = 1;
+
+  function applyFoldedAvatarSize(size) {
+    const container = document.querySelector('.timeline-container');
+    const header = document.querySelector('.timeline-header');
+    const avatar = document.querySelector('.timeline-header .avatar');
+    const badge = document.querySelector('.task-count-badge');
+    if (!container || !header || !avatar) return;
+
+    const scale = size / BASE_FOLD_SIZE;
+    const borderRadius = Math.max(2, Math.round(BASE_BORDER_RADIUS * scale * 10) / 10);
+    const borderWidth = Math.max(1, Math.round(BASE_BORDER_WIDTH * scale * 10) / 10);
+
+    container.style.width = size + 'px';
+    container.style.height = size + 'px';
+    container.style.borderRadius = borderRadius + 'px';
+
+    header.style.width = size + 'px';
+    header.style.height = size + 'px';
+    header.style.borderRadius = borderRadius + 'px';
+
+    avatar.style.width = size + 'px';
+    avatar.style.height = size + 'px';
+    avatar.style.borderRadius = borderRadius + 'px';
+    avatar.style.borderWidth = borderWidth + 'px';
+
+    if (badge) {
+      badge.style.minWidth = Math.max(12, Math.round(BASE_BADGE_MIN_WIDTH * scale * 10) / 10) + 'px';
+      badge.style.height = Math.max(12, Math.round(BASE_BADGE_HEIGHT * scale * 10) / 10) + 'px';
+      badge.style.bottom = Math.max(1, Math.round(BASE_BADGE_BOTTOM * scale * 10) / 10) + 'px';
+      badge.style.fontSize = Math.max(9, Math.round(BASE_BADGE_FONT_SIZE * scale * 10) / 10) + 'px';
+      badge.style.padding = '0 ' + Math.max(2, Math.round(BASE_BADGE_PADDING * scale * 10) / 10) + 'px';
+      badge.style.borderWidth = Math.max(1, Math.round(BASE_BADGE_BORDER_WIDTH * scale * 10) / 10) + 'px';
+    }
+  }
+
+  function resetFoldedStyles() {
+    const container = document.querySelector('.timeline-container');
+    const header = document.querySelector('.timeline-header');
+    const avatar = document.querySelector('.timeline-header .avatar');
+    const badge = document.querySelector('.task-count-badge');
+
+    if (container) {
+      container.style.width = '';
+      container.style.height = '';
+      container.style.borderRadius = '';
+    }
+    if (header) {
+      header.style.width = '';
+      header.style.height = '';
+      header.style.borderRadius = '';
+    }
+    if (avatar) {
+      avatar.style.width = '';
+      avatar.style.height = '';
+      avatar.style.borderRadius = '';
+      avatar.style.borderWidth = '';
+    }
+    if (badge) {
+      badge.style.minWidth = '';
+      badge.style.height = '';
+      badge.style.bottom = '';
+      badge.style.fontSize = '';
+      badge.style.padding = '';
+      badge.style.borderWidth = '';
+    }
+  }
+
   applyStyleConfig(styleConfig);
 
   // 辅助函数：获取状态文本
@@ -518,6 +595,8 @@
     }
     // 折叠时更新头像边框颜色
     updateFoldedAvatarBorder();
+    // 应用用户配置的折叠头像大小
+    applyFoldedAvatarSize(window.foldedAvatarSize || BASE_FOLD_SIZE);
     console.log('[Timeline] 已折叠');
   });
 
@@ -530,7 +609,17 @@
     if (taskCountBadge) {
       taskCountBadge.style.display = 'none';
     }
+    resetFoldedStyles();
     console.log('[Timeline] 已展开');
+  });
+
+  // 设置变化时实时更新折叠头像大小
+  electronAPI.on('update-folded-avatar-size', function(event, size) {
+    window.foldedAvatarSize = size;
+    const container = document.querySelector('.timeline-container');
+    if (container && container.classList.contains('folded-mode')) {
+      applyFoldedAvatarSize(size);
+    }
   });
 
   // ========== 排序功能 ==========

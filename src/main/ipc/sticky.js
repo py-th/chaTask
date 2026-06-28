@@ -139,7 +139,9 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
       const task = await getTaskById(taskId);
       if (!task) throw new Error('Task not found');
       const isCurrentlyPinned = task.is_pinned === 1;
-      const menu = await stickyMenu.buildContextMenu(noteId, taskId, isCurrentlyPinned);
+      const note = stickyManager.notes.get(noteId);
+      const isFolded = !!(note && note.isFolded);
+      const menu = await stickyMenu.buildContextMenu(noteId, taskId, isCurrentlyPinned, isFolded);
       menu.popup();
     } catch (error) {
       console.error('生成右键菜单失败:', error);

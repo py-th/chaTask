@@ -4,13 +4,22 @@ const path = require('path');
 const db = require('../../database/db');
 const { loadUserSettings, saveUserSettings, getEffectiveConfig, userDefaults } = require('../configManager');
 
-function registerSettingsHandlers() {
+function registerSettingsHandlers(stickyManager) {
   ipcMain.handle('get-settings', () => {
     return loadUserSettings();
   });
 
   ipcMain.handle('save-settings', (event, settings) => {
-    return saveUserSettings(settings);
+    const result = saveUserSettings(settings);
+    // 便签折叠头像大小变化时，同步通知便签管理器更新已打开的便签
+    if (stickyManager && settings.sticky && settings.sticky.foldedAvatarSize !== undefined) {
+      try {
+        stickyManager.updateFoldedAvatarSize(settings.sticky.foldedAvatarSize);
+      } catch (err) {
+        console.error('[Settings] 同步折叠头像大小失败:', err);
+      }
+    }
+    return result;
   });
 
   ipcMain.handle('get-effective-config', () => {

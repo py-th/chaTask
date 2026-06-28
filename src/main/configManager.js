@@ -61,7 +61,8 @@ const userDefaults = {
     defaultOpacity: 100,
     edgeSnap: true,
     edgeSnapThreshold: 10,
-    skipTaskbar: true
+    skipTaskbar: true,
+    foldedAvatarSize: 45
   },
   screenshot: {
     mode: 'shortcut',

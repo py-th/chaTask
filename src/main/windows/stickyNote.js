@@ -45,9 +45,11 @@ class StickyNoteManager {
       edgeSnap: true,
       edgeSnapThreshold: 10,
       foldedSize: 45,
+      foldedAvatarSize: 45,
       defaultWidth: 300,
       minHeight: 60
     };
+    this.loadSettings();
     this.stickyIcon = null;
     const iconPath = getStickyIconPath();
     if (iconPath) {
@@ -56,6 +58,58 @@ class StickyNoteManager {
       } catch (err) {
         console.error('[StickyNote] 加载便签图标失败:', err);
       }
+    }
+  }
+
+  // 从用户设置加载便签相关配置
+  loadSettings() {
+    try {
+      const userSettings = loadUserSettings();
+      const stickySettings = userSettings.sticky || {};
+      this.settings.edgeSnap = stickySettings.edgeSnap !== false;
+      this.settings.edgeSnapThreshold = stickySettings.edgeSnapThreshold || 10;
+      this.settings.foldedAvatarSize = this._clampFoldedAvatarSize(stickySettings.foldedAvatarSize);
+      this.settings.skipTaskbar = stickySettings.skipTaskbar !== false;
+    } catch (err) {
+      console.error('[StickyNote] 加载便签设置失败:', err);
+    }
+  }
+
+  _clampFoldedAvatarSize(size) {
+    const n = parseInt(size, 10);
+    if (isNaN(n)) return 45;
+    return Math.max(30, Math.min(60, n));
+  }
+
+  // 当设置中的折叠头像大小变化时，同步更新所有已打开便签
+  updateFoldedAvatarSize(size) {
+    const newSize = this._clampFoldedAvatarSize(size);
+    if (this.settings.foldedAvatarSize === newSize) return;
+    this.settings.foldedAvatarSize = newSize;
+
+    for (const [id, note] of this.notes.entries()) {
+      if (!note.win || note.win.isDestroyed()) continue;
+
+      // 如果便签当前处于折叠状态，需要同步调整窗口尺寸和贴边位置
+      if (note.isFolded) {
+        const bounds = note.win.getBounds();
+        const workArea = this.getCurrentDisplayWorkArea(note.win);
+        let newX = bounds.x;
+        let newY = bounds.y;
+
+        if (note.snapEdge === 'right') {
+          newX = workArea.width - newSize;
+        } else if (note.snapEdge === 'left') {
+          newX = 0;
+        } else if (note.snapEdge === 'top') {
+          newY = 0;
+        }
+
+        note.win.setMinimumSize(newSize, newSize);
+        note.win.setBounds({ width: newSize, height: newSize, x: newX, y: newY });
+      }
+
+      note.win.webContents.send('update-folded-avatar-size', newSize);
     }
   }
 
@@ -145,8 +199,8 @@ class StickyNoteManager {
       // 头像图片 - 使用实际背景色
       const defaultAvatarSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='45' height='45' viewBox='0 0 45 45'%3E%3Ccircle cx='22.5' cy='22.5' r='22.5' fill='%23e8e8e8'/%3E%3Ccircle cx='22.5' cy='16.5' r='7' fill='none' stroke='%23888' stroke-width='2.5'/%3E%3Cpath d='M8 37.5Q22.5 26 37 37.5' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E";
       const avatarImg = task.sender_avatar ? 
-        `<img class="avatar" src="${escapeHtml(task.sender_avatar)}" style="width:45px;height:45px;border-radius:50%;object-fit:cover;border: 2px solid ${noteBackgroundColor};box-shadow: 0 2px 5px rgba(0,0,0,0.2);" />` : 
-        `<img class="avatar" src="${defaultAvatarSvg}" style="width:45px;height:45px;border-radius:50%;object-fit:cover;border: 2px solid ${noteBackgroundColor};box-shadow: 0 2px 5px rgba(0,0,0,0.2);" />`;
+        `<img class="avatar" src="${escapeHtml(task.sender_avatar)}" style="border: 2px solid ${noteBackgroundColor};" />` : 
+        `<img class="avatar" src="${defaultAvatarSvg}" style="border: 2px solid ${noteBackgroundColor};" />`;
       
         // 截止日期文本
       const dueDateText = task.due_date ? new Date(task.due_date).toLocaleDateString() : '未设置';
@@ -190,7 +244,8 @@ class StickyNoteManager {
         '{{priority}}': task.priority || 'none',
         '{{status}}': task.status || 'pending',
         '{{opacity}}': task.opacity != null ? task.opacity : 1.0,
-        '{{styleConfigJson}}': styleConfigJson
+        '{{styleConfigJson}}': styleConfigJson,
+        '{{foldedAvatarSize}}': this.settings.foldedAvatarSize
       };
 
       // 执行替换
@@ -336,7 +391,8 @@ class StickyNoteManager {
         '{{avatarImg}}': avatarImg,
         '{{timelineItems}}': timelineItemsHtml,
         '{{tasksJson}}': tasksJson,
-        '{{timelineStyleConfig}}': JSON.stringify(timelineStyleConfig)
+        '{{timelineStyleConfig}}': JSON.stringify(timelineStyleConfig),
+        '{{foldedAvatarSize}}': this.settings.foldedAvatarSize
       };
 
       for (const [placeholder, value] of Object.entries(replacements)) {
@@ -354,6 +410,7 @@ class StickyNoteManager {
 
   createTimelineNote(tasks, senderName, senderAvatar, options = {}) {
     const id = this.nextId++;
+    this.loadSettings();
     const userSettings = loadUserSettings();
     const skipTaskbar = userSettings.sticky && userSettings.sticky.skipTaskbar !== false;
 
@@ -481,6 +538,7 @@ class StickyNoteManager {
 
   async createNote(task) {
     const id = this.nextId++;
+    this.loadSettings();
     // 读取用户设置中的 skipTaskbar 配置
     const userSettings = loadUserSettings();
     const skipTaskbar = userSettings.sticky && userSettings.sticky.skipTaskbar !== false;
@@ -686,7 +744,7 @@ class StickyNoteManager {
     };
 
     // 时间轴便签使用与单个便签相同的折叠尺寸，但通过圆角正方形头像区分
-    const foldedSize = 45;
+    const foldedSize = this.settings.foldedAvatarSize || 45;
     let newX = currentBounds.x;
     let newY = currentBounds.y;
 

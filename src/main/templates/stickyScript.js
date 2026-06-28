@@ -17,6 +17,44 @@
   const popupCancelBtn = document.getElementById('popupCancelBtn');
   const reminderInfo = document.getElementById('reminderInfo');
   const avatarImg = document.querySelector('.avatar-area img');
+  const statusIconEl = document.querySelector('.status-icon');
+
+  // 折叠头像默认基准尺寸
+  const BASE_AVATAR_SIZE = 45;
+  const BASE_STATUS_SIZE = 20;
+  const BASE_STATUS_FONT_SIZE = 12;
+
+  function applyFoldedAvatarSize(size) {
+    if (!avatarImg) return;
+    const scale = size / BASE_AVATAR_SIZE;
+    avatarImg.style.width = size + 'px';
+    avatarImg.style.height = size + 'px';
+    // 边框保持 2px 不变，确保展开与折叠时粗细一致
+    if (statusIconEl) {
+      const iconSize = Math.max(12, Math.round(BASE_STATUS_SIZE * scale * 10) / 10);
+      const fontSize = Math.max(9, Math.round(BASE_STATUS_FONT_SIZE * scale * 10) / 10);
+      // 状态图标在折叠头像底部水平居中
+      const left = Math.round((size - iconSize) / 2 * 10) / 10;
+      statusIconEl.style.width = iconSize + 'px';
+      statusIconEl.style.height = iconSize + 'px';
+      statusIconEl.style.fontSize = fontSize + 'px';
+      statusIconEl.style.left = left + 'px';
+      statusIconEl.style.bottom = '0px';
+    }
+  }
+
+  function resetAvatarSize() {
+    if (!avatarImg) return;
+    avatarImg.style.width = '';
+    avatarImg.style.height = '';
+    if (statusIconEl) {
+      statusIconEl.style.width = '';
+      statusIconEl.style.height = '';
+      statusIconEl.style.fontSize = '';
+      statusIconEl.style.left = '';
+      statusIconEl.style.bottom = '';
+    }
+  }
 
   let isDragging = false;
 
@@ -76,12 +114,22 @@
 
   electronAPI.on('fold-note', () => {
     container.classList.add('folded-mode');
+    applyFoldedAvatarSize(window.foldedAvatarSize || BASE_AVATAR_SIZE);
     console.log('已折叠');
   });
 
   electronAPI.on('unfold-note', () => {
     container.classList.remove('folded-mode');
+    resetAvatarSize();
     console.log('已展开');
+  });
+
+  // 设置变化时实时更新折叠头像大小
+  electronAPI.on('update-folded-avatar-size', (event, size) => {
+    window.foldedAvatarSize = size;
+    if (container.classList.contains('folded-mode')) {
+      applyFoldedAvatarSize(size);
+    }
   });
 
   electronAPI.on('update-priority', (event, priority) => {

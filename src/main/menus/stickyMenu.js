@@ -17,7 +17,7 @@ class StickyMenu {
     }
   }
 
-  async buildContextMenu(noteId, taskId, isPinned) {
+  async buildContextMenu(noteId, taskId, isPinned, isFolded = false) {
     const pinLabel = isPinned ? '取消置顶' : '置顶';
 
     // 检查该联系人是否有至少2条任务
@@ -82,25 +82,34 @@ class StickyMenu {
             this.notifyMainWindowUpdate();
           }
         }
-      },
-      { type: 'separator' },
-       {
-        label: '复制文本',
-        click: () => {
-          const note = this.stickyManager.notes.get(noteId);
-          if (note && note.win && !note.win.isDestroyed()) {
-            note.win.webContents.send('copy-task-text');
+      }
+    );
+
+    // 折叠状态下隐藏与内容/样式相关、在折叠小窗口中无意义的选项
+    if (!isFolded) {
+      template.push(
+        { type: 'separator' },
+        {
+          label: '复制文本',
+          click: () => {
+            const note = this.stickyManager.notes.get(noteId);
+            if (note && note.win && !note.win.isDestroyed()) {
+              note.win.webContents.send('copy-task-text');
+            }
+          }
+        },
+        {
+          label: '截取任务',
+          click: async () => {
+            if (this.screenshotUtils) {
+              await this.screenshotUtils.startDoubleScreenshot();
+            }
           }
         }
-      },
-      {
-        label: '截取任务',
-        click: async () => {
-          if (this.screenshotUtils) {
-            await this.screenshotUtils.startDoubleScreenshot();
-          }
-        }
-      },
+      );
+    }
+
+    template.push(
       { type: 'separator' },
       {
         label: '优先级',
@@ -146,40 +155,45 @@ class StickyMenu {
       });
     }
 
-    template.push(
-      { type: 'separator' },
-      {
-        label: '样式',
-        click: () => {
-          const note = this.stickyManager.notes.get(noteId);
-          if (note && note.win && !note.win.isDestroyed()) {
-            note.win.webContents.send('show-style-panel');
+    if (!isFolded) {
+      template.push(
+        { type: 'separator' },
+        {
+          label: '样式',
+          click: () => {
+            const note = this.stickyManager.notes.get(noteId);
+            if (note && note.win && !note.win.isDestroyed()) {
+              note.win.webContents.send('show-style-panel');
+            }
           }
+        },
+        {
+          label: '皮肤模板',
+          submenu: [
+            {
+              label: '经典',
+              click: () => {
+                console.log('应用经典模板', taskId);
+              }
+            },
+            {
+              label: '简约',
+              click: () => {
+                console.log('应用简约模板', taskId);
+              }
+            },
+            {
+              label: '可爱',
+              click: () => {
+                console.log('应用可爱模板', taskId);
+              }
+            }
+          ]
         }
-      },
-      {
-        label: '皮肤模板',
-        submenu: [
-          {
-            label: '经典',
-            click: () => {
-              console.log('应用经典模板', taskId);
-            }
-          },
-          {
-            label: '简约',
-            click: () => {
-              console.log('应用简约模板', taskId);
-            }
-          },
-          {
-            label: '可爱',
-            click: () => {
-              console.log('应用可爱模板', taskId);
-            }
-          }
-        ]
-      },
+      );
+    }
+
+    template.push(
       { type: 'separator' },
       {
         label: '便签管理器',

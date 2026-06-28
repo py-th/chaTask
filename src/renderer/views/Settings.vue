@@ -101,6 +101,19 @@
           </div>
           <div class="setting-row">
             <div class="setting-info">
+              <span class="setting-name">贴边头像大小</span>
+              <span class="setting-desc">贴边折叠时显示的头像尺寸 ({{ settings.sticky.foldedAvatarSize }}px)</span>
+            </div>
+            <input
+              type="range"
+              min="30"
+              max="60"
+              v-model.number="settings.sticky.foldedAvatarSize"
+              @change="saveSettings"
+            />
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
               <span class="setting-name">不在任务栏显示便签</span>
               <span class="setting-desc">桌面便签窗口不显示在任务栏中（重启便签后生效）</span>
             </div>
@@ -478,7 +491,7 @@ const dataMsgType = ref('success')
 
 const settings = reactive({
   general: { autoLaunch: false, minimizeToTray: true, theme: 'system' },
-  sticky: { defaultOpacity: 100, edgeSnap: true, edgeSnapThreshold: 10, skipTaskbar: true },
+  sticky: { defaultOpacity: 100, edgeSnap: true, edgeSnapThreshold: 10, skipTaskbar: true, foldedAvatarSize: 45 },
   screenshot: { mode: 'shortcut', confirmMode: 'on_mismatch', clipboardInterval: 1000, clipboardMinWidth: 50, clipboardMaxWidth: 500, clipboardMinHeight: 20, clipboardMaxHeight: 300 },
   ocr: {
     engine: 'paddle',
