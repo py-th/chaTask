@@ -114,6 +114,17 @@
           </div>
           <div class="setting-row">
             <div class="setting-info">
+              <span class="setting-name">默认贴边位置</span>
+              <span class="setting-desc">双击头像折叠时贴向屏幕的位置</span>
+            </div>
+            <select v-model="settings.sticky.foldedEdge" @change="saveSettings">
+              <option value="top">顶部</option>
+              <option value="right">右边</option>
+              <option value="left">左边</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
               <span class="setting-name">不在任务栏显示便签</span>
               <span class="setting-desc">桌面便签窗口不显示在任务栏中（重启便签后生效）</span>
             </div>
@@ -491,7 +502,7 @@ const dataMsgType = ref('success')
 
 const settings = reactive({
   general: { autoLaunch: false, minimizeToTray: true, theme: 'system' },
-  sticky: { defaultOpacity: 100, edgeSnap: true, edgeSnapThreshold: 10, skipTaskbar: true, foldedAvatarSize: 45 },
+  sticky: { defaultOpacity: 100, edgeSnap: true, edgeSnapThreshold: 10, skipTaskbar: true, foldedAvatarSize: 45, foldedEdge: 'right' },
   screenshot: { mode: 'shortcut', confirmMode: 'on_mismatch', clipboardInterval: 1000, clipboardMinWidth: 50, clipboardMaxWidth: 500, clipboardMinHeight: 20, clipboardMaxHeight: 300 },
   ocr: {
     engine: 'paddle',

@@ -20,6 +20,18 @@
   const headerAvatar = document.querySelector('.timeline-header .avatar');
   const taskCountBadge = document.querySelector('.task-count-badge');
 
+  // 双击头像区域：折叠时展开（展开状态下头像隐藏，无法通过头像折叠）
+  if (headerAvatar) {
+    headerAvatar.addEventListener('dblclick', () => {
+      const container = document.querySelector('.timeline-container');
+      if (container && container.classList.contains('folded-mode')) {
+        electronAPI.send('unfold-note-request', window.noteId);
+      } else {
+        electronAPI.send('fold-timeline-note-request', window.noteId);
+      }
+    });
+  }
+
   // 更新折叠模式下的头像边框颜色（与时间轴背景色同步）
   // 关键：必须用 styleConfig.bgColor（原始背景色）而不是容器的 computed style，
   // 因为折叠模式下 .timeline-container.folded-mode 的 background: transparent 会覆盖 inline 背景色，

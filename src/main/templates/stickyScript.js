@@ -124,6 +124,18 @@
     console.log('已展开');
   });
 
+  // 双击头像区域：展开时折叠贴边，折叠时展开
+  if (avatarImg) {
+    avatarImg.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      if (container.classList.contains('folded-mode')) {
+        electronAPI.send('unfold-note-request', window.noteId);
+      } else {
+        electronAPI.send('fold-note-request', window.noteId);
+      }
+    });
+  }
+
   // 设置变化时实时更新折叠头像大小
   electronAPI.on('update-folded-avatar-size', (event, size) => {
     window.foldedAvatarSize = size;

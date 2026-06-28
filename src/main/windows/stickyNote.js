@@ -46,6 +46,7 @@ class StickyNoteManager {
       edgeSnapThreshold: 10,
       foldedSize: 45,
       foldedAvatarSize: 45,
+      foldedEdge: 'right',
       defaultWidth: 300,
       minHeight: 60
     };
@@ -69,6 +70,7 @@ class StickyNoteManager {
       this.settings.edgeSnap = stickySettings.edgeSnap !== false;
       this.settings.edgeSnapThreshold = stickySettings.edgeSnapThreshold || 10;
       this.settings.foldedAvatarSize = this._clampFoldedAvatarSize(stickySettings.foldedAvatarSize);
+      this.settings.foldedEdge = this._normalizeFoldedEdge(stickySettings.foldedEdge);
       this.settings.skipTaskbar = stickySettings.skipTaskbar !== false;
     } catch (err) {
       console.error('[StickyNote] 加载便签设置失败:', err);
@@ -79,6 +81,11 @@ class StickyNoteManager {
     const n = parseInt(size, 10);
     if (isNaN(n)) return 45;
     return Math.max(30, Math.min(60, n));
+  }
+
+  _normalizeFoldedEdge(edge) {
+    if (edge === 'top' || edge === 'left' || edge === 'right') return edge;
+    return 'right';
   }
 
   // 当设置中的折叠头像大小变化时，同步更新所有已打开便签
@@ -110,6 +117,37 @@ class StickyNoteManager {
       }
 
       note.win.webContents.send('update-folded-avatar-size', newSize);
+    }
+  }
+
+  // 当设置中的默认贴边位置变化时，同步更新所有已折叠便签
+  updateFoldedEdge(edge) {
+    const newEdge = this._normalizeFoldedEdge(edge);
+    if (this.settings.foldedEdge === newEdge) return;
+    this.settings.foldedEdge = newEdge;
+
+    for (const [id, note] of this.notes.entries()) {
+      if (!note.win || note.win.isDestroyed() || !note.isFolded) continue;
+
+      const size = this.settings.foldedAvatarSize;
+      const workArea = this.getCurrentDisplayWorkArea(note.win);
+      let newX = note.win.getBounds().x;
+      let newY = note.win.getBounds().y;
+
+      if (newEdge === 'right') {
+        newX = workArea.width - size;
+        newY = 0;
+      } else if (newEdge === 'left') {
+        newX = 0;
+        newY = 0;
+      } else if (newEdge === 'top') {
+        newX = 0;
+        newY = 0;
+      }
+
+      note.snapEdge = newEdge;
+      note.win.setMinimumSize(size, size);
+      note.win.setBounds({ width: size, height: size, x: newX, y: newY });
     }
   }
 
@@ -371,6 +409,7 @@ class StickyNoteManager {
 
       const displayName = escapeHtml(senderName || '未知');
       const senderNameJs = (senderName || '未知').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"');
+      const source = escapeHtml((sortedTasks.length > 0 && sortedTasks[0].source) ? sortedTasks[0].source : '未知');
 
       const tasksJson = JSON.stringify(sortedTasks.map(t => ({
         id: t.id,
@@ -388,6 +427,7 @@ class StickyNoteManager {
         '{{senderName}}': displayName,
         '{{senderNameJs}}': senderNameJs,
         '{{taskCount}}': sortedTasks.length,
+        '{{source}}': source,
         '{{avatarImg}}': avatarImg,
         '{{timelineItems}}': timelineItemsHtml,
         '{{tasksJson}}': tasksJson,
@@ -651,12 +691,19 @@ class StickyNoteManager {
     return display.workArea;
   }
 
-  startDrag(id) {
+  startDrag(id, mouseX, mouseY) {
     const note = this.notes.get(id);
     if (note) {
       note.isDragging = true;
       if (note.isFolded) {
         this.unfoldNote(note.win, id);
+        // 从折叠状态拖拽展开时，将窗口移动到鼠标附近，避免跳回 originalBounds 导致远离鼠标
+        if (mouseX != null && mouseY != null) {
+          const bounds = note.win.getBounds();
+          const newX = Math.round(mouseX - bounds.width / 2);
+          const newY = Math.round(mouseY - 30);
+          note.win.setPosition(newX, newY);
+        }
       }
     }
   }

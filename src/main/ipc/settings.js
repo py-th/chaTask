@@ -11,12 +11,22 @@ function registerSettingsHandlers(stickyManager) {
 
   ipcMain.handle('save-settings', (event, settings) => {
     const result = saveUserSettings(settings);
-    // 便签折叠头像大小变化时，同步通知便签管理器更新已打开的便签
-    if (stickyManager && settings.sticky && settings.sticky.foldedAvatarSize !== undefined) {
-      try {
-        stickyManager.updateFoldedAvatarSize(settings.sticky.foldedAvatarSize);
-      } catch (err) {
-        console.error('[Settings] 同步折叠头像大小失败:', err);
+    if (stickyManager && settings.sticky) {
+      // 便签折叠头像大小变化时，同步通知便签管理器更新已打开的便签
+      if (settings.sticky.foldedAvatarSize !== undefined) {
+        try {
+          stickyManager.updateFoldedAvatarSize(settings.sticky.foldedAvatarSize);
+        } catch (err) {
+          console.error('[Settings] 同步折叠头像大小失败:', err);
+        }
+      }
+      // 默认贴边位置变化时，同步更新已折叠便签位置
+      if (settings.sticky.foldedEdge !== undefined) {
+        try {
+          stickyManager.updateFoldedEdge(settings.sticky.foldedEdge);
+        } catch (err) {
+          console.error('[Settings] 同步默认贴边位置失败:', err);
+        }
       }
     }
     return result;

@@ -48,7 +48,7 @@ function registerStickyHandlers(mainWindow, stickyManager, screenshotUtils, remi
     if (!note || note.win.isDestroyed()) return;
 
     // 可能触发展开（内部会同步改变窗口位置）
-    stickyManager.startDrag(noteId);
+    stickyManager.startDrag(noteId, startScreenX, startScreenY);
 
     // 重新获取展开后的窗口位置
     const [winX, winY] = note.win.getPosition();
@@ -150,7 +150,12 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
 
   ipcMain.on('fold-note-request', (event, id) => {
     const note = stickyManager.notes.get(id);
-    if (note) stickyManager.foldNote(note.win, id);
+    if (note) stickyManager.foldNote(note.win, id, stickyManager.settings.foldedEdge || 'right');
+  });
+
+  ipcMain.on('fold-timeline-note-request', (event, id) => {
+    const note = stickyManager.notes.get(id);
+    if (note) stickyManager.foldNote(note.win, id, stickyManager.settings.foldedEdge || 'right');
   });
 
   ipcMain.on('unfold-note-request', (event, id) => {
