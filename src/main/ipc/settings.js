@@ -28,6 +28,14 @@ function registerSettingsHandlers(stickyManager) {
           console.error('[Settings] 同步默认贴边位置失败:', err);
         }
       }
+      // 任务文本最大长度变化时，同步更新已打开便签
+      if (settings.sticky.taskTextMaxLength !== undefined) {
+        try {
+          stickyManager.updateTaskTextMaxLength(settings.sticky.taskTextMaxLength);
+        } catch (err) {
+          console.error('[Settings] 同步任务文本最大长度失败:', err);
+        }
+      }
     }
     return result;
   });

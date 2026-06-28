@@ -18,11 +18,72 @@
   const reminderInfo = document.getElementById('reminderInfo');
   const avatarImg = document.querySelector('.avatar-area img');
   const statusIconEl = document.querySelector('.status-icon');
+  const expandLink = document.getElementById('expandLink');
 
   // 折叠头像默认基准尺寸
   const BASE_AVATAR_SIZE = 45;
   const BASE_STATUS_SIZE = 20;
   const BASE_STATUS_FONT_SIZE = 12;
+  let taskTextMaxLength = window.taskTextMaxLength || 200;
+
+  // 任务文本截断/展开
+  function getPlainText(el) {
+    return el ? el.innerText.replace(/\n$/, '') : '';
+  }
+
+  function truncateTaskText() {
+    if (!taskTextDiv) return;
+    // 先移除展开链接，避免其文本被计入长度
+    if (expandLink && expandLink.parentNode === taskTextDiv) {
+      taskTextDiv.removeChild(expandLink);
+    }
+    const fullText = taskTextDiv.dataset.fullContent || getPlainText(taskTextDiv);
+    // 保留原始完整内容，避免后续截断时以已截断的文本为基准
+    if (fullText && !taskTextDiv.dataset.fullContent) {
+      taskTextDiv.dataset.fullContent = fullText;
+    }
+    if (fullText.length > taskTextMaxLength) {
+      taskTextDiv.innerText = fullText.slice(0, taskTextMaxLength) + '...';
+      if (expandLink) {
+        taskTextDiv.appendChild(expandLink);
+        expandLink.classList.add('visible');
+        expandLink.textContent = '展开';
+      }
+    } else {
+      taskTextDiv.innerText = fullText;
+      if (expandLink) {
+        taskTextDiv.appendChild(expandLink);
+        expandLink.classList.remove('visible');
+      }
+    }
+  }
+
+  function expandTaskText() {
+    if (!taskTextDiv || !taskTextDiv.dataset.fullContent) return;
+    if (expandLink && expandLink.parentNode === taskTextDiv) {
+      taskTextDiv.removeChild(expandLink);
+    }
+    taskTextDiv.innerText = taskTextDiv.dataset.fullContent;
+    if (expandLink) {
+      taskTextDiv.appendChild(expandLink);
+      expandLink.classList.add('visible');
+      expandLink.textContent = '收起';
+    }
+  }
+
+  function collapseTaskText() {
+    if (!taskTextDiv || !taskTextDiv.dataset.fullContent) return;
+    if (expandLink && expandLink.parentNode === taskTextDiv) {
+      taskTextDiv.removeChild(expandLink);
+    }
+    const fullText = taskTextDiv.dataset.fullContent;
+    taskTextDiv.innerText = fullText.slice(0, taskTextMaxLength) + '...';
+    if (expandLink) {
+      taskTextDiv.appendChild(expandLink);
+      expandLink.classList.add('visible');
+      expandLink.textContent = '展开';
+    }
+  }
 
   function applyFoldedAvatarSize(size) {
     if (!avatarImg) return;
@@ -78,6 +139,11 @@
   taskTextDiv.addEventListener('dblclick', (e) => {
     e.stopPropagation();
     if (taskTextDiv.getAttribute('contenteditable') !== 'true') {
+      // 进入编辑模式前恢复完整文本并移除展开链接，避免编辑时误删
+      if (taskTextDiv.dataset.fullContent) {
+        taskTextDiv.innerText = taskTextDiv.dataset.fullContent;
+      }
+      if (expandLink) expandLink.classList.remove('visible');
       taskTextDiv.setAttribute('contenteditable', 'true');
       taskTextDiv.focus();
       const range = document.createRange();
@@ -92,10 +158,21 @@
   taskTextDiv.addEventListener('blur', () => {
     if (taskTextDiv.getAttribute('contenteditable') === 'true') {
       const newContent = taskTextDiv.innerText;
+      taskTextDiv.dataset.fullContent = newContent;
       electronAPI.send('update-note-content', { id: noteId, content: newContent, taskId });
       taskTextDiv.removeAttribute('contenteditable');
+      // 保存后重新截断
+      truncateTaskText();
     }
   });
+
+  if (expandLink) {
+    expandLink.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (expandLink.textContent === '展开') expandTaskText();
+      else collapseTaskText();
+    });
+  }
 
   taskTextDiv.addEventListener('mousedown', (e) => {
     if (taskTextDiv.getAttribute('contenteditable') === 'true') e.stopPropagation();
@@ -115,6 +192,8 @@
   electronAPI.on('fold-note', () => {
     container.classList.add('folded-mode');
     applyFoldedAvatarSize(window.foldedAvatarSize || BASE_AVATAR_SIZE);
+    // 贴边折叠时，将已展开的文本按配置长度重新截断
+    truncateTaskText();
     console.log('已折叠');
   });
 
@@ -141,6 +220,14 @@
     window.foldedAvatarSize = size;
     if (container.classList.contains('folded-mode')) {
       applyFoldedAvatarSize(size);
+    }
+  });
+
+  // 设置变化时实时更新任务文本最大长度
+  electronAPI.on('update-task-text-max-length', (event, length) => {
+    taskTextMaxLength = length;
+    if (taskTextDiv) {
+      truncateTaskText();
     }
   });
 
@@ -536,5 +623,12 @@
     stylePanel.addEventListener('mousedown', (e) => {
       e.stopPropagation();
     });
+  }
+
+  // 初始化时应用文本长度限制，确保 DOM 已就绪
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', truncateTaskText);
+  } else {
+    truncateTaskText();
   }
 })();

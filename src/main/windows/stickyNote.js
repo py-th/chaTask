@@ -47,6 +47,7 @@ class StickyNoteManager {
       foldedSize: 45,
       foldedAvatarSize: 45,
       foldedEdge: 'right',
+      taskTextMaxLength: 200,
       defaultWidth: 300,
       minHeight: 60
     };
@@ -71,6 +72,7 @@ class StickyNoteManager {
       this.settings.edgeSnapThreshold = stickySettings.edgeSnapThreshold || 10;
       this.settings.foldedAvatarSize = this._clampFoldedAvatarSize(stickySettings.foldedAvatarSize);
       this.settings.foldedEdge = this._normalizeFoldedEdge(stickySettings.foldedEdge);
+      this.settings.taskTextMaxLength = this._clampTaskTextMaxLength(stickySettings.taskTextMaxLength);
       this.settings.skipTaskbar = stickySettings.skipTaskbar !== false;
     } catch (err) {
       console.error('[StickyNote] 加载便签设置失败:', err);
@@ -86,6 +88,28 @@ class StickyNoteManager {
   _normalizeFoldedEdge(edge) {
     if (edge === 'top' || edge === 'left' || edge === 'right') return edge;
     return 'right';
+  }
+
+  _clampTaskTextMaxLength(length) {
+    const n = parseInt(length, 10);
+    if (isNaN(n)) return 200;
+    return Math.max(50, Math.min(1000, n));
+  }
+
+  // 当设置中的任务文本最大长度变化时，同步更新所有已打开便签
+  updateTaskTextMaxLength(length) {
+    const newLength = this._clampTaskTextMaxLength(length);
+    if (this.settings.taskTextMaxLength === newLength) return;
+    this.settings.taskTextMaxLength = newLength;
+
+    for (const [id, note] of this.notes.entries()) {
+      if (!note.win || note.win.isDestroyed()) continue;
+      try {
+        note.win.webContents.send('update-task-text-max-length', newLength);
+      } catch (err) {
+        console.error('同步任务文本最大长度失败:', err);
+      }
+    }
   }
 
   // 当设置中的折叠头像大小变化时，同步更新所有已打开便签
@@ -283,7 +307,8 @@ class StickyNoteManager {
         '{{status}}': task.status || 'pending',
         '{{opacity}}': task.opacity != null ? task.opacity : 1.0,
         '{{styleConfigJson}}': styleConfigJson,
-        '{{foldedAvatarSize}}': this.settings.foldedAvatarSize
+        '{{foldedAvatarSize}}': this.settings.foldedAvatarSize,
+        '{{taskTextMaxLength}}': this.settings.taskTextMaxLength
       };
 
       // 执行替换
@@ -393,7 +418,7 @@ class StickyNoteManager {
               <div class="drag-handle"><div class="grip-dots"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
             </div>
             <div class="task-card">
-              <div class="task-text" contenteditable="false">${escapeHtml(task.content)}</div>
+              <div class="task-text" contenteditable="false">${escapeHtml(task.content)}<span class="expand-link">展开</span></div>
               <div class="task-meta">
                 <span class="meta-badge priority-${task.priority}" data-type="priority">${getPriorityText(task.priority)}</span>
                 <span class="meta-badge status-${task.status}" data-type="status">${getStatusText(task.status)}</span>
@@ -432,7 +457,8 @@ class StickyNoteManager {
         '{{timelineItems}}': timelineItemsHtml,
         '{{tasksJson}}': tasksJson,
         '{{timelineStyleConfig}}': JSON.stringify(timelineStyleConfig),
-        '{{foldedAvatarSize}}': this.settings.foldedAvatarSize
+        '{{foldedAvatarSize}}': this.settings.foldedAvatarSize,
+        '{{taskTextMaxLength}}': this.settings.taskTextMaxLength
       };
 
       for (const [placeholder, value] of Object.entries(replacements)) {

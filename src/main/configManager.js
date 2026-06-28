@@ -63,7 +63,8 @@ const userDefaults = {
     edgeSnapThreshold: 10,
     skipTaskbar: true,
     foldedAvatarSize: 45,
-    foldedEdge: 'right'
+    foldedEdge: 'right',
+    taskTextMaxLength: 200
   },
   screenshot: {
     mode: 'shortcut',

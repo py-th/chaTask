@@ -20,6 +20,74 @@
   const headerAvatar = document.querySelector('.timeline-header .avatar');
   const taskCountBadge = document.querySelector('.task-count-badge');
 
+  let taskTextMaxLength = window.taskTextMaxLength || 200;
+
+  // 任务文本截断/展开
+  function getTaskPlainText(el) {
+    return el ? el.innerText.replace(/\n$/, '') : '';
+  }
+
+  function truncateTaskText(taskText) {
+    if (!taskText) return;
+    const expandLink = taskText.querySelector('.expand-link');
+    // 先移除展开链接，避免其文本被计入长度
+    if (expandLink && expandLink.parentNode === taskText) {
+      taskText.removeChild(expandLink);
+    }
+    const fullText = taskText.dataset.fullContent || getTaskPlainText(taskText);
+    // 保留原始完整内容，避免后续截断时以已截断的文本为基准
+    if (fullText && !taskText.dataset.fullContent) {
+      taskText.dataset.fullContent = fullText;
+    }
+    if (fullText.length > taskTextMaxLength) {
+      taskText.innerText = fullText.slice(0, taskTextMaxLength) + '...';
+      if (expandLink) {
+        taskText.appendChild(expandLink);
+        expandLink.classList.add('visible');
+        expandLink.textContent = '展开';
+      }
+    } else {
+      taskText.innerText = fullText;
+      if (expandLink) {
+        taskText.appendChild(expandLink);
+        expandLink.classList.remove('visible');
+      }
+    }
+  }
+
+  function expandTaskText(taskText) {
+    if (!taskText || !taskText.dataset.fullContent) return;
+    const expandLink = taskText.querySelector('.expand-link');
+    if (expandLink && expandLink.parentNode === taskText) {
+      taskText.removeChild(expandLink);
+    }
+    taskText.innerText = taskText.dataset.fullContent;
+    if (expandLink) {
+      taskText.appendChild(expandLink);
+      expandLink.classList.add('visible');
+      expandLink.textContent = '收起';
+    }
+  }
+
+  function collapseTaskText(taskText) {
+    if (!taskText || !taskText.dataset.fullContent) return;
+    const expandLink = taskText.querySelector('.expand-link');
+    if (expandLink && expandLink.parentNode === taskText) {
+      taskText.removeChild(expandLink);
+    }
+    const fullText = taskText.dataset.fullContent;
+    taskText.innerText = fullText.slice(0, taskTextMaxLength) + '...';
+    if (expandLink) {
+      taskText.appendChild(expandLink);
+      expandLink.classList.add('visible');
+      expandLink.textContent = '展开';
+    }
+  }
+
+  function truncateAllTaskTexts() {
+    document.querySelectorAll('.timeline-item .task-text').forEach(truncateTaskText);
+  }
+
   // 双击头像区域：折叠时展开（展开状态下头像隐藏，无法通过头像折叠）
   if (headerAvatar) {
     headerAvatar.addEventListener('dblclick', () => {
@@ -188,6 +256,12 @@
     if (!taskText) return;
     e.stopPropagation();
     if (taskText.getAttribute('contenteditable') !== 'true') {
+      // 进入编辑模式前恢复完整文本并隐藏展开链接
+      if (taskText.dataset.fullContent) {
+        taskText.innerText = taskText.dataset.fullContent;
+      }
+      const expandLink = taskText.querySelector('.expand-link');
+      if (expandLink) expandLink.classList.remove('visible');
       taskText.setAttribute('contenteditable', 'true');
       taskText.focus();
       const range = document.createRange();
@@ -210,10 +284,24 @@
       electronAPI.send('timeline-update-task-text', { noteId, taskId, content: newContent });
     }
     taskText.removeAttribute('contenteditable');
+    // 保存后重新截断
+    taskText.dataset.fullContent = newContent;
+    truncateTaskText(taskText);
   }, true);
 
   // 点击提醒图标打开提醒设置
   document.addEventListener('click', (e) => {
+    const expandLink = e.target.closest('.expand-link');
+    if (expandLink) {
+      e.stopPropagation();
+      const taskText = expandLink.closest('.task-text');
+      if (taskText) {
+        if (expandLink.textContent === '展开') expandTaskText(taskText);
+        else collapseTaskText(taskText);
+      }
+      return;
+    }
+
     const reminderBadge = e.target.closest('.meta-badge.reminder');
     if (reminderBadge) {
       e.stopPropagation();
@@ -355,6 +443,8 @@
       const taskText = item.querySelector('.task-text');
       if (taskText) {
         taskText.textContent = content;
+        taskText.dataset.fullContent = content;
+        truncateTaskText(taskText);
       }
     }
     const task = tasksData.find(t => t.id === taskId);
@@ -371,6 +461,8 @@
       const taskText = item.querySelector('.task-text');
       if (taskText) {
         taskText.textContent = content;
+        taskText.dataset.fullContent = content;
+        truncateTaskText(taskText);
       }
       const task = tasksData.find(t => t.id === taskId);
       if (task) task.content = content;
@@ -609,6 +701,8 @@
     updateFoldedAvatarBorder();
     // 应用用户配置的折叠头像大小
     applyFoldedAvatarSize(window.foldedAvatarSize || BASE_FOLD_SIZE);
+    // 贴边折叠时，将所有已展开的文本按配置长度重新截断
+    truncateAllTaskTexts();
     console.log('[Timeline] 已折叠');
   });
 
@@ -632,6 +726,14 @@
     if (container && container.classList.contains('folded-mode')) {
       applyFoldedAvatarSize(size);
     }
+  });
+
+  // 设置变化时实时更新任务文本最大长度
+  electronAPI.on('update-task-text-max-length', function(event, length) {
+    taskTextMaxLength = length;
+    document.querySelectorAll('.timeline-item .task-text').forEach(function(taskText) {
+      truncateTaskText(taskText);
+    });
   });
 
   // ========== 排序功能 ==========
@@ -703,7 +805,7 @@
           '<div class="drag-handle"><div class="grip-dots"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>' +
         '</div>' +
         '<div class="task-card">' +
-          '<div class="task-text" contenteditable="false">' + escapeHtml(task.content) + '</div>' +
+          '<div class="task-text" contenteditable="false">' + escapeHtml(task.content) + '<span class="expand-link">展开</span></div>' +
           '<div class="task-meta">' +
             '<span class="meta-badge priority-' + task.priority + '" data-type="priority">' + getPriorityText(task.priority) + '</span>' +
             '<span class="meta-badge status-' + task.status + '" data-type="status">' + getStatusText(task.status) + '</span>' +
@@ -716,6 +818,8 @@
 
     // 更新任务计数
     updateTaskCount();
+    // 重新应用文本长度限制（排序后任务 DOM 已重建）
+    truncateAllTaskTexts();
   }
 
   // ========== 自定义拖拽排序 ==========
@@ -930,5 +1034,12 @@
   var container = document.querySelector('.timeline-container');
   if (container) {
     resizeObserver.observe(container);
+  }
+
+  // 初始化时应用任务文本长度限制，确保 DOM 已就绪
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', truncateAllTaskTexts);
+  } else {
+    truncateAllTaskTexts();
   }
 })();

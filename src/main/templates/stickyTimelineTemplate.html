@@ -275,6 +275,16 @@
       cursor: text;
     }
 
+    .timeline-item .expand-link {
+      display: none;
+      font-size: 11px;
+      color: #4A90D9;
+      cursor: pointer;
+      margin-left: 4px;
+      user-select: none;
+    }
+    .timeline-item .expand-link.visible { display: inline; }
+
     .timeline-item .task-meta {
       display: flex;
       align-items: center;
@@ -714,6 +724,7 @@
     window.tasksData = {{tasksJson}};
     window.timelineStyleConfig = {{timelineStyleConfig}};
     window.foldedAvatarSize = {{foldedAvatarSize}};
+    window.taskTextMaxLength = {{taskTextMaxLength}};
   </script>
   <script src="stickyTimelineScript.js"></script>
 </body>

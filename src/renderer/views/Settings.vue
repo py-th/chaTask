@@ -125,6 +125,20 @@
           </div>
           <div class="setting-row">
             <div class="setting-info">
+              <span class="setting-name">任务文本最长显示长度</span>
+              <span class="setting-desc">超过该长度自动折叠，点击展开后显示全部 ({{ settings.sticky.taskTextMaxLength }} 字符)</span>
+            </div>
+            <input
+              type="range"
+              min="50"
+              max="1000"
+              step="50"
+              v-model.number="settings.sticky.taskTextMaxLength"
+              @change="saveSettings"
+            />
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
               <span class="setting-name">不在任务栏显示便签</span>
               <span class="setting-desc">桌面便签窗口不显示在任务栏中（重启便签后生效）</span>
             </div>
@@ -502,7 +516,7 @@ const dataMsgType = ref('success')
 
 const settings = reactive({
   general: { autoLaunch: false, minimizeToTray: true, theme: 'system' },
-  sticky: { defaultOpacity: 100, edgeSnap: true, edgeSnapThreshold: 10, skipTaskbar: true, foldedAvatarSize: 45, foldedEdge: 'right' },
+  sticky: { defaultOpacity: 100, edgeSnap: true, edgeSnapThreshold: 10, skipTaskbar: true, foldedAvatarSize: 45, foldedEdge: 'right', taskTextMaxLength: 200 },
   screenshot: { mode: 'shortcut', confirmMode: 'on_mismatch', clipboardInterval: 1000, clipboardMinWidth: 50, clipboardMaxWidth: 500, clipboardMinHeight: 20, clipboardMaxHeight: 300 },
   ocr: {
     engine: 'paddle',
