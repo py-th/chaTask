@@ -592,6 +592,26 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
 
     if (taskId) {
       // 点击了某条任务
+      const task = await getTaskById(taskId);
+
+      // 创建单桌面便签（仅未在桌面显示且未完成的任务）
+      if (task && task.is_show_desk !== 1 && task.is_completed !== 1 && task.is_deleted !== 1) {
+        template.push({
+          label: '创建单便签',
+          click: async () => {
+            try {
+              stickyManager.createNote(task);
+              await updateTask(taskId, { is_show_desk: 1 });
+              notifyMainWindow();
+            } catch (err) {
+              console.error('[Timeline] 创建单便签失败:', err);
+              sendToastToMainWindow('error', '创建单便签失败');
+            }
+          }
+        });
+        template.push({ type: 'separator' });
+      }
+
       template.push({
         label: '重复提醒',
         click: () => {
