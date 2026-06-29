@@ -342,7 +342,7 @@
           const createdDate = new Date(data.createdAt);
           const dateStr = createdDate.toLocaleDateString();
           const timeStr = createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          document.getElementById('popupCreatedAt').textContent = `创建于 ${dateStr} ${timeStr}`;
+          document.getElementById('popupCreatedAt').textContent = `| 创建于 ${dateStr} ${timeStr}`;
         }
       }
     });

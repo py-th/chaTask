@@ -158,6 +158,41 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
     if (note) stickyManager.foldNote(note.win, id, stickyManager.settings.foldedEdge || 'right');
   });
 
+  function snapTimelineNoteEdge(noteId, edge) {
+    const note = stickyManager.notes.get(noteId);
+    if (!note || !note.win || note.win.isDestroyed()) return;
+
+    const foldedSize = stickyManager.settings.foldedAvatarSize || 45;
+    const workArea = stickyManager.getCurrentDisplayWorkArea(note.win);
+    const currentBounds = note.win.getBounds();
+    let newX = currentBounds.x;
+    let newY = currentBounds.y;
+
+    // 仅调整贴边方向的坐标，垂直/水平另一轴保持展开时的位置不变
+    if (edge === 'right') {
+      newX = workArea.width - foldedSize;
+    } else if (edge === 'left') {
+      newX = 0;
+    } else if (edge === 'top') {
+      newY = 0;
+    }
+
+    if (!note.isFolded) {
+      note.originalBounds = {
+        x: currentBounds.x,
+        y: currentBounds.y,
+        width: currentBounds.width,
+        height: currentBounds.height
+      };
+      note.win.setMinimumSize(foldedSize, foldedSize);
+      note.win.webContents.send('fold-timeline-note');
+      note.isFolded = true;
+    }
+
+    note.win.setBounds({ width: foldedSize, height: foldedSize, x: newX, y: newY });
+    note.snapEdge = edge;
+  }
+
   ipcMain.on('unfold-note-request', (event, id) => {
     const note = stickyManager.notes.get(id);
     if (note) stickyManager.unfoldNote(note.win, id);
@@ -612,6 +647,18 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
     });
 
     template.push({ type: 'separator' });
+
+    // 贴边（展开状态下才显示）
+    if (!isFolded) {
+      template.push({
+        label: '贴边',
+        submenu: [
+          { label: '顶部', click: () => snapTimelineNoteEdge(noteId, 'top') },
+          { label: '左边', click: () => snapTimelineNoteEdge(noteId, 'left') },
+          { label: '右边', click: () => snapTimelineNoteEdge(noteId, 'right') }
+        ]
+      });
+    }
 
     // 透明度
     template.push({

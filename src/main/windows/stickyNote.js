@@ -289,9 +289,7 @@ class StickyNoteManager {
       const metaSenderName = escapeHtml(task.sender_name || '未知');
       const createdTime = task.created_at ? formatDateTime(task.created_at) : '';
       const source = escapeHtml(task.source || '未知');
-      const sourceTimeHtml = task.source_time
-        ? `<div class="info-item"><span class="clickable meta-badge source-time-badge" id="taskSourceTime">${formatDateTimeWithYear(task.source_time)}</span></div>`
-        : '';
+      const sourceTimeHtml = task.source_time ? formatDateTimeWithYear(task.source_time) : '';
       const statusText = getStatusLabel(task.status);
       const priorityText = getPriorityLabel(task.priority);
 

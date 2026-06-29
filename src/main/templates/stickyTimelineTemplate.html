@@ -114,7 +114,7 @@
 
     .timeline-item {
       position: relative;
-      margin-bottom: 15px;
+      margin-bottom: 6px;
       cursor: default;
     }
 
@@ -148,7 +148,7 @@
     .timeline-item .task-time {
       font-size: 11px;
       color: #86909C;
-      margin-bottom: 4px;
+      margin-bottom: 3px;
       margin-left: -10px;
       display: flex;
       align-items: center;
@@ -173,8 +173,8 @@
     .timeline-item .task-card {
       background: rgba(248, 249, 250, 0.8);
       border-radius: 8px;
-      padding: 8px 10px;
-      margin-left: -20px;
+      padding: 5px;
+      margin-left: -22px;
       border: 1px solid rgba(0, 0, 0, 0.06);
       transition: background 0.15s ease, box-shadow 0.15s ease;
       position: relative;
@@ -380,122 +380,6 @@
       color: #F53F3F;
     }
 
-    /* 样式面板 */
-    .style-panel {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) scale(0.95);
-      width: 220px;
-      background: rgba(255, 255, 255, 0.98);
-      border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-      padding: 16px;
-      z-index: 1000;
-      opacity: 0;
-      pointer-events: none;
-      transition: all 0.2s ease;
-    }
-    .style-panel.show {
-      opacity: 1;
-      pointer-events: auto;
-      transform: translate(-50%, -50%) scale(1);
-    }
-    .style-panel-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      font-size: 14px;
-      font-weight: 600;
-      color: #1D2129;
-    }
-    .style-panel-header .close-btn {
-      cursor: pointer;
-      width: 20px;
-      height: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 4px;
-      font-size: 12px;
-      color: #86909C;
-    }
-    .style-panel-header .close-btn:hover {
-      background: rgba(0, 0, 0, 0.06);
-      color: #1D2129;
-    }
-    .style-row {
-      margin-bottom: 12px;
-    }
-    .style-row:last-child {
-      margin-bottom: 0;
-    }
-    .style-label {
-      font-size: 12px;
-      color: #86909C;
-      margin-bottom: 6px;
-      display: block;
-    }
-    .style-row input[type="range"] {
-      width: 100%;
-      height: 4px;
-      border-radius: 2px;
-      -webkit-appearance: none;
-      background: #E5E6EB;
-      outline: none;
-    }
-    .style-row input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #4A90D9;
-      cursor: pointer;
-    }
-    .style-value {
-      font-size: 11px;
-      color: #4A90D9;
-      margin-top: 4px;
-      text-align: right;
-    }
-    .style-row input[type="color"] {
-      width: 100%;
-      height: 32px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      background: none;
-    }
-    .style-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .style-actions button {
-      flex: 1;
-      padding: 6px 0;
-      border: none;
-      border-radius: 6px;
-      font-size: 12px;
-      cursor: pointer;
-      transition: background 0.15s ease;
-    }
-    .style-actions .btn-reset {
-      background: #F2F3F5;
-      color: #86909C;
-    }
-    .style-actions .btn-reset:hover {
-      background: #E5E6EB;
-    }
-    .style-actions .btn-confirm {
-      background: #4A90D9;
-      color: #fff;
-    }
-    .style-actions .btn-confirm:hover {
-      background: #3570B0;
-    }
-
     /* 日期选择器弹层 */
     .date-picker-overlay {
       position: fixed;
@@ -673,33 +557,12 @@
         <div class="sender-name">{{senderName}}</div>
         <div class="task-meta-line">
           <span class="task-count">共 {{taskCount}} 条任务</span>
-          <span class="task-source">| {{source}}</span>
+          <span class="task-source">• {{source}}</span>
         </div>
       </div>
     </div>
     <div class="timeline-scroll" id="timelineScroll">
       {{timelineItems}}
-    </div>
-  </div>
-
-  <!-- 样式面板 -->
-  <div class="style-panel" id="stylePanel">
-    <div class="style-panel-header">
-      <span>样式设置</span>
-      <span class="close-btn" id="stylePanelClose">✕</span>
-    </div>
-    <div class="style-row">
-      <label class="style-label">透明度</label>
-      <input type="range" id="styleOpacity" min="0.3" max="1" step="0.05" value="1">
-      <div class="style-value" id="styleOpacityValue">100%</div>
-    </div>
-    <div class="style-row">
-      <label class="style-label">背景颜色</label>
-      <input type="color" id="styleBgColor" value="#ffffff">
-    </div>
-    <div class="style-actions">
-      <button class="btn-reset" id="styleReset">重置</button>
-      <button class="btn-confirm" id="styleConfirm">确定</button>
     </div>
   </div>
 

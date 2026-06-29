@@ -90,6 +90,14 @@ class StickyMenu {
       template.push(
         { type: 'separator' },
         {
+          label: '贴边',
+          submenu: [
+            { label: '顶部', click: () => this._snapNoteEdge(noteId, 'top') },
+            { label: '左边', click: () => this._snapNoteEdge(noteId, 'left') },
+            { label: '右边', click: () => this._snapNoteEdge(noteId, 'right') }
+          ]
+        },
+        {
           label: '复制文本',
           click: () => {
             const note = this.stickyManager.notes.get(noteId);
@@ -308,6 +316,13 @@ class StickyMenu {
         }
       }
     ];
+  }
+
+  _snapNoteEdge(noteId, edge) {
+    const note = this.stickyManager.notes.get(noteId);
+    if (note && note.win && !note.win.isDestroyed()) {
+      this.stickyManager.foldNote(note.win, noteId, edge);
+    }
   }
 
   _notifyNote(noteId, eventName, data) {
