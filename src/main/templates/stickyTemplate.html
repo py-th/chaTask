@@ -1,505 +1,574 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-  <meta charset="UTF-8">
-  <title>{{senderName}}</title>
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
-    body { background:transparent; font-family:system-ui; width:100%; height: 100%; display:flex; overflow:hidden; }
-    
-    .sticky-container { 
-      background:transparent;
-      border-radius:12px;
-      backdrop-filter:blur(2px);
-      width:100%;
-      height: 100%;
-      display:flex; 
-      flex-direction:column; 
-      transition: all 0.2s ease;
-    }
-    
-    .content-area { display:flex; flex: 1; align-items:flex-start; padding:0px; gap:6px; margin-bottom:3px; }
-    .avatar-area { position: relative; flex-shrink:0; text-align:center; }
-    .avatar-area img { display:block; -webkit-user-drag: none; user-drag: none;}
-    .avatar-area .avatar { width:45px; height:45px; border-radius:50%; object-fit:cover; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-    .status-icon { display:none; position: absolute; bottom: 0px; left: 13px; background: transparent; border-radius: 50%; width: 20px; height: 20px; align-items: center; justify-content: center; font-size: 12px; box-shadow:0 1px 2px rgba(0,0,0,0.2); z-index: 1; }
-    .task-text { flex:1; align-items:center; font-size:14px; line-height:1.4; white-space:pre-wrap; word-wrap:break-word; outline:none; background:{{priorityColor}}; border-radius:8px; padding:4px 8px; min-height:45px;margin-right:3px; box-shadow: 0 2px 3px rgba(0,0,0,0.2); }
-    .task-text:focus { background:rgba(255,255,200,0.8); }
-    .expand-link { display:none; font-size:12px; color:#4A90D9; cursor:pointer; margin-left:4px; user-select:none; }
-    .expand-link.visible { display:inline; }
-    
-    .toolbar {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      font-size: 12px;
-      padding: 4px 8px;
-      border-radius: 8px;
-      background: transparent;
-      visibility: hidden;
-      opacity: 0;
-      transition: visibility 0.2s, opacity 0.2s;
-      margin: 0 3px 3px calc(45px + 6px + 3px); /* avatar宽45 + gap6 + content-area无左padding但有结构 */
-      min-height: 32px;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{metaSenderName}}</title>
+    <style>
+      * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+      body { background:transparent;
+        font-family:system-ui;
+        width:100%;
+        height: 100%;
+        display:flex;
+        overflow:hidden;
+      }
 
-    .toolbar-up {
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 3px;
-      padding-bottom: 4px;
-      border-bottom: 1px dashed rgba(128, 128, 128, 0.4);
-      overflow: hidden;
-    }
+      .sticky-container {
+        background:transparent;
+        border-radius:12px;
+        backdrop-filter:blur(2px);
+        width:100%;
+        height: 100%;
+        display:flex;
+        flex-direction:column;
+        transition: all 0.2s ease;
+      }
 
-    .toolbar-down {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding-top: 2px;
-      overflow: hidden;
-    }
+      .content-area {
+         display:flex;
+         flex: 1;
+         align-items:flex-start;
+         padding:0px;
+         gap:6px;
+         margin-bottom:3px;
+      }
+      .avatar-area {
+        position: relative;
+        flex-shrink:0;
+        text-align:center;
+      }
+      .avatar-area img {
+        display:block;
+        -webkit-user-drag:
+        none; user-drag: none;
+      }
+      .avatar-area .avatar { width:45px; height:45px; border-radius:50%; object-fit:cover; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+      .status-icon { display:none; position: absolute; bottom: 0px; left: 13px; background: transparent; border-radius: 50%; width: 20px; height: 20px; align-items: center; justify-content: center; font-size: 12px; box-shadow:0 1px 2px rgba(0,0,0,0.2); z-index: 1; }
+      .task-wrapper { flex:1; display:flex; flex-direction:column; min-height:45px; margin-right:3px; border-radius:8px; box-shadow: 0 2px 3px rgba(0,0,0,0.2); overflow:hidden;background:{{priorityColor}}; }
+      .task-text { flex:1; align-items:center; font-size:14px; line-height:1.4; white-space:pre-wrap; word-wrap:break-word; outline:none; background:{{priorityColor}}; padding:4px 8px; min-height:45px; }
+      .task-text:focus { background:rgba(255,255,200,0.8); }
+      .task-meta { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:11px; color:rgba(0,0,0,0.6); background:{{priorityColor}}; padding:2px 8px; border-top:1px dashed rgba(0,0,0,0.15); }
+      .task-meta .meta-sender { font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .task-meta .meta-time { flex-shrink:0; font-family:system-ui; opacity:0.85; }
+      .expand-link { display:none; font-size:12px; color:#4A90D9; cursor:pointer; margin-left:4px; user-select:none; }
+      .expand-link.visible { display:inline; }
 
-    .info-item {
-      display: flex;
-      align-items: center;
-      gap: 2px;
-      white-space: nowrap;
-      min-width: 0;
-      flex: 0 1 auto;
-    }
+      .toolbar {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 12px;
+        padding: 4px 8px;
+        border-radius: 8px;
+        background: transparent;
+        visibility: hidden;
+        opacity: 0;
+        transition: visibility 0.2s, opacity 0.2s;
+        margin: 0 3px 3px calc(45px + 6px); /* 与 task-wrapper 左边缘对齐 */
+        min-height: 32px;
+      }
 
-    .info-item .label {
-      font-size: 11px;
-      opacity: 0.7;
-      flex-shrink: 0;
-    }
+      .toolbar-up {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 3px;
+        padding-bottom: 4px;
+        border-bottom: 1px dashed rgba(128, 128, 128, 0.4);
+        overflow: hidden;
+      }
 
-    .info-item .value {
-      font-weight: 500;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      min-width: 0;
-      flex: 1 1 auto;
-    }
+      .toolbar-down {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding-top: 2px;
+        overflow: hidden;
+      }
 
-    .clickable {
-      cursor: pointer;
-      padding: 2px 3px;
-      border-radius: 4px;
-      background: rgba(255,255,255,0.3);
-      transition: background 0.15s;
-    }
+      .info-item {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        white-space: nowrap;
+        min-width: 0;
+        flex: 0 1 auto;
+      }
 
-    .clickable:hover {
-      background: rgba(255,255,255,0.6);
-    }
+      .info-item .label {
+        font-size: 11px;
+        opacity: 0.7;
+        flex-shrink: 0;
+      }
 
-    /* 工具栏徽章样式（与时间轴任务卡片一致） */
-    .meta-badge {
-      font-size: 10px;
-      padding: 1px 6px;
-      border-radius: 10px;
-      white-space: nowrap;
-      font-weight: 500;
-    }
+      .info-item .value {
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+        flex: 1 1 auto;
+      }
 
-    .meta-badge.priority-high {
-      background: rgba(245, 63, 63, 0.12);
-      color: #F53F3F;
-    }
+      .clickable {
+        cursor: pointer;
+        padding: 2px 3px;
+        border-radius: 4px;
+        background: rgba(255,255,255,0.3);
+        transition: background 0.15s;
+      }
 
-    .meta-badge.priority-medium {
-      background: rgba(255, 125, 0, 0.12);
-      color: #FF7D00;
-    }
+      .clickable:hover {
+        background: rgba(255,255,255,0.6);
+      }
 
-    .meta-badge.priority-low {
-      background: rgba(0, 180, 42, 0.12);
-      color: #00B42A;
-    }
+      /* 工具栏徽章样式（与时间轴任务卡片一致） */
+      .meta-badge {
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 10px;
+        white-space: nowrap;
+        font-weight: 500;
+      }
 
-    .meta-badge.priority-none {
-      background: rgba(134, 144, 156, 0.12);
-      color: #86909C;
-    }
+      .meta-badge.priority-high {
+        background: rgba(245, 63, 63, 0.12);
+        color: #F53F3F;
+      }
 
-    .meta-badge.status-completed {
-      background: rgba(0, 180, 42, 0.12);
-      color: #00B42A;
-    }
+      .meta-badge.priority-medium {
+        background: rgba(255, 125, 0, 0.12);
+        color: #FF7D00;
+      }
 
-    .meta-badge.status-pending {
-      background: rgba(74, 144, 217, 0.12);
-      color: #4A90D9;
-    }
+      .meta-badge.priority-low {
+        background: rgba(0, 180, 42, 0.12);
+        color: #00B42A;
+      }
 
-    .meta-badge.status-in_progress {
-      background: rgba(255, 125, 0, 0.12);
-      color: #FF7D00;
-    }
+      .meta-badge.priority-none {
+        background: rgba(134, 144, 156, 0.12);
+        color: #86909C;
+      }
 
-    .meta-badge.status-overdue {
-      background: rgba(245, 63, 63, 0.12);
-      color: #F53F3F;
-    }
+      .meta-badge.status-completed {
+        background: rgba(0, 180, 42, 0.12);
+        color: #00B42A;
+      }
 
-    .datePickerPopup {
-      display: none;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 12px;
-      box-shadow:0 2px 5px rgba(0,0,0,0.2);
-      z-index: 2;
-      width: 200px;
-      background: {{priorityColor}};
-      backdrop-filter: blur(4px);
-      font-size: 12px;
-      margin-left: calc(45px + 6px + 3px); /* 与toolbar左对齐 */
-    }
+      .meta-badge.status-pending {
+        background: rgba(74, 144, 217, 0.12);
+        color: #4A90D9;
+      }
 
-    .datePickerPopup input[type="date"] {
-      width: 100%;
-      padding: 8px 10px;
-      border: 1px solid rgba(0, 0, 0, 0.12);
-      border-radius: 8px;
-      font-size: 13px;
-      color: #1D2129;
-      outline: none;
-      margin-bottom: 12px;
-      background: #fff;
-    }
-    .datePickerPopup input[type="date"]:focus {
-      border-color: #4A90D9;
-    }
-    
-    .sticky-container:hover .toolbar {
-      visibility: visible;
-      background: {{priorityColor}};
-      opacity: 1;
-    }
-    
-    /* 折叠状态：隐藏所有非头像内容 */
-    .sticky-container.folded-mode .task-text,
-    .sticky-container.folded-mode .datePickerPopup,
-    .sticky-container.folded-mode .toolbar {
-      display: none !important;
-    }
-    .sticky-container.folded-mode .content-area {
-      justify-content: center;
-      align-items: center;
-    }
-    .sticky-container.folded-mode .avatar-area {
-      margin: 0;
-    }
-    .sticky-container.folded-mode .status-icon {
-      display: flex !important;
-    }
-    
-    /* 头像闪烁动画 */
-    @keyframes avatarBlink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-    
-    .avatar-blink {
-      animation: avatarBlink 1s ease-in-out infinite;
-    }
-    
-    /* 提醒信息样式 */
-    .reminder-info {
-      font-size: 11px;
-      color: #FF9800;
-      background: rgba(255, 152, 0, 0.15);
-      padding: 2px 6px;
-      border-radius: 4px;
-      white-space: nowrap;
-      border: 1px solid rgba(255, 152, 0, 0.3);
-    }
+      .meta-badge.status-in_progress {
+        background: rgba(255, 125, 0, 0.12);
+        color: #FF7D00;
+      }
 
-    .reminder-info.hidden {
-      display: none;
-    }
+      .meta-badge.status-overdue {
+        background: rgba(245, 63, 63, 0.12);
+        color: #F53F3F;
+      }
 
-    .style-panel {
-      display: none;
-      flex-direction: column;
-      gap: 8px;
-      font-size: 12px;
-      padding: 10px 12px;
-      margin: 0 3px 3px calc(45px + 6px + 3px);
-      background: {{priorityColor}};
-      border-radius: 8px;
-      backdrop-filter: blur(4px);
-      z-index: 3;
-    }
+      .meta-badge.source-badge {
+        background: rgba(100, 100, 100, 0.12);
+        color: #666;
+      }
 
-    .style-panel.show {
-      display: flex;
-    }
+      .meta-badge.source-time-badge {
+        background: rgba(74, 144, 217, 0.12);
+        color: #4A90D9;
+      }
 
-    .style-panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-weight: 600;
-      font-size: 13px;
-      padding-bottom: 6px;
-      border-bottom: 1px solid rgba(128,128,128,0.25);
-    }
+      .datePickerPopup {
+        display: none;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        padding: 12px;
+        box-shadow:0 2px 5px rgba(0,0,0,0.2);
+        z-index: 2;
+        width: 200px;
+        background: {{priorityColor}};
+        backdrop-filter: blur(4px);
+        font-size: 12px;
+        margin-left: calc(45px + 6px); /* 与 task-wrapper / toolbar 左边缘对齐 */
+      }
 
-    .style-panel-header .close-btn {
-      cursor: pointer;
-      padding: 0 4px;
-      opacity: 0.5;
-      font-size: 14px;
-    }
+      .datePickerPopup input[type="date"] {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        border-radius: 8px;
+        font-size: 13px;
+        color: #1D2129;
+        outline: none;
+        margin-bottom: 12px;
+        background: #fff;
+      }
+      .datePickerPopup input[type="date"]:focus {
+        border-color: #4A90D9;
+      }
 
-    .style-panel-header .close-btn:hover {
-      opacity: 1;
-    }
+      .sticky-container:hover .toolbar {
+        visibility: visible;
+        background: {{priorityColor}};
+        opacity: 1;
+      }
 
-    .style-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+      /* 折叠状态：隐藏所有非头像内容 */
+      .sticky-container.folded-mode .task-wrapper,
+      .sticky-container.folded-mode .datePickerPopup,
+      .sticky-container.folded-mode .toolbar {
+        display: none !important;
+      }
+      .sticky-container.folded-mode .content-area {
+        justify-content: center;
+        align-items: center;
+      }
+      .sticky-container.folded-mode .avatar-area {
+        margin: 0;
+      }
+      .sticky-container.folded-mode .status-icon {
+        display: flex !important;
+      }
 
-    .style-row .style-label {
-      flex-shrink: 0;
-      opacity: 0.7;
-      min-width: 42px;
-    }
+      /* 头像闪烁动画 */
+      @keyframes avatarBlink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
 
-    .style-row input[type="range"] {
-      flex: 1;
-      height: 4px;
-      -webkit-appearance: none;
-      appearance: none;
-      background: rgba(128, 128, 128, 0.3);
-      border-radius: 2px;
-      outline: none;
-      cursor: pointer;
-    }
+      .avatar-blink {
+        animation: avatarBlink 1s ease-in-out infinite;
+      }
 
-    .style-row input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: #FF9800;
-      cursor: pointer;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    }
+      /* 提醒信息样式 */
+      .reminder-info {
+        font-size: 11px;
+        color: #FF9800;
+        background: rgba(255, 152, 0, 0.15);
+        padding: 2px 6px;
+        border-radius: 4px;
+        white-space: nowrap;
+        border: 1px solid rgba(255, 152, 0, 0.3);
+      }
 
-    .style-row input[type="color"] {
-      width: 30px;
-      height: 24px;
-      padding: 0;
-      border: 1px solid rgba(128,128,128,0.3);
-      border-radius: 4px;
-      cursor: pointer;
-      background: none;
-    }
+      .reminder-info.hidden {
+        display: none;
+      }
 
-    .style-row .toggle-btn {
-      cursor: pointer;
-      padding: 2px 10px;
-      border-radius: 4px;
-      background: rgba(128,128,128,0.15);
-      font-size: 11px;
-      transition: background 0.15s;
-      user-select: none;
-    }
+      .style-panel {
+        display: none;
+        flex-direction: column;
+        gap: 8px;
+        font-size: 12px;
+        padding: 10px 12px;
+        margin: 0 3px 3px calc(45px + 6px); /* 与 task-wrapper 左边缘对齐 */
+        background: {{priorityColor}};
+        border-radius: 8px;
+        backdrop-filter: blur(4px);
+        z-index: 3;
+      }
 
-    .style-row .toggle-btn.active {
-      background: #FF9800;
-      color: #fff;
-    }
+      .style-panel.show {
+        display: flex;
+      }
 
-    .style-row .size-btn {
-      cursor: pointer;
-      padding: 2px 8px;
-      border-radius: 4px;
-      background: rgba(128,128,128,0.15);
-      font-size: 14px;
-      font-weight: 600;
-      user-select: none;
-    }
+      .style-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-weight: 600;
+        font-size: 13px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(128,128,128,0.25);
+      }
 
-    .style-row .size-btn:hover {
-      background: rgba(128,128,128,0.3);
-    }
+      .style-panel-header .close-btn {
+        cursor: pointer;
+        padding: 0 4px;
+        opacity: 0.5;
+        font-size: 14px;
+      }
 
-    .style-row .size-value {
-      min-width: 28px;
-      text-align: center;
-      font-weight: 500;
-    }
+      .style-panel-header .close-btn:hover {
+        opacity: 1;
+      }
 
-    .style-select {
-      flex: 1;
-      font-size: 11px;
-      padding: 2px 4px;
-      border: 1px solid rgba(128,128,128,0.3);
-      border-radius: 4px;
-      background: rgba(255,255,255,0.5);
-      outline: none;
-      cursor: pointer;
-    }
+      .style-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
 
-    .style-select option {
-      font-size: 12px;
-    }
+      .style-row .style-label {
+        flex-shrink: 0;
+        opacity: 0.7;
+        min-width: 42px;
+      }
 
-    .align-btn {
-      cursor: pointer;
-      padding: 2px 8px;
-      border-radius: 4px;
-      background: rgba(128,128,128,0.15);
-      font-size: 13px;
-      transition: background 0.15s;
-      user-select: none;
-      line-height: 1.4;
-    }
+      .style-row input[type="range"] {
+        flex: 1;
+        height: 4px;
+        -webkit-appearance: none;
+        appearance: none;
+        background: rgba(128, 128, 128, 0.3);
+        border-radius: 2px;
+        outline: none;
+        cursor: pointer;
+      }
 
-    .align-btn:hover {
-      background: rgba(128,128,128,0.3);
-    }
+      .style-row input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #FF9800;
+        cursor: pointer;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      }
 
-    .align-btn.active {
-      background: #FF9800;
-      color: #fff;
-    }
+      .style-row input[type="color"] {
+        width: 30px;
+        height: 24px;
+        padding: 0;
+        border: 1px solid rgba(128,128,128,0.3);
+        border-radius: 4px;
+        cursor: pointer;
+        background: none;
+      }
 
-    .datePickerPopup button {
-      flex: 1;
-      padding: 6px 0;
-      border: none;
-      border-radius: 6px;
-      font-size: 12px;
-      cursor: pointer;
-      transition: background 0.15s ease;
-    }
-    .datePickerPopup .btn-clear {
-      background: #F2F3F5;
-      color: #F53F3F;
-    }
-    .datePickerPopup .btn-clear:hover {
-      background: #FFE5E5;
-    }
-    .datePickerPopup .btn-confirm {
-      background: #4A90D9;
-      color: #fff;
-    }
-    .datePickerPopup .btn-confirm:hover {
-      background: #3570B0;
-    }
-  </style>
-</head>
-<body>
-  <div class="sticky-container">
-    <div class="content-area" style="opacity: {{opacity}}">
-      <div class="avatar-area">{{avatarImg}}<div class="status-icon">{{statusIcon}}</div></div>
-      <div class="task-text" id="taskText">{{content}}<span class="expand-link" id="expandLink">展开</span></div>
-    </div>
-    <div class="toolbar">
-      <div class="toolbar-up">
-        <div class="info-item">
-          <span class="value clickable" id="contactName">{{senderName}} [{{source}}]</span>
+      .style-row .toggle-btn {
+        cursor: pointer;
+        padding: 2px 10px;
+        border-radius: 4px;
+        background: rgba(128,128,128,0.15);
+        font-size: 11px;
+        transition: background 0.15s;
+        user-select: none;
+      }
+
+      .style-row .toggle-btn.active {
+        background: #FF9800;
+        color: #fff;
+      }
+
+      .style-row .size-btn {
+        cursor: pointer;
+        padding: 2px 8px;
+        border-radius: 4px;
+        background: rgba(128,128,128,0.15);
+        font-size: 14px;
+        font-weight: 600;
+        user-select: none;
+      }
+
+      .style-row .size-btn:hover {
+        background: rgba(128,128,128,0.3);
+      }
+
+      .style-row .size-value {
+        min-width: 28px;
+        text-align: center;
+        font-weight: 500;
+      }
+
+      .style-select {
+        flex: 1;
+        font-size: 11px;
+        padding: 2px 4px;
+        border: 1px solid rgba(128,128,128,0.3);
+        border-radius: 4px;
+        background: rgba(255,255,255,0.5);
+        outline: none;
+        cursor: pointer;
+      }
+
+      .style-select option {
+        font-size: 12px;
+      }
+
+      .align-btn {
+        cursor: pointer;
+        padding: 2px 8px;
+        border-radius: 4px;
+        background: rgba(128,128,128,0.15);
+        font-size: 13px;
+        transition: background 0.15s;
+        user-select: none;
+        line-height: 1.4;
+      }
+
+      .align-btn:hover {
+        background: rgba(128,128,128,0.3);
+      }
+
+      .align-btn.active {
+        background: #FF9800;
+        color: #fff;
+      }
+
+      .datePickerPopup button {
+        flex: 1;
+        padding: 6px 0;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: background 0.15s ease;
+      }
+      .datePickerPopup .btn-clear {
+        background: #F2F3F5;
+        color: #F53F3F;
+      }
+      .datePickerPopup .btn-clear:hover {
+        background: #FFE5E5;
+      }
+      .datePickerPopup .btn-confirm {
+        background: #4A90D9;
+        color: #fff;
+      }
+      .datePickerPopup .btn-confirm:hover {
+        background: #3570B0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sticky-container">
+      <div class="content-area" style="opacity: {{opacity}}">
+        <div class="avatar-area">
+          {{avatarImg}}
+          <div class="status-icon">{{statusIcon}}</div>
         </div>
-        <div class="info-item">
-          <span class="clickable meta-badge priority-{{priority}}" id="taskPriority">{{priorityText}}</span>
-        </div>
-        <div class="info-item">
-          <span class="clickable meta-badge status-{{status}}" id="taskStatus">{{statusText}}</span>
+        <div class="task-wrapper" id="taskWrapper">
+          <div class="task-text" id="taskText">{{content}}<span class="expand-link" id="expandLink">展开</span></div>
+          <div class="task-meta" id="taskMeta">
+            <span class="meta-sender">👤{{metaSenderName}}</span>
+            <span class="meta-time">创建：{{createdTime}}</span>
+          </div>
         </div>
       </div>
-      <div class="toolbar-down">
-        <div class="info-item">
-          <span class="label">📅</span>
-          <span class="value clickable" id="dueDate" data-due-date="{{dueDate}}">{{dueDateText}}</span>
+      <div class="toolbar">
+        <div class="toolbar-up">
+          <div class="info-item">
+            <span
+              class="clickable meta-badge priority-{{priority}}"
+              id="taskPriority"
+              >{{priorityText}}</span
+            >
+          </div>
+          <div class="info-item">
+            <span class="clickable meta-badge status-{{status}}" id="taskStatus"
+              >{{statusText}}</span
+            >
+          </div>
+          <div class="info-item">
+            <span class="clickable meta-badge source-badge" id="taskSource">{{source}}</span>
+          </div>
+          {{sourceTimeHtml}}
         </div>
-        <div class="info-item reminder-info hidden clickable" id="reminderInfo"></div>
+        <div class="toolbar-down">
+          <div class="info-item">
+            <span class="label">📅</span>
+            <span
+              class="value clickable"
+              id="dueDate"
+              data-due-date="{{dueDate}}"
+              >{{dueDateText}}</span
+            >
+          </div>
+          <div
+            class="info-item reminder-info hidden clickable"
+            id="reminderInfo"
+          ></div>
+        </div>
+      </div>
+      <div class="datePickerPopup" id="datePickerPopup">
+        <div style="margin-bottom: 10px">📅 选择截止日期</div>
+        <input type="date" id="popupDatePicker" />
+        <div style="display: flex; justify-content: flex-end; gap: 8px">
+          <button id="popupConfirmBtn" class="btn-confirm">确认</button>
+          <button id="popupCancelBtn" class="btn-clear">取消</button>
+        </div>
+      </div>
+      <div class="style-panel" id="stylePanel">
+        <div class="style-panel-header">
+          <span>🎨 样式设置</span>
+          <span class="close-btn" id="stylePanelClose">✕</span>
+        </div>
+        <div class="style-row">
+          <span class="style-label">透明度</span>
+          <input
+            type="range"
+            id="styleOpacityRange"
+            min="0.1"
+            max="1"
+            step="0.05"
+          />
+          <span class="style-value" id="styleOpacityValue">100%</span>
+        </div>
+        <div class="style-row">
+          <span class="style-label">背景色</span>
+          <input type="color" id="styleBgColor" />
+          <span class="toggle-btn" id="styleBgReset" style="font-size: 10px"
+            >重置</span
+          >
+        </div>
+        <div class="style-row">
+          <span class="style-label">文字色</span>
+          <input type="color" id="styleTextColor" />
+          <span class="toggle-btn" id="styleTextReset" style="font-size: 10px"
+            >重置</span
+          >
+        </div>
+        <div class="style-row">
+          <span class="style-label">加粗</span>
+          <span class="toggle-btn" id="styleBoldToggle">关闭</span>
+        </div>
+        <div class="style-row">
+          <span class="style-label">字号</span>
+          <span class="size-btn" id="styleFontDec">−</span>
+          <span class="size-value" id="styleFontSize">14</span>
+          <span class="size-btn" id="styleFontInc">+</span>
+        </div>
+        <div class="style-row">
+          <span class="style-label">字体</span>
+          <select id="styleFontFamily" class="style-select">
+            <option value="">系统默认</option>
+            <option value="SimSun">宋体</option>
+            <option value="SimHei">黑体</option>
+            <option value="Microsoft YaHei">微软雅黑</option>
+            <option value="KaiTi">楷体</option>
+            <option value="DengXian">等线</option>
+            <option value="Arial">Arial</option>
+            <option value="Consolas">Consolas</option>
+          </select>
+        </div>
+        <div class="style-row">
+          <span class="style-label">行高</span>
+          <span class="size-btn" id="styleLineHeightDec">−</span>
+          <span class="size-value" id="styleLineHeight">1.4</span>
+          <span class="size-btn" id="styleLineHeightInc">+</span>
+        </div>
+        <div class="style-row">
+          <span class="style-label">对齐</span>
+          <span class="align-btn" data-align="left">⬅</span>
+          <span class="align-btn active" data-align="center">≡</span>
+          <span class="align-btn" data-align="right">➡</span>
+        </div>
       </div>
     </div>
-    <div class="datePickerPopup" id="datePickerPopup">
-      <div style="margin-bottom: 10px;">📅 选择截止日期</div>
-      <input type="date" id="popupDatePicker" />
-      <div style="display: flex; justify-content: flex-end; gap: 8px;">
-        <button id="popupConfirmBtn" class="btn-confirm">确认</button>
-        <button id="popupCancelBtn" class="btn-clear">取消</button>
-      </div>
-    </div>
-    <div class="style-panel" id="stylePanel">
-      <div class="style-panel-header">
-        <span>🎨 样式设置</span>
-        <span class="close-btn" id="stylePanelClose">✕</span>
-      </div>
-      <div class="style-row">
-        <span class="style-label">透明度</span>
-        <input type="range" id="styleOpacityRange" min="0.1" max="1" step="0.05">
-        <span class="style-value" id="styleOpacityValue">100%</span>
-      </div>
-      <div class="style-row">
-        <span class="style-label">背景色</span>
-        <input type="color" id="styleBgColor">
-        <span class="toggle-btn" id="styleBgReset" style="font-size:10px;">重置</span>
-      </div>
-      <div class="style-row">
-        <span class="style-label">文字色</span>
-        <input type="color" id="styleTextColor">
-        <span class="toggle-btn" id="styleTextReset" style="font-size:10px;">重置</span>
-      </div>
-      <div class="style-row">
-        <span class="style-label">加粗</span>
-        <span class="toggle-btn" id="styleBoldToggle">关闭</span>
-      </div>
-      <div class="style-row">
-        <span class="style-label">字号</span>
-        <span class="size-btn" id="styleFontDec">−</span>
-        <span class="size-value" id="styleFontSize">14</span>
-        <span class="size-btn" id="styleFontInc">+</span>
-      </div>
-      <div class="style-row">
-        <span class="style-label">字体</span>
-        <select id="styleFontFamily" class="style-select">
-          <option value="">系统默认</option>
-          <option value="SimSun">宋体</option>
-          <option value="SimHei">黑体</option>
-          <option value="Microsoft YaHei">微软雅黑</option>
-          <option value="KaiTi">楷体</option>
-          <option value="DengXian">等线</option>
-          <option value="Arial">Arial</option>
-          <option value="Consolas">Consolas</option>
-        </select>
-      </div>
-      <div class="style-row">
-        <span class="style-label">行高</span>
-        <span class="size-btn" id="styleLineHeightDec">−</span>
-        <span class="size-value" id="styleLineHeight">1.4</span>
-        <span class="size-btn" id="styleLineHeightInc">+</span>
-      </div>
-      <div class="style-row">
-        <span class="style-label">对齐</span>
-        <span class="align-btn" data-align="left">⬅</span>
-        <span class="align-btn active" data-align="center">≡</span>
-        <span class="align-btn" data-align="right">➡</span>
-      </div>
-    </div>
-  </div>
 
-  <script>
-    window.noteId = {{noteId}};
-    window.taskId = "{{taskId}}";
-    window.styleConfig = {{styleConfigJson}};
-    window.foldedAvatarSize = {{foldedAvatarSize}};
-    window.taskTextMaxLength = {{taskTextMaxLength}};
-  </script>
-  <script src="stickyScript.js"></script>
-</body>
+    <script>
+      window.noteId = {{noteId}};
+      window.taskId = "{{taskId}}";
+      window.styleConfig = {{styleConfigJson}};
+      window.foldedAvatarSize = {{foldedAvatarSize}};
+      window.taskTextMaxLength = {{taskTextMaxLength}};
+    </script>
+    <script src="stickyScript.js"></script>
+  </body>
 </html>

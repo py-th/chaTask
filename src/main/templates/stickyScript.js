@@ -10,6 +10,7 @@
   const taskId = window.taskId;
   
   const taskTextDiv = document.getElementById('taskText');
+  const taskMeta = document.getElementById('taskMeta');
   const container = document.querySelector('.sticky-container');
   const datePickerPopup = document.getElementById('datePickerPopup');
   const popupDatePicker = document.getElementById('popupDatePicker');
@@ -241,6 +242,7 @@
     
     const taskDiv = document.querySelector('.task-text');
     if (taskDiv) taskDiv.style.backgroundColor = color;
+    if (taskMeta) taskMeta.style.backgroundColor = color;
     const toolbarDiv = document.querySelector('.toolbar');
     if (toolbarDiv) toolbarDiv.style.backgroundColor = color;
     if (datePickerPopup) datePickerPopup.style.backgroundColor = color;
@@ -492,6 +494,7 @@
       const taskDiv = document.querySelector('.task-text');
       const toolbarDiv = document.querySelector('.toolbar');
       if (taskDiv) taskDiv.style.backgroundColor = val;
+      if (taskMeta) taskMeta.style.backgroundColor = val;
       if (toolbarDiv) toolbarDiv.style.backgroundColor = val;
       if (datePickerPopup) datePickerPopup.style.backgroundColor = val;
       if (avatarImg) avatarImg.style.border = '2px solid ' + val;
@@ -506,6 +509,7 @@
       const taskDiv = document.querySelector('.task-text');
       const toolbarDiv = document.querySelector('.toolbar');
       if (taskDiv) taskDiv.style.backgroundColor = originalColor;
+      if (taskMeta) taskMeta.style.backgroundColor = originalColor;
       if (toolbarDiv) toolbarDiv.style.backgroundColor = originalColor;
       if (datePickerPopup) datePickerPopup.style.backgroundColor = originalColor;
       if (avatarImg) avatarImg.style.border = '';

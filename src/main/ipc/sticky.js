@@ -629,13 +629,14 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
 
     // 背景颜色
     const bgColors = [
-      { label: '白色', color: 'rgba(255, 255, 255, 0.92)' },
-      { label: '米黄', color: 'rgba(255, 251, 235, 0.92)' },
-      { label: '浅蓝', color: 'rgba(235, 245, 255, 0.92)' },
-      { label: '浅绿', color: 'rgba(235, 255, 240, 0.92)' },
-      { label: '浅粉', color: 'rgba(255, 240, 245, 0.92)' },
-      { label: '浅紫', color: 'rgba(248, 240, 255, 0.92)' },
-      { label: '浅灰', color: 'rgba(248, 248, 248, 0.92)' }
+      { label: '默认', color: 'rgba(255, 249, 196, 0.95)' },
+      { label: '白色', color: 'rgba(255, 255, 255, 0.95)' },
+      { label: '米黄', color: 'rgba(255, 251, 235, 0.95)' },
+      { label: '浅蓝', color: 'rgba(235, 245, 255, 0.95)' },
+      { label: '浅绿', color: 'rgba(235, 255, 240, 0.95)' },
+      { label: '浅粉', color: 'rgba(255, 240, 245, 0.95)' },
+      { label: '浅紫', color: 'rgba(248, 240, 255, 0.95)' },
+      { label: '浅灰', color: 'rgba(248, 248, 248, 0.95)' }
     ];
 
     template.push({

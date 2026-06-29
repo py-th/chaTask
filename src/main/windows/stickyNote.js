@@ -32,6 +32,25 @@ function getStickyIconPath() {
   return null;
 }
 
+function formatDateTime(isoString) {
+  const date = new Date(isoString);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${month}/${day} ${hours}:${minutes}`;
+}
+
+function formatDateTimeWithYear(isoString) {
+  const date = new Date(isoString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}/${month}/${day} ${hours}:${minutes}`;
+}
+
 class StickyNoteManager {
   constructor(reminderService) {
     this.notes = new Map();
@@ -267,12 +286,12 @@ class StickyNoteManager {
         // 截止日期文本
       const dueDateText = task.due_date ? new Date(task.due_date).toLocaleDateString() : '未设置';
       const content = escapeHtml(task.content);
-      let senderName = escapeHtml(task.sender_name || '未知');
-        // 截断发送者姓名，最多显示10个字符
-      if (senderName.length > 10) {
-        senderName = senderName.slice(0, 10) + '...';
-      }
+      const metaSenderName = escapeHtml(task.sender_name || '未知');
+      const createdTime = task.created_at ? formatDateTime(task.created_at) : '';
       const source = escapeHtml(task.source || '未知');
+      const sourceTimeHtml = task.source_time
+        ? `<div class="info-item"><span class="clickable meta-badge source-time-badge" id="taskSourceTime">${formatDateTimeWithYear(task.source_time)}</span></div>`
+        : '';
       const statusText = getStatusLabel(task.status);
       const priorityText = getPriorityLabel(task.priority);
 
@@ -297,8 +316,10 @@ class StickyNoteManager {
         '{{statusIcon}}': statusIcon,
         '{{avatarImg}}': avatarImg,
         '{{content}}': content,
-        '{{senderName}}': senderName,
+        '{{metaSenderName}}': metaSenderName,
+        '{{createdTime}}': createdTime,
         '{{source}}': source,
+        '{{sourceTimeHtml}}': sourceTimeHtml,
         '{{dueDate}}': task.due_date || '',
         '{{dueDateText}}': dueDateText,
         '{{statusText}}': statusText,
@@ -414,7 +435,6 @@ class StickyNoteManager {
             <div class="timeline-dot${dueDateClass}${isOverdue ? ' is-overdue' : ''}" title="${dueDateTitle}" data-due-date="${escapeHtml(dueDate)}" style="cursor: pointer;"></div>
             <div class="task-time">
               <span class="time-text">${timeStr}</span>
-              ${dueDateText ? `<span class="due-date-badge">📅 ${dueDateText}</span>` : ''}
               <div class="drag-handle"><div class="grip-dots"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
             </div>
             <div class="task-card">
@@ -422,6 +442,7 @@ class StickyNoteManager {
               <div class="task-meta">
                 <span class="meta-badge priority-${task.priority}" data-type="priority">${getPriorityText(task.priority)}</span>
                 <span class="meta-badge status-${task.status}" data-type="status">${getStatusText(task.status)}</span>
+                ${dueDateText ? `<span class="due-date-badge" title="截止: ${dueDateText}">📅 ${dueDateText}</span>` : ''}
                 ${reminderText ? `<span class="meta-badge reminder" data-task-id="${escapeHtml(task.id)}">⏰ ${reminderText}</span>` : ''}
               </div>
             </div>

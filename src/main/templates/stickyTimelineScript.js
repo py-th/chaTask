@@ -520,20 +520,18 @@
           dot.setAttribute('title', '点击设置截止日期');
         }
       }
-      // 更新时间显示区域的截止日期徽章
-      const dueBadge = item.querySelector('.due-date-badge');
+      // 更新 task-meta 中的截止日期徽章
+      const meta = item.querySelector('.task-meta');
+      const dueBadge = meta ? meta.querySelector('.due-date-badge') : null;
       if (dueDate) {
         const dueDateText = new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
         if (dueBadge) {
           dueBadge.textContent = '\uD83D\uDCC5 ' + dueDateText;
-        } else {
-          const timeDiv = item.querySelector('.task-time');
-          if (timeDiv) {
-            const newBadge = document.createElement('span');
-            newBadge.className = 'due-date-badge';
-            newBadge.textContent = '\uD83D\uDCC5 ' + dueDateText;
-            timeDiv.appendChild(newBadge);
-          }
+        } else if (meta) {
+          const newBadge = document.createElement('span');
+          newBadge.className = 'due-date-badge';
+          newBadge.textContent = '\uD83D\uDCC5 ' + dueDateText;
+          meta.appendChild(newBadge);
         }
       } else if (dueBadge) {
         dueBadge.remove();
@@ -617,7 +615,7 @@
     var item = document.querySelector('.timeline-item[data-task-id="' + taskId + '"]');
     if (!item) return;
     var dot = item.querySelector('.timeline-dot');
-    var timeEl = item.querySelector('.task-time');
+    var meta = item.querySelector('.task-meta');
     if (dot) {
       dot.dataset.dueDate = dueDate || '';
       if (dueDate) {
@@ -629,9 +627,9 @@
         dot.title = '点击设置截止日期';
       }
     }
-    // 更新截止日期徽章
-    if (timeEl) {
-      var existingBadge = timeEl.querySelector('.due-date-badge');
+    // 更新 task-meta 中的截止日期徽章
+    if (meta) {
+      var existingBadge = meta.querySelector('.due-date-badge');
       if (dueDate) {
         var dateObj = new Date(dueDate + 'T00:00:00');
         var dateStr = dateObj.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
@@ -641,7 +639,7 @@
           var badge = document.createElement('span');
           badge.className = 'due-date-badge';
           badge.textContent = '\uD83D\uDCC5 ' + dateStr;
-          timeEl.appendChild(badge);
+          meta.appendChild(badge);
         }
       } else if (existingBadge) {
         existingBadge.remove();
@@ -801,7 +799,6 @@
         '<div class="timeline-dot' + dueDateClass + (isOverdue ? ' is-overdue' : '') + '" title="' + dueDateTitle + '" data-due-date="' + escapeHtml(dueDate) + '" style="cursor: pointer;"></div>' +
         '<div class="task-time">' +
           '<span class="time-text">' + timeStr + '</span>' +
-          (dueDateText ? '<span class="due-date-badge">📅 ' + dueDateText + '</span>' : '') +
           '<div class="drag-handle"><div class="grip-dots"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>' +
         '</div>' +
         '<div class="task-card">' +
@@ -809,6 +806,7 @@
           '<div class="task-meta">' +
             '<span class="meta-badge priority-' + task.priority + '" data-type="priority">' + getPriorityText(task.priority) + '</span>' +
             '<span class="meta-badge status-' + task.status + '" data-type="status">' + getStatusText(task.status) + '</span>' +
+            (dueDateText ? '<span class="due-date-badge" title="截止: ' + dueDateText + '">📅 ' + dueDateText + '</span>' : '') +
           '</div>' +
         '</div>' +
       '</div>';

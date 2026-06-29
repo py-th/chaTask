@@ -13,6 +13,7 @@ const {
   deleteTasksByContactName,
   syncContactToTasks
 } = require('../../database/repositories/contactRepository');
+const { deleteTimelineNote } = require('../../database/repositories/taskRepository');
 const { computeImageHash } = require('../utils/hash');
 
 function registerContactHandlers() {
@@ -138,6 +139,8 @@ function registerContactHandlers() {
     try {
       // 先删除该联系人的所有任务
       deleteTasksByContactName(name);
+      // 同步删除对应的时间轴便签记录
+      deleteTimelineNote(name);
       // 再删除联系人
       deleteContact(id);
       return { success: true };
