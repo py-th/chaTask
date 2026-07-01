@@ -88,6 +88,30 @@
     document.querySelectorAll('.timeline-item .task-text').forEach(truncateTaskText);
   }
 
+  // 底部滚动提示：内容超出且未滚动到底部时显示
+  const scrollHint = document.getElementById('scrollHint');
+  const timelineScroll = document.getElementById('timelineScroll');
+
+  function updateScrollHint() {
+    if (!timelineScroll || !scrollHint) return;
+    const hasOverflow = timelineScroll.scrollHeight > timelineScroll.clientHeight + 1;
+    const isAtBottom = timelineScroll.scrollTop + timelineScroll.clientHeight >= timelineScroll.scrollHeight - 1;
+    scrollHint.classList.toggle('visible', hasOverflow && !isAtBottom);
+  }
+
+  if (timelineScroll) {
+    timelineScroll.addEventListener('scroll', updateScrollHint, { passive: true });
+  }
+
+  if (scrollHint) {
+    scrollHint.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (timelineScroll) {
+        timelineScroll.scrollBy({ top: 120, behavior: 'smooth' });
+      }
+    });
+  }
+
   // 双击头像区域：折叠时展开（展开状态下头像隐藏，无法通过头像折叠）
   if (headerAvatar) {
     headerAvatar.addEventListener('dblclick', () => {
@@ -232,8 +256,8 @@
 
   document.addEventListener('mousedown', (e) => {
     if (e.button === 2) return;
-    // 如果点击的是可编辑文本、提醒图标、样式面板或拖拽手柄，不触发窗口拖拽
-    if (e.target.closest('.task-text') || e.target.closest('.meta-badge.reminder') || e.target.closest('.style-panel') || e.target.closest('.drag-handle')) return;
+    // 如果点击的是可编辑文本、提醒图标、样式面板、拖拽手柄或滚动提示，不触发窗口拖拽
+    if (e.target.closest('.task-text') || e.target.closest('.meta-badge.reminder') || e.target.closest('.style-panel') || e.target.closest('.drag-handle') || e.target.closest('.scroll-hint')) return;
     isDragging = true;
     electronAPI.send('start-sticky-drag', noteId, e.screenX, e.screenY);
   });
@@ -287,6 +311,7 @@
     // 保存后重新截断
     taskText.dataset.fullContent = newContent;
     truncateTaskText(taskText);
+    updateScrollHint();
   }, true);
 
   // 点击提醒图标打开提醒设置
@@ -299,6 +324,7 @@
         if (expandLink.textContent === '展开') expandTaskText(taskText);
         else collapseTaskText(taskText);
       }
+      updateScrollHint();
       return;
     }
 
@@ -361,6 +387,8 @@
         item.remove();
         // 更新任务计数
         updateTaskCount();
+        // 更新底部滚动提示
+        updateScrollHint();
       }, 300);
     }
     tasksData = tasksData.filter(t => t.id !== taskId);
@@ -379,6 +407,7 @@
     }
     const task = tasksData.find(t => t.id === taskId);
     if (task) task.content = content;
+    updateScrollHint();
   });
 
   // 监听主程序的任务更新（支持多种字段更新）
@@ -479,6 +508,8 @@
         // 这里可以添加提醒信息的刷新逻辑
       }
     }
+
+    updateScrollHint();
   });
 
   // 监听更新提醒信息（局部更新，避免整页刷新闪烁）
@@ -499,6 +530,7 @@
     } else if (badge) {
       badge.remove();
     }
+    updateScrollHint();
   });
 
   function updateTaskCount() {
@@ -644,6 +676,7 @@
       taskCountBadge.style.display = 'none';
     }
     resetFoldedStyles();
+    updateScrollHint();
     console.log('[Timeline] 已展开');
   });
 
@@ -662,6 +695,7 @@
     document.querySelectorAll('.timeline-item .task-text').forEach(function(taskText) {
       truncateTaskText(taskText);
     });
+    updateScrollHint();
   });
 
   // ========== 排序功能 ==========
@@ -748,6 +782,8 @@
     updateTaskCount();
     // 重新应用文本长度限制（排序后任务 DOM 已重建）
     truncateAllTaskTexts();
+    // 更新底部滚动提示
+    updateScrollHint();
   }
 
   // ========== 自定义拖拽排序 ==========
@@ -958,6 +994,7 @@
   // 监听容器尺寸变化，自动调整高度（比 MutationObserver 更准确，能捕获图片加载、样式变化等）
   var resizeObserver = new ResizeObserver(function() {
     autoResizeHeight();
+    updateScrollHint();
   });
   var container = document.querySelector('.timeline-container');
   if (container) {
@@ -966,8 +1003,12 @@
 
   // 初始化时应用任务文本长度限制，确保 DOM 已就绪
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', truncateAllTaskTexts);
+    document.addEventListener('DOMContentLoaded', function() {
+      truncateAllTaskTexts();
+      updateScrollHint();
+    });
   } else {
     truncateAllTaskTexts();
+    updateScrollHint();
   }
 })();

@@ -19,11 +19,13 @@
       border-radius: 12px;
       width: 100%;
       height: 100%;
+      max-height: 450px;/*便签最大高度限制*/
       display: flex;
       flex-direction: column;
       border: 1px solid rgba(0, 0, 0, 0.08);
       box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
       overflow: hidden;
+      position: relative;
     }
 
     .timeline-header {
@@ -86,15 +88,52 @@
       overflow-y: auto;
       overflow-x: hidden;
       padding: 10px 8px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
     }
 
     .timeline-scroll::-webkit-scrollbar {
-      width: 4px;
+      width: 0;
+      display: none;
     }
 
-    .timeline-scroll::-webkit-scrollbar-thumb {
-      background: rgba(0, 0, 0, 0.15);
-      border-radius: 2px;
+    /* 底部滚动提示：内容超出时显示半透明圆形▼ */
+    .scroll-hint {
+      position: absolute;
+      bottom: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.2);
+      color: #fff;
+      font-size: 10px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s ease, background 0.2s ease;
+      pointer-events: none;
+      z-index: 10;
+      user-select: none;
+    }
+
+    .scroll-hint:hover {
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .scroll-hint.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* 折叠/排序模式下隐藏滚动提示 */
+    .timeline-container.folded-mode .scroll-hint,
+    .timeline-container.sort-mode .scroll-hint {
+      display: none !important;
     }
 
     .timeline-track {
@@ -564,6 +603,7 @@
     <div class="timeline-scroll" id="timelineScroll">
       {{timelineItems}}
     </div>
+    <div class="scroll-hint" id="scrollHint">▼</div>
   </div>
 
   <!-- 日期选择器弹层 -->

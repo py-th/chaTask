@@ -597,19 +597,18 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
       // 创建单桌面便签（仅未在桌面显示且未完成的任务）
       if (task && task.is_show_desk !== 1 && task.is_completed !== 1 && task.is_deleted !== 1) {
         template.push({
-          label: '创建单便签',
+          label: '创建便签',
           click: async () => {
             try {
               stickyManager.createNote(task);
               await updateTask(taskId, { is_show_desk: 1 });
               notifyMainWindow();
             } catch (err) {
-              console.error('[Timeline] 创建单便签失败:', err);
-              sendToastToMainWindow('error', '创建单便签失败');
+              console.error('[Timeline] 创建便签失败:', err);
+              sendToastToMainWindow('error', '创建便签失败');
             }
           }
         });
-        template.push({ type: 'separator' });
       }
 
       template.push({
@@ -665,6 +664,21 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
         }
       }
     });
+
+    // 刷新 - 折叠时不显示（loadURL 会丢失 folded-mode class 导致 45x45 窗口里塞入整个时间轴）
+    if (!isFolded) {
+      template.push({
+        label: '刷新',
+        click: async () => {
+          const n = stickyManager.notes.get(noteId);
+          if (n && n.win && !n.win.isDestroyed()) {
+            const tasks = getTasksBySenderName(n.senderName);
+            const html = stickyManager.generateTimelineHTML(tasks, n.senderName, n.senderAvatar, noteId, n.sortOrder, n.styleConfig);
+            n.win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
+          }
+        }
+      });
+    }
 
     template.push({ type: 'separator' });
 
@@ -779,21 +793,6 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
     });
 
     template.push({ type: 'separator' });
-
-    // 刷新 - 折叠时不显示（loadURL 会丢失 folded-mode class 导致 45x45 窗口里塞入整个时间轴）
-    if (!isFolded) {
-      template.push({
-        label: '刷新',
-        click: async () => {
-          const n = stickyManager.notes.get(noteId);
-          if (n && n.win && !n.win.isDestroyed()) {
-            const tasks = getTasksBySenderName(n.senderName);
-            const html = stickyManager.generateTimelineHTML(tasks, n.senderName, n.senderAvatar, noteId, n.sortOrder, n.styleConfig);
-            n.win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
-          }
-        }
-      });
-    }
 
     // 便签管理器
     template.push({
