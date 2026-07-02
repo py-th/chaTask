@@ -617,32 +617,6 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
           openReminderDialog(noteId, taskId);
         }
       });
-      template.push({
-        label: '删除此任务',
-        click: async () => {
-          const confirmed = await showConfirmDialog(
-            stickyManager.notes.get(noteId)?.win,
-            {
-              title: '确认删除',
-              message: '确定要删除这个任务吗？',
-              detail: '删除后任务将移动到回收站，您可以在回收站中恢复。',
-              type: 'warning',
-              confirmText: '删除',
-              cancelText: '取消'
-            }
-          );
-          if (confirmed) {
-            deleteReminderRulesByTaskId(taskId);
-            deleteReminderLogsByTaskId(taskId);
-            await updateTask(taskId, { is_deleted: 1, is_show_desk: 0 });
-            notifyMainWindow();
-            const note = stickyManager.notes.get(noteId);
-            if (note && note.win && !note.win.isDestroyed()) {
-              note.win.webContents.send('timeline-remove-task', taskId);
-            }
-          }
-        }
-      });
       template.push({ type: 'separator' });
     }
 
@@ -807,6 +781,33 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
         }
       }
     });
+
+    template.push({
+        label: '删除',
+        click: async () => {
+          const confirmed = await showConfirmDialog(
+            stickyManager.notes.get(noteId)?.win,
+            {
+              title: '确认删除',
+              message: '确定要删除这个任务吗？',
+              detail: '删除后任务将移动到回收站，您可以在回收站中恢复。',
+              type: 'warning',
+              confirmText: '删除',
+              cancelText: '取消'
+            }
+          );
+          if (confirmed) {
+            deleteReminderRulesByTaskId(taskId);
+            deleteReminderLogsByTaskId(taskId);
+            await updateTask(taskId, { is_deleted: 1, is_show_desk: 0 });
+            notifyMainWindow();
+            const note = stickyManager.notes.get(noteId);
+            if (note && note.win && !note.win.isDestroyed()) {
+              note.win.webContents.send('timeline-remove-task', taskId);
+            }
+          }
+        }
+      });
 
     template.push({
       label: '关闭',

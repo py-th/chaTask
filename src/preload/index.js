@@ -90,6 +90,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openReminderDialog: (taskId, noteId) => ipcRenderer.send('open-reminder-dialog', { taskId, noteId }),
   getReminderRule: (taskId) => ipcRenderer.invoke('get-reminder-rule', taskId),
 
+  // 任务右键菜单
+  showTaskContextMenu: (taskId, x, y, view) =>
+    ipcRenderer.send('show-task-context-menu', { taskId, x, y, view }),
+  onOpenTaskDetail: (callback) => {
+    const listener = (event, task) => callback(task)
+    ipcRenderer.on('open-task-detail', listener)
+    return () => ipcRenderer.removeListener('open-task-detail', listener)
+  },
+  onOpenTaskReminderDialog: (callback) => {
+    const listener = (event, taskId) => callback(taskId)
+    ipcRenderer.on('open-task-reminder-dialog', listener)
+    return () => ipcRenderer.removeListener('open-task-reminder-dialog', listener)
+  },
+
   // 自动更新
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
   installUpdate: () => ipcRenderer.invoke('install-update'),

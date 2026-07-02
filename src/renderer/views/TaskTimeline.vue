@@ -50,113 +50,20 @@
       </div>
     </div>
 
-    <TaskContextMenu
-      :visible="contextMenuVisible"
-      :position="contextMenuPosition"
-      :task="contextMenuTask"
-      @hide="hideContextMenu"
-      @action="handleContextMenuAction"
-    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import TaskContextMenu from '../components/common/TaskContextMenu.vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='45' height='45' viewBox='0 0 45 45'%3E%3Ccircle cx='22.5' cy='22.5' r='22.5' fill='%23e8e8e8'/%3E%3Ccircle cx='22.5' cy='16.5' r='7' fill='none' stroke='%23888' stroke-width='2.5'/%3E%3Cpath d='M8 37.5Q22.5 26 37 37.5' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"
 
 const allTasks = ref([])
 
-// 右键菜单状态
-const contextMenuVisible = ref(false)
-const contextMenuPosition = ref({ x: 0, y: 0 })
-const contextMenuTask = ref(null)
-
 function showContextMenu(event, task) {
   event.preventDefault()
-  contextMenuTask.value = task
-  contextMenuPosition.value = { x: event.clientX, y: event.clientY }
-  contextMenuVisible.value = true
-}
-
-function hideContextMenu() {
-  contextMenuVisible.value = false
-  contextMenuTask.value = null
-}
-
-async function handleContextMenuAction({ type, task }) {
-  switch (type) {
-    case 'detail':
-      // 时间轴视图暂不支持详情弹窗，刷新列表
-      await loadTasks()
-      break
-    case 'addToDesktop':
-      await contextCreateSticky(task)
-      break
-    case 'hideFromDesktop':
-      await contextHideSticky(task)
-      break
-    case 'reminder':
-      // 提醒设置 - 调用重复提醒对话框
-      window.electronAPI.openReminderDialog(task.id)
-      break
-    case 'restore':
-      await contextRestoreTask(task)
-      break
-    case 'delete':
-      await contextSoftDeleteTask(task)
-      break
-    case 'permanentDelete':
-      await contextPermanentDeleteTask(task)
-      break
-  }
-}
-
-async function contextCreateSticky(task) {
-  const content = `[${task.sender_name || '未知'}] ${task.content}`
-  if (task.sender_avatar) {
-    await window.electronAPI.createStickyNote({ content, avatar: task.sender_avatar, taskId: task.id })
-    await window.electronAPI.updateTask(task.id, { is_show_desk: 1 })
-    await loadTasks()
-  }
-}
-
-async function contextHideSticky(task) {
-  await window.electronAPI.updateTask(task.id, { is_show_desk: 0 })
-  window.electronAPI.send('hide-note', { id: task.id, taskId: task.id })
-  await loadTasks()
-}
-
-async function contextRestoreTask(task) {
-  await window.electronAPI.updateTask(task.id, { is_deleted: 0 })
-  await loadTasks()
-}
-
-async function contextSoftDeleteTask(task) {
-  const confirmed = await window.$confirm({
-    title: '确认删除',
-    message: '确定要删除这个任务吗？',
-    detail: '删除后任务将移动到回收站，您可以在回收站中恢复。',
-    type: 'warning',
-    confirmText: '删除'
-  })
-  if (!confirmed) return
-  await window.electronAPI.updateTask(task.id, { is_deleted: 1, is_show_desk: 0 })
-  await loadTasks()
-}
-
-async function contextPermanentDeleteTask(task) {
-  const confirmed = await window.$confirm({
-    title: '确认彻底删除',
-    message: '确定要彻底删除这个任务吗？',
-    detail: '此操作不可恢复，请谨慎操作！',
-    type: 'danger',
-    confirmText: '彻底删除'
-  })
-  if (!confirmed) return
-  await window.electronAPI.deleteTask(task.id)
-  await loadTasks()
+  event.stopPropagation()
+  window.electronAPI.showTaskContextMenu(task.id, event.clientX, event.clientY, 'timeline')
 }
 
 const groups = computed(() => {
@@ -250,8 +157,11 @@ async function createSticky(task) {
   if (task.sender_avatar) {
     await window.electronAPI.createStickyNote({ content, avatar: task.sender_avatar, taskId: task.id })
     await window.electronAPI.updateTask(task.id, { is_show_desk: 1 })
+    await loadTasks()
   }
 }
+
+let unregisterRefresh = null
 
 onMounted(async () => {
   try {
@@ -263,6 +173,16 @@ onMounted(async () => {
   } catch (err) {
     console.error('加载任务时间轴失败:', err)
     window.$toast.error('加载任务时间轴失败')
+  }
+
+  if (window.electronAPI && window.electronAPI.onRefreshTaskList) {
+    unregisterRefresh = window.electronAPI.onRefreshTaskList(loadTasks)
+  }
+})
+
+onUnmounted(() => {
+  if (unregisterRefresh) {
+    unregisterRefresh()
   }
 })
 </script>

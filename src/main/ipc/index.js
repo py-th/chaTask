@@ -4,6 +4,7 @@ const { registerContactHandlers } = require('./contact');
 const { registerStickyHandlers } = require('./sticky');
 const { registerScreenshotIpc } = require('./screenshot');
 const { registerSettingsHandlers } = require('./settings');
+const { registerTaskContextMenuHandlers } = require('./taskContextMenu');
 
 function registerIpcHandlers(mainWindow, stickyManager, screenshotUtils, reminderService) {
   const getMainWindow = () => mainWindow;
@@ -13,6 +14,7 @@ function registerIpcHandlers(mainWindow, stickyManager, screenshotUtils, reminde
   registerContactHandlers();
   registerStickyHandlers(mainWindow, stickyManager, screenshotUtils, reminderService);
   registerSettingsHandlers(stickyManager);
+  registerTaskContextMenuHandlers(mainWindow, stickyManager);
 }
 
 module.exports = { registerIpcHandlers };

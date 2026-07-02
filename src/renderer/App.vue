@@ -150,6 +150,7 @@ let unsubscribeIntegrated = null
 let unsubscribeUpdateAvailable = null
 let unsubscribeUpdateProgress = null
 let unsubscribeUpdateDownloaded = null
+let unsubscribeReminderDialog = null
 
 function switchView(viewId) {
   currentView.value = viewId
@@ -385,6 +386,11 @@ onMounted(async () => {
     }
   })
 
+  // 监听主进程发送的提醒设置指令
+  unsubscribeReminderDialog = window.electronAPI.onOpenTaskReminderDialog((taskId) => {
+    window.electronAPI.openReminderDialog(taskId)
+  })
+
   try {
     const screenshotConfig = await window.electronAPI.getScreenshotConfig()
     if (screenshotConfig) {
@@ -402,6 +408,7 @@ onUnmounted(() => {
   if (unsubscribeUpdateAvailable) unsubscribeUpdateAvailable()
   if (unsubscribeUpdateProgress) unsubscribeUpdateProgress()
   if (unsubscribeUpdateDownloaded) unsubscribeUpdateDownloaded()
+  if (unsubscribeReminderDialog) unsubscribeReminderDialog()
 })
 </script>
 

@@ -90,14 +90,6 @@
       </div>
     </div>
 
-    <TaskContextMenu
-      :visible="contextMenuVisible"
-      :position="contextMenuPosition"
-      :task="contextMenuTask"
-      @hide="hideContextMenu"
-      @action="handleContextMenuAction"
-    />
-
     <div v-if="selectedIds.size > 0" class="batch-bar">
       <span>已选择 {{ selectedIds.size }} 项</span>
       <template v-if="currentFilter === 'deleted'">
@@ -224,7 +216,6 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import TaskContextMenu from '../components/common/TaskContextMenu.vue'
 
 const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='45' height='45' viewBox='0 0 45 45'%3E%3Ccircle cx='22.5' cy='22.5' r='22.5' fill='%23e8e8e8'/%3E%3Ccircle cx='22.5' cy='16.5' r='7' fill='none' stroke='%23888' stroke-width='2.5'/%3E%3Cpath d='M8 37.5Q22.5 26 37 37.5' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"
 
@@ -240,92 +231,10 @@ const editingDetailContent = ref(false)
 const detailContentInput = ref(null)
 let desktopUpdateTimer = null
 
-// 右键菜单状态
-const contextMenuVisible = ref(false)
-const contextMenuPosition = ref({ x: 0, y: 0 })
-const contextMenuTask = ref(null)
-
 function showContextMenu(event, task) {
   event.preventDefault()
   event.stopPropagation()
-  // 如果已有菜单打开，先关闭再重新打开，确保在新任务上立即弹出
-  if (contextMenuVisible.value) {
-    contextMenuVisible.value = false
-    contextMenuTask.value = null
-    // 使用 requestAnimationFrame 确保 DOM 完全更新后再打开新菜单
-    requestAnimationFrame(() => {
-      contextMenuTask.value = task
-      contextMenuPosition.value = { x: event.clientX, y: event.clientY }
-      contextMenuVisible.value = true
-    })
-  } else {
-    contextMenuTask.value = task
-    contextMenuPosition.value = { x: event.clientX, y: event.clientY }
-    contextMenuVisible.value = true
-  }
-}
-
-function hideContextMenu() {
-  contextMenuVisible.value = false
-  contextMenuTask.value = null
-}
-
-async function handleContextMenuAction({ type, task }) {
-  switch (type) {
-    case 'detail':
-      openDetail(task)
-      break
-    case 'addToDesktop':
-      await createSticky(task)
-      break
-    case 'hideFromDesktop':
-      await removeFromDesktop(task)
-      break
-    case 'copyText':
-      await copyTaskText(task)
-      break
-    case 'priority':
-      // 优先级在详情中设置
-      openDetail(task)
-      break
-    case 'status':
-      // 状态在详情中设置
-      openDetail(task)
-      break
-    case 'reminder':
-      // 提醒设置 - 调用重复提醒对话框
-      window.electronAPI.openReminderDialog(task.id)
-      break
-    case 'restore':
-      await restoreTask(task)
-      break
-    case 'delete':
-      await softDeleteTask(task)
-      break
-    case 'permanentDelete':
-      await permanentDelete(task)
-      break
-  }
-}
-
-async function softDeleteTask(task) {
-  const confirmed = await window.$confirm({
-    title: '确认删除',
-    message: '确定要删除这个任务吗？',
-    detail: '删除后任务将移动到回收站，您可以在回收站中恢复。',
-    type: 'warning',
-    confirmText: '删除'
-  })
-  if (!confirmed) return
-  window.$toast.success('任务删除成功')
-  try {
-    await window.electronAPI.updateTask(task.id, { is_deleted: 1, is_show_desk: 0 })
-    window.electronAPI.send('hide-note', { id: task.id, taskId: task.id })
-    await loadTasks()
-  } catch (e) {
-    console.error(e)
-    window.$toast.error('刷新提醒规则失败')
-  }
+  window.electronAPI.showTaskContextMenu(task.id, event.clientX, event.clientY, 'tasklist')
 }
 
 const quickFilters = [
@@ -572,70 +481,6 @@ async function batchRemoveFromDesktop() {
   }
   clearSelection()
   await loadTasks()
-}
-
-async function restoreTask(task) {
-  try {
-    await window.electronAPI.updateTask(task.id, { is_deleted: 0 })
-    await loadTasks()
-  } catch (e) {
-    console.error(e)
-    window.$toast.error('恢复任务失败')
-  }
-}
-
-async function permanentDelete(task) {
-  const confirmed = await window.$confirm({
-    title: '确认彻底删除',
-    message: '确定要彻底删除这个任务吗？',
-    detail: '此操作不可恢复，请谨慎操作！',
-    type: 'danger',
-    confirmText: '彻底删除'
-  })
-  if (!confirmed) return
-  try {
-    await window.electronAPI.deleteTask(task.id)
-    await loadTasks()
-  } catch (e) {
-    console.error(e)
-    window.$toast.error('彻底删除失败')
-  }
-}
-
-async function removeFromDesktop(task) {
-  try {
-    await window.electronAPI.updateTask(task.id, { is_show_desk: 0 })
-    window.electronAPI.send('hide-note', { id: task.id, taskId: task.id })
-    await loadTasks()
-  } catch (e) {
-    console.error(e)
-    window.$toast.error('移除桌面失败')
-  }
-}
-
-async function copyTaskText(task) {
-  try {
-    await navigator.clipboard.writeText(task.content)
-    window.$toast.success('任务文本已复制')
-  } catch (err) {
-    console.error('复制失败:', err)
-    window.$toast.error('复制失败')
-  }
-}
-
-async function createSticky(task) {
-  try {
-    const content = `[${task.sender_name || '未知'}] ${task.content}`
-    if (task.sender_avatar) {
-      await window.electronAPI.createStickyNote({ content, avatar: task.sender_avatar, taskId: task.id })
-      await window.electronAPI.updateTask(task.id, { is_show_desk: 1 })
-      await loadTasks()
-      window.$toast.success('已添加到桌面')
-    }
-  } catch (e) {
-    console.error(e)
-    window.$toast.error('添加到桌面失败')
-  }
 }
 
 async function openDetail(task) {
@@ -973,12 +818,17 @@ function formatDateTime(dateStr) {
 }
 
 let unregisterRefresh = null
+let unregisterOpenDetail = null
 
 onMounted(() => {
   loadTasks()
   // 监听任务列表刷新事件
   if (window.electronAPI && window.electronAPI.onRefreshTaskList) {
     unregisterRefresh = window.electronAPI.onRefreshTaskList(loadTasks)
+  }
+  // 监听主进程打开任务详情指令
+  if (window.electronAPI && window.electronAPI.onOpenTaskDetail) {
+    unregisterOpenDetail = window.electronAPI.onOpenTaskDetail(openDetail)
   }
 })
 
@@ -987,6 +837,9 @@ onUnmounted(() => {
   // 移除事件监听
   if (unregisterRefresh) {
     unregisterRefresh()
+  }
+  if (unregisterOpenDetail) {
+    unregisterOpenDetail()
   }
 })
 </script>
