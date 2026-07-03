@@ -49,6 +49,16 @@
           </div>
           <div class="setting-row">
             <div class="setting-info">
+              <span class="setting-name">不在任务栏显示便签</span>
+              <span class="setting-desc">桌面便签窗口不显示在任务栏中（重启便签后生效）</span>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" v-model="settings.sticky.skipTaskbar" @change="saveSettings" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
               <span class="setting-name">关闭时最小化到托盘</span>
               <span class="setting-desc">关闭窗口时隐藏到系统托盘而不是退出</span>
             </div>
@@ -137,21 +147,11 @@
               @change="saveSettings"
             />
           </div>
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-name">不在任务栏显示便签</span>
-              <span class="setting-desc">桌面便签窗口不显示在任务栏中（重启便签后生效）</span>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" v-model="settings.sticky.skipTaskbar" @change="saveSettings" />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
         </div>
       </template>
 
-      <template v-if="currentSection === 'screenshot'">
-        <h3 class="settings-section-title">截图设置</h3>
+      <template v-if="currentSection === 'ocr'">
+        <h3 class="settings-section-title">截图&OCR识别</h3>
         <div class="settings-group card">
           <div class="setting-row">
             <div class="setting-info">
@@ -175,12 +175,6 @@
               <option :value="3000">3000ms</option>
             </select>
           </div>
-        </div>
-      </template>
-
-      <template v-if="currentSection === 'ocr'">
-        <h3 class="settings-section-title">OCR 识别设置</h3>
-        <div class="settings-group card">
           <div class="setting-row">
             <div class="setting-info">
               <span class="setting-name">OCR 引擎</span>
@@ -501,8 +495,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 const sections = [
   { key: 'general', icon: '⚙️', label: '基础设置' },
   { key: 'sticky', icon: '📌', label: '便签设置' },
-  { key: 'screenshot', icon: '📸', label: '截图设置' },
-  { key: 'ocr', icon: '🔍', label: 'OCR 设置' },
+  { key: 'ocr', icon: '🔍', label: '截图&OCR' },
   { key: 'ai', icon: '🤖', label: 'AI 设置' },
   { key: 'shortcuts', icon: '⌨️', label: '快捷键' },
   { key: 'reminder', icon: '🔔', label: '提醒设置' },

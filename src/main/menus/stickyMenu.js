@@ -96,29 +96,11 @@ class StickyMenu {
             { label: '左边', click: () => this._snapNoteEdge(noteId, 'left') },
             { label: '右边', click: () => this._snapNoteEdge(noteId, 'right') }
           ]
-        },
-        {
-          label: '复制文本',
-          click: () => {
-            const note = this.stickyManager.notes.get(noteId);
-            if (note && note.win && !note.win.isDestroyed()) {
-              note.win.webContents.send('copy-task-text');
-            }
-          }
-        },
-        {
-          label: '截取任务',
-          click: async () => {
-            if (this.screenshotUtils) {
-              await this.screenshotUtils.startDoubleScreenshot();
-            }
-          }
         }
       );
     }
 
     template.push(
-      { type: 'separator' },
       {
         label: '优先级',
         submenu: this._buildPrioritySubmenu(noteId, taskId)
@@ -137,33 +119,20 @@ class StickyMenu {
         }
       }
     );
-
-    if (showTimeline) {
-      template.push({
-        label: '时间轴',
-        click: async () => {
-          try {
-            const task = await getTaskById(taskId);
-            if (!task || !task.sender_name) return;
-            const tasks = getTasksBySenderName(task.sender_name);
-            if (tasks.length > 0) {
-              this.stickyManager.createTimelineNote(tasks, task.sender_name, task.sender_avatar);
-              // 隐藏原便签（该任务已在时间轴中显示）
-              await updateTask(taskId, { is_show_desk: 0 });
-              const note = this.stickyManager.notes.get(noteId);
-              if (note && note.win && !note.win.isDestroyed()) {
-                note.win.close();
-              }
-              this.notifyMainWindowUpdate();
+// 折叠状态下隐藏与内容/样式相关、在折叠小窗口中无意义的选项
+    if (!isFolded) {
+      template.push(
+        {
+          label: '复制文本',
+          click: () => {
+            const note = this.stickyManager.notes.get(noteId);
+            if (note && note.win && !note.win.isDestroyed()) {
+              note.win.webContents.send('copy-task-text');
             }
-          } catch (err) {
-            console.error('[StickyMenu] 创建时间轴失败:', err);
           }
         }
-      });
-    }
+      );
 
-    if (!isFolded) {
       template.push(
         { type: 'separator' },
         {
@@ -199,7 +168,45 @@ class StickyMenu {
           ]
         }
       );
-    }
+    };
+    // 时间轴
+if (showTimeline) {
+      template.push({
+        label: '时间轴',
+        click: async () => {
+          try {
+            const task = await getTaskById(taskId);
+            if (!task || !task.sender_name) return;
+            const tasks = getTasksBySenderName(task.sender_name);
+            if (tasks.length > 0) {
+              this.stickyManager.createTimelineNote(tasks, task.sender_name, task.sender_avatar);
+              // 隐藏原便签（该任务已在时间轴中显示）
+              await updateTask(taskId, { is_show_desk: 0 });
+              const note = this.stickyManager.notes.get(noteId);
+              if (note && note.win && !note.win.isDestroyed()) {
+                note.win.close();
+              }
+              this.notifyMainWindowUpdate();
+            }
+          } catch (err) {
+            console.error('[StickyMenu] 创建时间轴失败:', err);
+          }
+        }
+      });
+    };
+
+    if (!isFolded) {
+      template.push(
+        {
+          label: '截取任务',
+          click: async () => {
+            if (this.screenshotUtils) {
+              await this.screenshotUtils.startDoubleScreenshot();
+            }
+          }
+        }
+      )
+    };
 
     template.push(
       { type: 'separator' },
@@ -215,13 +222,30 @@ class StickyMenu {
           }
         }
       },
+      // 后续功能扩展
       {
-        label: '工具箱',
-        click: () => {
-          // 后续功能扩展
-          console.log('桌面倒计时，番茄时钟，定时关机');
+          label: '工具箱',
+          submenu: [
+            {
+              label: '桌面倒计时',
+              click: () => {
+                console.log('桌面倒计时', taskId);
+              }
+            },
+            {
+              label: '番茄时钟',
+              click: () => {
+                console.log('番茄时钟', taskId);
+              }
+            },
+            {
+              label: '定时关机',
+              click: () => {
+                console.log('定时关机', taskId);
+              }
+            }
+          ]
         }
-      }
     );
 
     return Menu.buildFromTemplate(template);

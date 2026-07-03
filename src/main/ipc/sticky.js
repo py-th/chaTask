@@ -781,9 +781,9 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
         }
       }
     });
-
+    if (taskId) {
     template.push({
-        label: '删除',
+        label: '删除任务',
         click: async () => {
           const confirmed = await showConfirmDialog(
             stickyManager.notes.get(noteId)?.win,
@@ -808,7 +808,14 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
           }
         }
       });
-
+    };
+    template.push({
+      label: '工具箱',
+      click: () => {
+          // 后续功能扩展
+          console.log('桌面倒计时，番茄时钟，定时关机');
+        }
+    });
     template.push({
       label: '关闭',
       click: () => {
