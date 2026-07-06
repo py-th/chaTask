@@ -188,7 +188,7 @@ function formatDue(dateStr) {
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-onMounted(async () => {
+async function loadTasks() {
   try {
     const [normal] = await Promise.all([
       window.electronAPI.getAllTasks()
@@ -198,6 +198,10 @@ onMounted(async () => {
     console.error('加载四象限数据失败:', err)
     window.$toast.error('加载四象限数据失败')
   }
+}
+
+onMounted(async () => {
+  await loadTasks()
 
   if (window.electronAPI && window.electronAPI.onRefreshTaskList) {
     unregisterRefresh = window.electronAPI.onRefreshTaskList(loadTasks)

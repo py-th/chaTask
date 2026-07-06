@@ -181,6 +181,19 @@ function priorityText(p) {
   }
 }
 
+async function loadTasks() {
+  try {
+    const [normal] = await Promise.all([
+      window.electronAPI.getAllTasks()
+    ])
+    allTasks.value = normal.filter(t => t.is_completed !== 1)
+    buildTaskMap()
+  } catch (err) {
+    console.error('加载日历数据失败:', err)
+    window.$toast.error('加载日历数据失败')
+  }
+}
+
 async function createSticky(task) {
   const content = `[${task.sender_name || '未知'}] ${task.content}`
   if (task.sender_avatar) {
@@ -205,16 +218,7 @@ function buildTaskMap() {
 }
 
 onMounted(async () => {
-  try {
-    const [normal] = await Promise.all([
-      window.electronAPI.getAllTasks()
-    ])
-    allTasks.value = normal.filter(t => t.is_completed !== 1)
-    buildTaskMap()
-  } catch (err) {
-    console.error('加载日历数据失败:', err)
-    window.$toast.error('加载日历数据失败')
-  }
+  await loadTasks()
 
   if (window.electronAPI && window.electronAPI.onRefreshTaskList) {
     unregisterRefresh = window.electronAPI.onRefreshTaskList(loadTasks)

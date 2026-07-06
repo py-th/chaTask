@@ -436,7 +436,7 @@ class StickyNoteManager {
               <div class="drag-handle"><div class="grip-dots"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
             </div>
             <div class="task-card">
-              <div class="task-text" contenteditable="false">${escapeHtml(task.content)}<span class="expand-link">展开</span></div>
+              <div class="task-text" contenteditable="false" title="双击进入编辑模式">${escapeHtml(task.content)}<span class="expand-link">展开</span></div>
               <div class="task-meta">
                 <span class="meta-badge priority-${task.priority}" data-type="priority">${getPriorityText(task.priority)}</span>
                 <span class="meta-badge status-${task.status}" data-type="status">${getStatusText(task.status)}</span>

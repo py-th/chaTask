@@ -152,6 +152,19 @@ function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString()
 }
 
+async function loadTasks() {
+  try {
+    const [normal, completed] = await Promise.all([
+      window.electronAPI.getAllTasks(),
+      window.electronAPI.getCompletedTasks()
+    ])
+    allTasks.value = [...normal, ...completed].filter(t => t.is_completed !== 1)
+  } catch (err) {
+    console.error('加载任务时间轴失败:', err)
+    window.$toast.error('加载任务时间轴失败')
+  }
+}
+
 async function createSticky(task) {
   const content = `[${task.sender_name || '未知'}] ${task.content}`
   if (task.sender_avatar) {
@@ -164,16 +177,7 @@ async function createSticky(task) {
 let unregisterRefresh = null
 
 onMounted(async () => {
-  try {
-    const [normal, completed] = await Promise.all([
-      window.electronAPI.getAllTasks(),
-      window.electronAPI.getCompletedTasks()
-    ])
-    allTasks.value = [...normal, ...completed].filter(t => t.is_completed !== 1)
-  } catch (err) {
-    console.error('加载任务时间轴失败:', err)
-    window.$toast.error('加载任务时间轴失败')
-  }
+  await loadTasks()
 
   if (window.electronAPI && window.electronAPI.onRefreshTaskList) {
     unregisterRefresh = window.electronAPI.onRefreshTaskList(loadTasks)

@@ -590,6 +590,38 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
     // （特别是"刷新"会 loadURL 整个页面，丢失 folded-mode class 引发 bug）
     const isFolded = !!(note && note.isFolded);
 
+    // 置顶
+    template.push({
+      label: isPinned ? '取消置顶' : '置顶',
+      click: () => {
+        const n = stickyManager.notes.get(noteId);
+        if (n && n.win && !n.win.isDestroyed()) {
+          const newPinned = !isPinned;
+          n.win.setAlwaysOnTop(newPinned);
+          // 同步到数据库
+          try {
+            const [x, y] = n.win.getPosition();
+            saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig, newPinned, x, y, n.sortOrder || 'asc');
+          } catch (err) {
+            console.error('[Timeline] 保存置顶状态到数据库失败:', err);
+          }
+        }
+      }
+    });
+
+    template.push({
+        label: '刷新',
+        click: async () => {
+          const n = stickyManager.notes.get(noteId);
+          if (n && n.win && !n.win.isDestroyed()) {
+            const tasks = getTasksBySenderName(n.senderName);
+            const html = stickyManager.generateTimelineHTML(tasks, n.senderName, n.senderAvatar, noteId, n.sortOrder, n.styleConfig);
+            n.win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
+          }
+        }
+    });
+     template.push({ type: 'separator' });
+
     if (taskId) {
       // 点击了某条任务
       const task = await getTaskById(taskId);
@@ -617,42 +649,35 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
           openReminderDialog(noteId, taskId);
         }
       });
-      template.push({ type: 'separator' });
-    }
 
-    // 置顶
+
     template.push({
-      label: isPinned ? '取消置顶' : '置顶',
-      click: () => {
-        const n = stickyManager.notes.get(noteId);
-        if (n && n.win && !n.win.isDestroyed()) {
-          const newPinned = !isPinned;
-          n.win.setAlwaysOnTop(newPinned);
-          // 同步到数据库
-          try {
-            const [x, y] = n.win.getPosition();
-            saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig, newPinned, x, y, n.sortOrder || 'asc');
-          } catch (err) {
-            console.error('[Timeline] 保存置顶状态到数据库失败:', err);
-          }
-        }
-      }
-    });
-
-    // 刷新 - 折叠时不显示（loadURL 会丢失 folded-mode class 导致 45x45 窗口里塞入整个时间轴）
-    if (!isFolded) {
-      template.push({
-        label: '刷新',
+        label: '删除任务',
         click: async () => {
-          const n = stickyManager.notes.get(noteId);
-          if (n && n.win && !n.win.isDestroyed()) {
-            const tasks = getTasksBySenderName(n.senderName);
-            const html = stickyManager.generateTimelineHTML(tasks, n.senderName, n.senderAvatar, noteId, n.sortOrder, n.styleConfig);
-            n.win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
+          const confirmed = await showConfirmDialog(
+            stickyManager.notes.get(noteId)?.win,
+            {
+              title: '确认删除',
+              message: '确定要删除这个任务吗？',
+              detail: '删除后任务将移动到回收站，您可以在回收站中恢复。',
+              type: 'warning',
+              confirmText: '删除',
+              cancelText: '取消'
+            }
+          );
+          if (confirmed) {
+            deleteReminderRulesByTaskId(taskId);
+            deleteReminderLogsByTaskId(taskId);
+            await updateTask(taskId, { is_deleted: 1, is_show_desk: 0 });
+            notifyMainWindow();
+            const note = stickyManager.notes.get(noteId);
+            if (note && note.win && !note.win.isDestroyed()) {
+              note.win.webContents.send('timeline-remove-task', taskId);
+            }
           }
         }
       });
-    }
+    };
 
     template.push({ type: 'separator' });
 
@@ -666,7 +691,7 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
           { label: '右边', click: () => snapTimelineNoteEdge(noteId, 'right') }
         ]
       });
-    }
+
 
     // 透明度
     template.push({
@@ -765,7 +790,7 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
         }
       ]
     });
-
+    };
     template.push({ type: 'separator' });
 
     // 便签管理器
@@ -781,34 +806,6 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
         }
       }
     });
-    if (taskId) {
-    template.push({
-        label: '删除任务',
-        click: async () => {
-          const confirmed = await showConfirmDialog(
-            stickyManager.notes.get(noteId)?.win,
-            {
-              title: '确认删除',
-              message: '确定要删除这个任务吗？',
-              detail: '删除后任务将移动到回收站，您可以在回收站中恢复。',
-              type: 'warning',
-              confirmText: '删除',
-              cancelText: '取消'
-            }
-          );
-          if (confirmed) {
-            deleteReminderRulesByTaskId(taskId);
-            deleteReminderLogsByTaskId(taskId);
-            await updateTask(taskId, { is_deleted: 1, is_show_desk: 0 });
-            notifyMainWindow();
-            const note = stickyManager.notes.get(noteId);
-            if (note && note.win && !note.win.isDestroyed()) {
-              note.win.webContents.send('timeline-remove-task', taskId);
-            }
-          }
-        }
-      });
-    };
     template.push({
       label: '工具箱',
       click: () => {

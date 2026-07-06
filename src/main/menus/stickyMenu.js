@@ -136,7 +136,10 @@ class StickyMenu {
       template.push(
         { type: 'separator' },
         {
-          label: '样式',
+          label: '皮肤样式',
+          submenu: [
+        {
+          label: '样式设置',
           click: () => {
             const note = this.stickyManager.notes.get(noteId);
             if (note && note.win && !note.win.isDestroyed()) {
@@ -148,53 +151,35 @@ class StickyMenu {
           label: '皮肤模板',
           submenu: [
             {
-              label: '经典',
+              label: '默认',
               click: () => {
-                console.log('应用经典模板', taskId);
+                console.log('应用默认模板', taskId);
               }
             },
             {
-              label: '简约',
+              label: '微信',
               click: () => {
-                console.log('应用简约模板', taskId);
+                console.log('应用微信模板', taskId);
               }
             },
             {
-              label: '可爱',
+              label: '飞书',
               click: () => {
-                console.log('应用可爱模板', taskId);
+                console.log('应用飞书模板', taskId);
+              }
+            },
+            {
+              label: '钉钉',
+              click: () => {
+                console.log('应用钉钉模板', taskId);
               }
             }
           ]
         }
-      );
-    };
-    // 时间轴
-if (showTimeline) {
-      template.push({
-        label: '时间轴',
-        click: async () => {
-          try {
-            const task = await getTaskById(taskId);
-            if (!task || !task.sender_name) return;
-            const tasks = getTasksBySenderName(task.sender_name);
-            if (tasks.length > 0) {
-              this.stickyManager.createTimelineNote(tasks, task.sender_name, task.sender_avatar);
-              // 隐藏原便签（该任务已在时间轴中显示）
-              await updateTask(taskId, { is_show_desk: 0 });
-              const note = this.stickyManager.notes.get(noteId);
-              if (note && note.win && !note.win.isDestroyed()) {
-                note.win.close();
-              }
-              this.notifyMainWindowUpdate();
-            }
-          } catch (err) {
-            console.error('[StickyMenu] 创建时间轴失败:', err);
-          }
-        }
-      });
-    };
-
+      ]
+    }
+    )
+  };
     if (!isFolded) {
       template.push(
         {
@@ -226,6 +211,28 @@ if (showTimeline) {
       {
           label: '工具箱',
           submenu: [
+            ...(showTimeline ? [{
+              label: '时间轴',
+              click: async () => {
+                try {
+                  const task = await getTaskById(taskId);
+                  if (!task || !task.sender_name) return;
+                  const tasks = getTasksBySenderName(task.sender_name);
+                  if (tasks.length > 0) {
+                    this.stickyManager.createTimelineNote(tasks, task.sender_name, task.sender_avatar);
+                    // 隐藏原便签（该任务已在时间轴中显示）
+                    await updateTask(taskId, { is_show_desk: 0 });
+                    const note = this.stickyManager.notes.get(noteId);
+                    if (note && note.win && !note.win.isDestroyed()) {
+                      note.win.close();
+                    }
+                    this.notifyMainWindowUpdate();
+                  }
+                } catch (err) {
+                  console.error('[StickyMenu] 创建时间轴失败:', err);
+                }
+              }
+            }] : []),
             {
               label: '桌面倒计时',
               click: () => {

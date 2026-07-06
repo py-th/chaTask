@@ -73,9 +73,7 @@ import GlobalToast from './components/common/GlobalToast.vue'
 import { toastBus } from './utils/toast.js'
 import Dashboard from './views/Dashboard.vue'
 import TaskList from './views/TaskList.vue'
-import TaskTimeline from './views/TaskTimeline.vue'
-import TaskCalendar from './views/TaskCalendar.vue'
-import TaskQuadrant from './views/TaskQuadrant.vue'
+import TaskViews from './views/TaskViews.vue'
 import ContactList from './views/ContactList.vue'
 import Settings from './views/Settings.vue'
 import Guide from './views/Guide.vue'
@@ -83,9 +81,7 @@ import Guide from './views/Guide.vue'
 const viewComponents = {
   dashboard: Dashboard,
   tasklist: TaskList,
-  timeline: TaskTimeline,
-  calendar: TaskCalendar,
-  quadrant: TaskQuadrant,
+  taskviews: TaskViews,
   contacts: ContactList,
   settings: Settings,
   guide: Guide
@@ -94,9 +90,7 @@ const viewComponents = {
 const viewMetaMap = {
   dashboard: { icon: '📊', title: '任务看板' },
   tasklist:  { icon: '📋', title: '任务列表' },
-  timeline:  { icon: '📅', title: '任务时间轴' },
-  calendar:  { icon: '🗓️', title: '任务日历' },
-  quadrant:  { icon: '🎯', title: '任务四象限' },
+  taskviews: { icon: '📅', title: '任务视图' },
   contacts:  { icon: '👥',  title: '联系人' },
   settings:  { icon: '⚙️',  title: '设置中心' },
   guide:     { icon: '📖',  title: '操作指引' }
