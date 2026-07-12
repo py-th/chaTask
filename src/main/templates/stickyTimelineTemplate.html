@@ -207,6 +207,16 @@
       background: rgba(247, 183, 49, 0.15);
       color: #D63031;
       font-weight: 500;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .timeline-item .due-date-badge:hover {
+      background: rgba(247, 183, 49, 0.3);
+    }
+
+    .timeline-item .due-date-badge.empty {
+      padding: 1px 5px;
     }
 
     .timeline-item .task-card {
@@ -261,7 +271,7 @@
       width: 2px;
       height: 2px;
       border-radius: 50%;
-      background: #86909C;
+      background: #565b63;
       display: block;
     }
 
@@ -550,6 +560,8 @@
          否则头像四个圆角处会露出父元素背景（直角边缘与圆角头像之间的三角区域） */
       border-radius: 6px;
       background: transparent;
+      /* 支持贴边折叠 1 分钟后延时半透明的平滑过渡 */
+      transition: opacity 0.2s ease;
     }
 
     /* 圆角正方形头像 - 与单个便签的圆形区分，尺寸与折叠窗口一致
@@ -628,6 +640,7 @@
     window.timelineStyleConfig = {{timelineStyleConfig}};
     window.foldedAvatarSize = {{foldedAvatarSize}};
     window.taskTextMaxLength = {{taskTextMaxLength}};
+    window.foldedDimDelay = {{foldedDimDelay}};
   </script>
   <script src="stickyTimelineScript.js"></script>
 </body>

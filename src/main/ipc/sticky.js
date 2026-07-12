@@ -134,6 +134,11 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
     menu.popup();
   });
 
+  ipcMain.on('timeline-set-status', async (event, { noteId, taskId }) => {
+    const menu = stickyMenu.buildTimelineStatusMenu(noteId, taskId);
+    menu.popup();
+  });
+
   ipcMain.on('show-note-context-menu', async (event, { noteId, taskId }) => {
     try {
       const task = await getTaskById(taskId);
@@ -737,24 +742,6 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
       label: '排序',
       submenu: [
         {
-          label: '自定义排序',
-          click: () => {
-            const n = stickyManager.notes.get(noteId);
-            if (n && n.win && !n.win.isDestroyed()) {
-              n.sortOrder = 'custom';
-              n.win.webContents.send('timeline-enter-custom-sort');
-              // 保存排序方式到数据库
-              try {
-                const [x, y] = n.win.getPosition();
-                saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig,
-                  n.win.isAlwaysOnTop(), x, y, 'custom');
-              } catch (err) {
-                console.error('[Timeline] 保存排序方式失败:', err);
-              }
-            }
-          }
-        },
-        {
           label: '日期降序',
           click: () => {
             const n = stickyManager.notes.get(noteId);
@@ -782,6 +769,24 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
                 const [x, y] = n.win.getPosition();
                 saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig,
                   n.win.isAlwaysOnTop(), x, y, 'asc');
+              } catch (err) {
+                console.error('[Timeline] 保存排序方式失败:', err);
+              }
+            }
+          }
+        },
+         {
+          label: '自定义排序',
+          click: () => {
+            const n = stickyManager.notes.get(noteId);
+            if (n && n.win && !n.win.isDestroyed()) {
+              n.sortOrder = 'custom';
+              n.win.webContents.send('timeline-enter-custom-sort');
+              // 保存排序方式到数据库
+              try {
+                const [x, y] = n.win.getPosition();
+                saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig,
+                  n.win.isAlwaysOnTop(), x, y, 'custom');
               } catch (err) {
                 console.error('[Timeline] 保存排序方式失败:', err);
               }

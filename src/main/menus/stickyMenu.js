@@ -370,6 +370,50 @@ class StickyMenu {
   buildStatusMenu(noteId, taskId) {
     return Menu.buildFromTemplate(this._buildStatusSubmenu(noteId, taskId));
   }
+
+  buildTimelineStatusMenu(noteId, taskId) {
+    return Menu.buildFromTemplate([
+      {
+        label: '完成',
+        click: async () => {
+          const completedAt = new Date().toISOString();
+          await updateTask(taskId, {
+            status: 'completed',
+            is_completed: 1,
+            completed_at: completedAt
+          });
+          deleteReminderRulesByTaskId(taskId);
+          deleteReminderLogsByTaskId(taskId);
+          this._notifyNote(noteId, 'timeline-update-task', { taskId, status: 'completed' });
+          this.notifyMainWindowUpdate();
+        }
+      },
+      {
+        label: '进行中',
+        click: async () => {
+          await updateTask(taskId, { status: 'in_progress', is_completed: 0, completed_at: null });
+          this._notifyNote(noteId, 'timeline-update-task', { taskId, status: 'in_progress', is_completed: 0 });
+          this.notifyMainWindowUpdate();
+        }
+      },
+      {
+        label: '待办',
+        click: async () => {
+          await updateTask(taskId, { status: 'pending', is_completed: 0, completed_at: null });
+          this._notifyNote(noteId, 'timeline-update-task', { taskId, status: 'pending', is_completed: 0 });
+          this.notifyMainWindowUpdate();
+        }
+      },
+      {
+        label: '逾期',
+        click: async () => {
+          await updateTask(taskId, { status: 'overdue', is_completed: 0, completed_at: null });
+          this._notifyNote(noteId, 'timeline-update-task', { taskId, status: 'overdue', is_completed: 0 });
+          this.notifyMainWindowUpdate();
+        }
+      }
+    ]);
+  }
 }
 
 module.exports = { StickyMenu };

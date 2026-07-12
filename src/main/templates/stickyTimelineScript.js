@@ -122,6 +122,16 @@
         electronAPI.send('fold-timeline-note-request', window.noteId);
       }
     });
+
+    // 贴边折叠 1 分钟后头像自动半透明，悬浮/拖拽时恢复
+    headerAvatar.addEventListener('mouseenter', clearFoldDim);
+    headerAvatar.addEventListener('mouseleave', () => {
+      const container = document.querySelector('.timeline-container');
+      if (container && container.classList.contains('folded-mode')) {
+        startFoldDimTimer();
+      }
+    });
+    headerAvatar.addEventListener('mousedown', clearFoldDim);
   }
 
   // 更新折叠模式下的头像边框颜色（与时间轴背景色同步）
@@ -136,19 +146,81 @@
     headerAvatar.style.setProperty('--fold-avatar-border', borderColor);
   }
 
+  // 贴边折叠延时半透明状态
+  let foldDimActive = false;
+  let foldDimTimer = null;
+  const FOLD_DIM_FACTOR = 0.5;
+  function getFoldDimDelay() {
+    return (window.foldedDimDelay || 1) * 60 * 1000;
+  }
+
+  function getBaseOpacity(config) {
+    return config && config.opacity != null ? config.opacity : 1;
+  }
+
+  // 应用折叠模式下头像区域的透明度（与用户设置的透明度叠加）
+  function applyFoldedOpacity(dimActive) {
+    const header = document.querySelector('.timeline-header');
+    if (!header) return;
+    const baseOpacity = getBaseOpacity(styleConfig);
+    header.style.opacity = dimActive ? baseOpacity * FOLD_DIM_FACTOR : baseOpacity;
+  }
+
   // 应用样式配置
   function applyStyleConfig(config) {
     const container = document.querySelector('.timeline-container');
     if (!container) return;
-    container.style.opacity = config.opacity;
-    if (config.bgColor) {
-      container.style.backgroundColor = config.bgColor;
+
+    const baseOpacity = getBaseOpacity(config);
+
+    if (container.classList.contains('folded-mode')) {
+      // 折叠模式：容器本身透明，透明度只作用于头像区域（与延时半透明叠加）
+      container.style.opacity = '';
+      container.style.backgroundColor = ''; // 清除内联背景色，让 CSS 的 background: transparent 真正生效
+      applyFoldedOpacity(foldDimActive);
     } else {
-      // 默认使用与桌面便签一致的浅黄色背景
-      container.style.backgroundColor = 'rgba(255, 249, 196, 0.95)';
+      // 展开模式：透明度作用于整个容器，并恢复背景色
+      container.style.opacity = baseOpacity;
+      container.style.backgroundColor = config.bgColor || 'rgba(255, 249, 196, 0.95)';
+      const header = document.querySelector('.timeline-header');
+      if (header) header.style.opacity = '';
     }
-    // 同步更新折叠模式下的头像边框颜色
+
+    // 同步更新折叠模式下的头像边框颜色（与原始背景色同步）
     updateFoldedAvatarBorder();
+  }
+
+  // 启动/清除贴边折叠延时半透明定时器
+  function startFoldDimTimer() {
+    const container = document.querySelector('.timeline-container');
+    if (!container || !container.classList.contains('folded-mode')) return;
+    clearFoldDimTimer();
+    foldDimTimer = setTimeout(() => {
+      if (container.classList.contains('folded-mode')) {
+        foldDimActive = true;
+        applyFoldedOpacity(true);
+      }
+    }, getFoldDimDelay());
+  }
+
+  function clearFoldDimTimer() {
+    if (foldDimTimer) {
+      clearTimeout(foldDimTimer);
+      foldDimTimer = null;
+    }
+  }
+
+  function clearFoldDim() {
+    clearFoldDimTimer();
+    if (foldDimActive) {
+      foldDimActive = false;
+      applyFoldedOpacity(false);
+    }
+  }
+
+  function resetFoldDimState() {
+    clearFoldDimTimer();
+    foldDimActive = false;
   }
 
   // 折叠模式下头像等比例缩放
@@ -211,6 +283,7 @@
       header.style.width = '';
       header.style.height = '';
       header.style.borderRadius = '';
+      header.style.opacity = '';
     }
     if (avatar) {
       avatar.style.width = '';
@@ -256,8 +329,9 @@
 
   document.addEventListener('mousedown', (e) => {
     if (e.button === 2) return;
-    // 如果点击的是可编辑文本、提醒图标、样式面板、拖拽手柄或滚动提示，不触发窗口拖拽
-    if (e.target.closest('.task-text') || e.target.closest('.meta-badge.reminder') || e.target.closest('.style-panel') || e.target.closest('.drag-handle') || e.target.closest('.scroll-hint')) return;
+    // 如果点击的是处于编辑状态的任务文本、提醒图标、样式面板、拖拽手柄或滚动提示，不触发窗口拖拽
+    const taskText = e.target.closest('.task-text');
+    if ((taskText && taskText.getAttribute('contenteditable') === 'true') || e.target.closest('.meta-badge.reminder') || e.target.closest('.style-panel') || e.target.closest('.drag-handle') || e.target.closest('.scroll-hint')) return;
     isDragging = true;
     electronAPI.send('start-sticky-drag', noteId, e.screenX, e.screenY);
   });
@@ -336,15 +410,29 @@
       return;
     }
 
-    // 点击时间轴圆点 → 设置截止日期
+    // 点击时间轴圆点 → 设置任务状态
     const dot = e.target.closest('.timeline-dot');
     if (dot) {
       e.stopPropagation();
       const timelineItem = dot.closest('.timeline-item');
       const taskId = timelineItem ? timelineItem.dataset.taskId : null;
       if (taskId) {
-        showDatePicker(taskId, dot.dataset.dueDate || '');
+        electronAPI.send('timeline-set-status', { noteId, taskId });
       }
+      return;
+    }
+
+    // 点击截止日期徽章 → 设置截止日期
+    const dueBadge = e.target.closest('.due-date-badge');
+    if (dueBadge) {
+      e.stopPropagation();
+      const timelineItem = dueBadge.closest('.timeline-item');
+      const taskId = timelineItem ? timelineItem.dataset.taskId : null;
+      if (taskId) {
+        const dot = timelineItem.querySelector('.timeline-dot');
+        showDatePicker(taskId, dot ? dot.dataset.dueDate || '' : '');
+      }
+      return;
     }
   });
 
@@ -411,7 +499,7 @@
   });
 
   // 监听主程序的任务更新（支持多种字段更新）
-  electronAPI.on('timeline-update-task', (event, { taskId, content, priority, status, dueDate, reminderChanged }) => {
+  electronAPI.on('timeline-update-task', (event, { taskId, content, priority, status, dueDate, reminderChanged, is_completed }) => {
     const item = document.querySelector(`.timeline-item[data-task-id="${taskId}"]`);
     if (!item) return;
 
@@ -461,40 +549,27 @@
       }
       // 更新数据
       const task = tasksData.find(t => t.id === taskId);
-      if (task) task.status = status;
+      if (task) {
+        task.status = status;
+        task.is_completed = is_completed !== undefined ? is_completed : (status === 'completed' ? 1 : 0);
+      }
     }
 
     // 更新截止日期
     if (dueDate !== undefined) {
       const dot = item.querySelector('.timeline-dot');
       if (dot) {
-        const hasDueDate = !!dueDate;
-        if (hasDueDate) {
+        if (dueDate) {
           dot.classList.add('has-due-date');
           dot.setAttribute('data-due-date', dueDate);
-          dot.setAttribute('title', '截止: ' + new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN'));
         } else {
           dot.classList.remove('has-due-date', 'is-overdue');
           dot.removeAttribute('data-due-date');
-          dot.setAttribute('title', '点击设置截止日期');
         }
+        dot.setAttribute('title', '点击设置任务状态');
       }
       // 更新 task-meta 中的截止日期徽章
-      const meta = item.querySelector('.task-meta');
-      const dueBadge = meta ? meta.querySelector('.due-date-badge') : null;
-      if (dueDate) {
-        const dueDateText = new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
-        if (dueBadge) {
-          dueBadge.textContent = '\uD83D\uDCC5 ' + dueDateText;
-        } else if (meta) {
-          const newBadge = document.createElement('span');
-          newBadge.className = 'due-date-badge';
-          newBadge.textContent = '\uD83D\uDCC5 ' + dueDateText;
-          meta.appendChild(newBadge);
-        }
-      } else if (dueBadge) {
-        dueBadge.remove();
-      }
+      updateDueDateBadge(item, dueDate);
       // 更新数据
       const task = tasksData.find(t => t.id === taskId);
       if (task) task.due_date = dueDate;
@@ -567,6 +642,39 @@
     }
   }
 
+  function updateDueDateBadge(item, dueDate) {
+    var meta = item.querySelector('.task-meta');
+    if (!meta) return;
+    var existingBadge = meta.querySelector('.due-date-badge');
+    if (dueDate) {
+      var dateObj = new Date(dueDate + 'T00:00:00');
+      var dateStr = dateObj.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+      if (existingBadge) {
+        existingBadge.className = 'due-date-badge';
+        existingBadge.textContent = '\uD83D\uDCC5 ' + dateStr;
+        existingBadge.title = '截止: ' + dateObj.toLocaleDateString('zh-CN');
+      } else {
+        var badge = document.createElement('span');
+        badge.className = 'due-date-badge';
+        badge.textContent = '\uD83D\uDCC5 ' + dateStr;
+        badge.title = '截止: ' + dateObj.toLocaleDateString('zh-CN');
+        meta.appendChild(badge);
+      }
+    } else {
+      if (existingBadge) {
+        existingBadge.className = 'due-date-badge empty';
+        existingBadge.textContent = '\uD83D\uDCC5';
+        existingBadge.title = '设置截止日期';
+      } else {
+        var badge = document.createElement('span');
+        badge.className = 'due-date-badge empty';
+        badge.textContent = '\uD83D\uDCC5';
+        badge.title = '设置截止日期';
+        meta.appendChild(badge);
+      }
+    }
+  }
+
   function applyDueDate(taskId, dueDate) {
     // 更新本地数据
     var task = tasksData.find(function(t) { return t.id === taskId; });
@@ -577,36 +685,17 @@
     var item = document.querySelector('.timeline-item[data-task-id="' + taskId + '"]');
     if (!item) return;
     var dot = item.querySelector('.timeline-dot');
-    var meta = item.querySelector('.task-meta');
     if (dot) {
       dot.dataset.dueDate = dueDate || '';
       if (dueDate) {
         dot.classList.add('has-due-date');
-        var dateObj = new Date(dueDate + 'T00:00:00');
-        dot.title = '截止: ' + dateObj.toLocaleDateString('zh-CN');
       } else {
         dot.classList.remove('has-due-date');
-        dot.title = '点击设置截止日期';
       }
+      dot.title = '点击设置任务状态';
     }
     // 更新 task-meta 中的截止日期徽章
-    if (meta) {
-      var existingBadge = meta.querySelector('.due-date-badge');
-      if (dueDate) {
-        var dateObj = new Date(dueDate + 'T00:00:00');
-        var dateStr = dateObj.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
-        if (existingBadge) {
-          existingBadge.textContent = '\uD83D\uDCC5 ' + dateStr;
-        } else {
-          var badge = document.createElement('span');
-          badge.className = 'due-date-badge';
-          badge.textContent = '\uD83D\uDCC5 ' + dateStr;
-          meta.appendChild(badge);
-        }
-      } else if (existingBadge) {
-        existingBadge.remove();
-      }
-    }
+    updateDueDateBadge(item, dueDate);
   }
 
   if (datePickerClose) {
@@ -663,6 +752,10 @@
     applyFoldedAvatarSize(window.foldedAvatarSize || BASE_FOLD_SIZE);
     // 贴边折叠时，将所有已展开的文本按配置长度重新截断
     truncateAllTaskTexts();
+    // 重新应用样式配置，使折叠模式下透明度作用于头像区域
+    applyStyleConfig(styleConfig);
+    // 启动 1 分钟后延时半透明定时器
+    startFoldDimTimer();
     console.log('[Timeline] 已折叠');
   });
 
@@ -675,7 +768,11 @@
     if (taskCountBadge) {
       taskCountBadge.style.display = 'none';
     }
+    // 清除延时半透明状态
+    resetFoldDimState();
     resetFoldedStyles();
+    // 重新应用样式配置，使展开模式下透明度作用于整个容器
+    applyStyleConfig(styleConfig);
     updateScrollHint();
     console.log('[Timeline] 已展开');
   });
@@ -696,6 +793,16 @@
       truncateTaskText(taskText);
     });
     updateScrollHint();
+  });
+
+  // 设置变化时实时更新贴边折叠延时半透明时间
+  electronAPI.on('update-folded-dim-delay', function(event, delayMinutes) {
+    window.foldedDimDelay = delayMinutes;
+    const container = document.querySelector('.timeline-container');
+    if (container && container.classList.contains('folded-mode')) {
+      clearFoldDim();
+      startFoldDimTimer();
+    }
   });
 
   // ========== 排序功能 ==========
@@ -756,11 +863,13 @@
       const completedClass = isCompleted ? ' completed' : (isOverdue ? ' overdue' : '');
       const dueDate = task.due_date || '';
       const dueDateText = dueDate ? new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) : '';
-      const dueDateTitle = dueDate ? '截止: ' + new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN') : '点击设置截止日期';
+      const dueDateTitle = dueDate ? '截止: ' + new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN', {year: 'numeric', month: 'numeric', day: 'numeric' }) : '设置截止日期';
       const dueDateClass = dueDate ? ' has-due-date' : '';
+      const dueBadgeClass = dueDate ? 'due-date-badge' : 'due-date-badge empty';
+      const dueBadgeText = dueDate ? '📅 ' + dueDateText : '📅';
 
       const itemHtml = '<div class="timeline-item' + completedClass + '" data-task-id="' + escapeHtml(task.id) + '">' +
-        '<div class="timeline-dot' + dueDateClass + (isOverdue ? ' is-overdue' : '') + '" title="' + dueDateTitle + '" data-due-date="' + escapeHtml(dueDate) + '" style="cursor: pointer;"></div>' +
+        '<div class="timeline-dot' + dueDateClass + (isOverdue ? ' is-overdue' : '') + '" title="点击设置任务状态" data-due-date="' + escapeHtml(dueDate) + '"></div>' +
         '<div class="task-time">' +
           '<span class="time-text">' + timeStr + '</span>' +
           '<div class="drag-handle"><div class="grip-dots"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>' +
@@ -770,7 +879,7 @@
           '<div class="task-meta">' +
             '<span class="meta-badge priority-' + task.priority + '" data-type="priority">' + getPriorityText(task.priority) + '</span>' +
             '<span class="meta-badge status-' + task.status + '" data-type="status">' + getStatusText(task.status) + '</span>' +
-            (dueDateText ? '<span class="due-date-badge" title="截止: ' + dueDateText + '">📅 ' + dueDateText + '</span>' : '') +
+            '<span class="' + dueBadgeClass + '" title="' + dueDateTitle + '">' + dueBadgeText + '</span>' +
           '</div>' +
         '</div>' +
       '</div>';

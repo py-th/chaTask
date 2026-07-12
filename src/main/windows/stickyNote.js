@@ -67,6 +67,7 @@ class StickyNoteManager {
       foldedAvatarSize: 45,
       foldedEdge: 'right',
       taskTextMaxLength: 200,
+      foldedDimDelay: 1,
       defaultWidth: 300,
       minHeight: 60
     };
@@ -87,11 +88,13 @@ class StickyNoteManager {
     try {
       const userSettings = loadUserSettings();
       const stickySettings = userSettings.sticky || {};
+      const generalSettings = userSettings.general || {};
       this.settings.edgeSnap = stickySettings.edgeSnap !== false;
       this.settings.edgeSnapThreshold = stickySettings.edgeSnapThreshold || 10;
       this.settings.foldedAvatarSize = this._clampFoldedAvatarSize(stickySettings.foldedAvatarSize);
       this.settings.foldedEdge = this._normalizeFoldedEdge(stickySettings.foldedEdge);
       this.settings.taskTextMaxLength = this._clampTaskTextMaxLength(stickySettings.taskTextMaxLength);
+      this.settings.foldedDimDelay = this._clampFoldedDimDelay(generalSettings.foldedDimDelay);
       this.settings.skipTaskbar = stickySettings.skipTaskbar !== false;
     } catch (err) {
       console.error('[StickyNote] 加载便签设置失败:', err);
@@ -113,6 +116,13 @@ class StickyNoteManager {
     const n = parseInt(length, 10);
     if (isNaN(n)) return 200;
     return Math.max(50, Math.min(1000, n));
+  }
+
+  _clampFoldedDimDelay(delay) {
+    const n = parseInt(delay, 10);
+    if (isNaN(n)) return 1;
+    if (n === 1 || n === 3 || n === 5) return n;
+    return 1;
   }
 
   // 当设置中的任务文本最大长度变化时，同步更新所有已打开便签
@@ -191,6 +201,22 @@ class StickyNoteManager {
       note.snapEdge = newEdge;
       note.win.setMinimumSize(size, size);
       note.win.setBounds({ width: size, height: size, x: newX, y: newY });
+    }
+  }
+
+  // 当设置中的贴边折叠延时半透明时间变化时，同步更新所有已打开便签
+  updateFoldedDimDelay(delay) {
+    const newDelay = this._clampFoldedDimDelay(delay);
+    if (this.settings.foldedDimDelay === newDelay) return;
+    this.settings.foldedDimDelay = newDelay;
+
+    for (const [id, note] of this.notes.entries()) {
+      if (!note.win || note.win.isDestroyed()) continue;
+      try {
+        note.win.webContents.send('update-folded-dim-delay', newDelay);
+      } catch (err) {
+        console.error('[StickyNote] 同步贴边折叠延时半透明时间失败:', err);
+      }
     }
   }
 
@@ -327,7 +353,8 @@ class StickyNoteManager {
         '{{opacity}}': task.opacity != null ? task.opacity : 1.0,
         '{{styleConfigJson}}': styleConfigJson,
         '{{foldedAvatarSize}}': this.settings.foldedAvatarSize,
-        '{{taskTextMaxLength}}': this.settings.taskTextMaxLength
+        '{{taskTextMaxLength}}': this.settings.taskTextMaxLength,
+        '{{foldedDimDelay}}': this.settings.foldedDimDelay
       };
 
       // 执行替换
@@ -426,11 +453,13 @@ class StickyNoteManager {
             : '';
           const dueDate = task.due_date || '';
           const dueDateText = dueDate ? new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) : '';
-          const dueDateTitle = dueDate ? `截止: ${new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN')}` : '点击设置截止日期';
+          const dueBadgeClass = dueDate ? 'due-date-badge' : 'due-date-badge empty';
+          const dueBadgeText = dueDate ? `📅 ${dueDateText}` : '📅';
+          const dueBadgeTitle = dueDate ? `截止: ${new Date(dueDate + 'T00:00:00').toLocaleDateString('zh-CN')}` : '设置截止日期';
           const dueDateClass = dueDate ? ' has-due-date' : '';
           timelineItemsHtml += `
           <div class="timeline-item${completedClass}" data-task-id="${escapeHtml(task.id)}">
-            <div class="timeline-dot${dueDateClass}${isOverdue ? ' is-overdue' : ''}" title="${dueDateTitle}" data-due-date="${escapeHtml(dueDate)}" style="cursor: pointer;"></div>
+            <div class="timeline-dot${dueDateClass}${isOverdue ? ' is-overdue' : ''}" title="点击设置任务状态" data-due-date="${escapeHtml(dueDate)}"></div>
             <div class="task-time">
               <span class="time-text">${timeStr}</span>
               <div class="drag-handle"><div class="grip-dots"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
@@ -440,7 +469,7 @@ class StickyNoteManager {
               <div class="task-meta">
                 <span class="meta-badge priority-${task.priority}" data-type="priority">${getPriorityText(task.priority)}</span>
                 <span class="meta-badge status-${task.status}" data-type="status">${getStatusText(task.status)}</span>
-                ${dueDateText ? `<span class="due-date-badge" title="截止: ${dueDateText}">📅 ${dueDateText}</span>` : ''}
+                <span class="${dueBadgeClass}" title="${dueBadgeTitle}">${dueBadgeText}</span>
                 ${reminderText ? `<span class="meta-badge reminder" data-task-id="${escapeHtml(task.id)}">⏰ ${reminderText}</span>` : ''}
               </div>
             </div>
@@ -477,7 +506,8 @@ class StickyNoteManager {
         '{{tasksJson}}': tasksJson,
         '{{timelineStyleConfig}}': JSON.stringify(timelineStyleConfig),
         '{{foldedAvatarSize}}': this.settings.foldedAvatarSize,
-        '{{taskTextMaxLength}}': this.settings.taskTextMaxLength
+        '{{taskTextMaxLength}}': this.settings.taskTextMaxLength,
+        '{{foldedDimDelay}}': this.settings.foldedDimDelay
       };
 
       for (const [placeholder, value] of Object.entries(replacements)) {

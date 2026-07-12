@@ -55,7 +55,8 @@ const userDefaults = {
   general: {
     autoLaunch: false,
     minimizeToTray: true,
-    theme: 'system'
+    theme: 'system',
+    foldedDimDelay: 1
   },
   sticky: {
     defaultOpacity: 100,
@@ -168,7 +169,16 @@ function loadUserSettings() {
       if (parsed.ocr) {
         parsed.ocr = migrateOcrConfig(parsed.ocr);
       }
-      
+
+      // 迁移贴边折叠延时半透明时间：从 sticky 迁移到 general
+      if (parsed.sticky && parsed.sticky.foldedDimDelay !== undefined) {
+        if (!parsed.general) parsed.general = {};
+        if (parsed.general.foldedDimDelay === undefined) {
+          parsed.general.foldedDimDelay = parsed.sticky.foldedDimDelay;
+        }
+        delete parsed.sticky.foldedDimDelay;
+      }
+
       return deepMerge(userDefaults, parsed);
     }
   } catch (err) {

@@ -67,6 +67,17 @@
               <span class="toggle-slider"></span>
             </label>
           </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">贴边折叠后延时半透明</span>
+              <span class="setting-desc">便签贴边折叠后多久自动变为半透明</span>
+            </div>
+            <select v-model.number="settings.general.foldedDimDelay" @change="saveSettings">
+              <option :value="1">1分钟</option>
+              <option :value="3">3分钟</option>
+              <option :value="5">5分钟</option>
+            </select>
+          </div>
         </div>
       </template>
 
@@ -508,7 +519,7 @@ const dataMessage = ref('')
 const dataMsgType = ref('success')
 
 const settings = reactive({
-  general: { autoLaunch: false, minimizeToTray: true, theme: 'system' },
+  general: { autoLaunch: false, minimizeToTray: true, theme: 'system', foldedDimDelay: 1 },
   sticky: { defaultOpacity: 100, edgeSnap: true, edgeSnapThreshold: 10, skipTaskbar: true, foldedAvatarSize: 45, foldedEdge: 'right', taskTextMaxLength: 200 },
   screenshot: { mode: 'shortcut', confirmMode: 'on_mismatch', clipboardInterval: 1000, clipboardMinWidth: 50, clipboardMaxWidth: 500, clipboardMinHeight: 20, clipboardMaxHeight: 300 },
   ocr: {

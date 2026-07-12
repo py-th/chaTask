@@ -36,6 +36,14 @@ function registerSettingsHandlers(stickyManager) {
           console.error('[Settings] 同步任务文本最大长度失败:', err);
         }
       }
+      // 贴边折叠延时半透明时间变化时，同步更新已打开便签
+      if (settings.general && settings.general.foldedDimDelay !== undefined) {
+        try {
+          stickyManager.updateFoldedDimDelay(settings.general.foldedDimDelay);
+        } catch (err) {
+          console.error('[Settings] 同步贴边折叠延时半透明时间失败:', err);
+        }
+      }
     }
     return result;
   });

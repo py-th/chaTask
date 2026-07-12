@@ -15,7 +15,7 @@
   const datePickerPopup = document.getElementById('datePickerPopup');
   const popupDatePicker = document.getElementById('popupDatePicker');
   const popupConfirmBtn = document.getElementById('popupConfirmBtn');
-  const popupCancelBtn = document.getElementById('popupCancelBtn');
+  const popupClearBtn = document.getElementById('popupClearBtn');
   const reminderInfo = document.getElementById('reminderInfo');
   const avatarImg = document.querySelector('.avatar-area img');
   const statusIconEl = document.querySelector('.status-icon');
@@ -195,14 +195,51 @@
     applyFoldedAvatarSize(window.foldedAvatarSize || BASE_AVATAR_SIZE);
     // 贴边折叠时，将已展开的文本按配置长度重新截断
     truncateTaskText();
+    startAvatarDimTimer();
     console.log('已折叠');
   });
 
   electronAPI.on('unfold-note', () => {
     container.classList.remove('folded-mode');
     resetAvatarSize();
+    clearAvatarDim();
     console.log('已展开');
   });
+
+  // 贴边折叠指定时间后头像自动半透明，悬浮/拖拽时恢复
+  let avatarDimTimer = null;
+  function getAvatarDimDelay() {
+    return (window.foldedDimDelay || 1) * 60 * 1000;
+  }
+  function startAvatarDimTimer() {
+    if (!container.classList.contains('folded-mode')) return;
+    clearAvatarDimTimer();
+    avatarDimTimer = setTimeout(() => {
+      if (container.classList.contains('folded-mode') && avatarImg) {
+        avatarImg.classList.add('avatar-dimmed');
+      }
+    }, getAvatarDimDelay());
+  }
+  function clearAvatarDimTimer() {
+    if (avatarDimTimer) {
+      clearTimeout(avatarDimTimer);
+      avatarDimTimer = null;
+    }
+  }
+  function clearAvatarDim() {
+    clearAvatarDimTimer();
+    if (avatarImg) avatarImg.classList.remove('avatar-dimmed');
+  }
+
+  if (avatarImg) {
+    avatarImg.addEventListener('mouseenter', clearAvatarDim);
+    avatarImg.addEventListener('mouseleave', () => {
+      if (container.classList.contains('folded-mode')) {
+        startAvatarDimTimer();
+      }
+    });
+    avatarImg.addEventListener('mousedown', clearAvatarDim);
+  }
 
   // 双击头像区域：展开时折叠贴边，折叠时展开
   if (avatarImg) {
@@ -229,6 +266,15 @@
     taskTextMaxLength = length;
     if (taskTextDiv) {
       truncateTaskText();
+    }
+  });
+
+  // 设置变化时实时更新贴边折叠延时半透明时间
+  electronAPI.on('update-folded-dim-delay', (event, delayMinutes) => {
+    window.foldedDimDelay = delayMinutes;
+    if (container.classList.contains('folded-mode')) {
+      clearAvatarDim();
+      startAvatarDimTimer();
     }
   });
 
@@ -287,6 +333,7 @@
     if (dueDateSpan) {
       const formattedDate = newDate ? new Date(newDate).toLocaleDateString() : '未设置';
       dueDateSpan.innerText = formattedDate;
+      dueDateSpan.setAttribute('data-due-date', newDate || '');
     }
   });
 
@@ -355,7 +402,10 @@
     hideDatePicker();
   });
 
-  popupCancelBtn.addEventListener('click', hideDatePicker);
+  popupClearBtn.addEventListener('click', () => {
+    electronAPI.send('set-due-date', { noteId, taskId, date: '' });
+    hideDatePicker();
+  });
 
   document.getElementById('dueDate').addEventListener('click', (e) => {
     e.stopPropagation();

@@ -313,6 +313,12 @@
         animation: avatarBlink 1s ease-in-out infinite;
       }
 
+      /* 贴边折叠 1 分钟后头像半透明 */
+      .avatar-dimmed {
+        opacity: 0.4 !important;
+        transition: opacity 0.2s ease;
+      }
+
       /* 提醒信息样式 */
       .reminder-info {
         font-size: 11px;
@@ -561,9 +567,9 @@
       <div class="datePickerPopup" id="datePickerPopup">
         <div style="margin-bottom: 10px">📅 选择截止日期</div>
         <input type="date" id="popupDatePicker" />
-        <div style="display: flex; justify-content: flex-end; gap: 8px">
-          <button id="popupConfirmBtn" class="btn-confirm">确认</button>
-          <button id="popupCancelBtn" class="btn-clear">取消</button>
+        <div style="display: flex; gap: 8px">
+          <button id="popupClearBtn" class="btn-clear">清除日期</button>
+          <button id="popupConfirmBtn" class="btn-confirm">确定</button>
         </div>
       </div>
       <div class="style-panel" id="stylePanel">
@@ -640,6 +646,7 @@
       window.styleConfig = {{styleConfigJson}};
       window.foldedAvatarSize = {{foldedAvatarSize}};
       window.taskTextMaxLength = {{taskTextMaxLength}};
+      window.foldedDimDelay = {{foldedDimDelay}};
     </script>
     <script src="stickyScript.js"></script>
   </body>
