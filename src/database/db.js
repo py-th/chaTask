@@ -38,86 +38,13 @@ db.exec(`
     is_completed INTEGER DEFAULT 0,         -- 是否完成 (兼容旧字段) (0/1)
     is_archived INTEGER DEFAULT 0,          -- 是否归档 (0/1)
     is_deleted INTEGER DEFAULT 0,            -- 是否删除（回收站）(0/1)
+    reminder_enabled INTEGER DEFAULT 0,     -- 提醒开关 (0/1)
+    reminder_rule_id TEXT,                  -- 关联提醒规则ID
+    opacity REAL DEFAULT 1.0,               -- 透明度
+    style_config TEXT DEFAULT '{}',         -- 样式设置JSON
     completed_at TEXT                       -- 任务完成时间
   )
 `);
-
-// 列迁移：检查并添加新列（兼容旧数据库）
-function migrateTasksTable() {
-  try {
-    const tableInfo = db.prepare("PRAGMA table_info(tasks)").all();
-    const columns = tableInfo.map(col => col.name);
-    
-    // 添加 updated_at 列（最后更新时间）
-    if (!columns.includes('updated_at')) {
-      console.log('[db] 迁移：添加 updated_at 列到 tasks 表');
-      db.exec(`ALTER TABLE tasks ADD COLUMN updated_at TEXT`);
-      db.exec(`UPDATE tasks SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL`);
-      console.log('[db] 迁移完成：updated_at 列已添加');
-    }
-    
-    // 添加 sort_order 列（排序序号）
-    if (!columns.includes('sort_order')) {
-      console.log('[db] 迁移：添加 sort_order 列到 tasks 表');
-      db.exec(`ALTER TABLE tasks ADD COLUMN sort_order INTEGER DEFAULT 0`);
-      console.log('[db] 迁移完成：sort_order 列已添加');
-    }
-    
-    // 添加 parent_id 列（父任务ID）
-    if (!columns.includes('parent_id')) {
-      console.log('[db] 迁移：添加 parent_id 列到 tasks 表');
-      db.exec(`ALTER TABLE tasks ADD COLUMN parent_id TEXT`);
-      console.log('[db] 迁移完成：parent_id 列已添加');
-    }
-    
-    // 添加 is_deleted 列
-    if (!columns.includes('is_deleted')) {
-      console.log('[db] 迁移：添加 is_deleted 列到 tasks 表');
-      db.exec(`ALTER TABLE tasks ADD COLUMN is_deleted INTEGER DEFAULT 0`);
-      console.log('[db] 迁移完成：is_deleted 列已添加');
-    }
-    
-    // 添加 reminder_enabled 列（提醒开关）
-    if (!columns.includes('reminder_enabled')) {
-      console.log('[db] 迁移：添加 reminder_enabled 列到 tasks 表');
-      db.exec(`ALTER TABLE tasks ADD COLUMN reminder_enabled INTEGER DEFAULT 0`);
-      console.log('[db] 迁移完成：reminder_enabled 列已添加');
-    }
-    
-    // 添加 reminder_rule_id 列（关联提醒规则）
-    if (!columns.includes('reminder_rule_id')) {
-      console.log('[db] 迁移：添加 reminder_rule_id 列到 tasks 表');
-      db.exec(`ALTER TABLE tasks ADD COLUMN reminder_rule_id TEXT`);
-      console.log('[db] 迁移完成：reminder_rule_id 列已添加');
-    }
-    
-    // 添加 opacity 列（透明度，默认1.0）
-    if (!columns.includes('opacity')) {
-      console.log('[db] 迁移：添加 opacity 列到 tasks 表');
-      db.exec(`ALTER TABLE tasks ADD COLUMN opacity REAL DEFAULT 1.0`);
-      console.log('[db] 迁移完成：opacity 列已添加');
-    }
-
-    // 添加 style_config 列（样式设置JSON）
-    if (!columns.includes('style_config')) {
-      console.log('[db] 迁移：添加 style_config 列到 tasks 表');
-      db.exec(`ALTER TABLE tasks ADD COLUMN style_config TEXT DEFAULT '{}'`);
-      console.log('[db] 迁移完成：style_config 列已添加');
-    }
-
-    // 添加 completed_at 列（任务完成时间）
-    if (!columns.includes('completed_at')) {
-      console.log('[db] 迁移：添加 completed_at 列到 tasks 表');
-      db.exec(`ALTER TABLE tasks ADD COLUMN completed_at TEXT`);
-      console.log('[db] 迁移完成：completed_at 列已添加');
-    }
-  } catch (err) {
-    console.error('[db] 任务表列迁移失败:', err.message);
-  }
-}
-
-// 立即执行迁移
-migrateTasksTable();
 
 // 提醒规则表
 db.exec(`
@@ -169,85 +96,21 @@ db.exec(`
   )
 `);
 
-// 联系人表列迁移：添加备注、任务数量、更新时间字段
-function migrateContactsTable() {
-  try {
-    const contactTableInfo = db.prepare("PRAGMA table_info(contacts)").all();
-    const contactColumns = contactTableInfo.map(col => col.name);
-
-    if (!contactColumns.includes('remark')) {
-      console.log('[db] 迁移：添加 remark 列到 contacts 表');
-      db.exec(`ALTER TABLE contacts ADD COLUMN remark TEXT`);
-      console.log('[db] 迁移完成：remark 列已添加');
-    }
-
-    if (!contactColumns.includes('task_count')) {
-      console.log('[db] 迁移：添加 task_count 列到 contacts 表');
-      db.exec(`ALTER TABLE contacts ADD COLUMN task_count INTEGER`);
-      db.exec(`UPDATE contacts SET task_count = 0 WHERE task_count IS NULL`);
-      console.log('[db] 迁移完成：task_count 列已添加');
-    }
-
-    if (!contactColumns.includes('updated_at')) {
-      console.log('[db] 迁移：添加 updated_at 列到 contacts 表');
-      db.exec(`ALTER TABLE contacts ADD COLUMN updated_at TEXT`);
-      db.exec(`UPDATE contacts SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL`);
-      console.log('[db] 迁移完成：updated_at 列已添加');
-    }
-  } catch (err) {
-    console.error('[db] 联系人表列迁移失败:', err.message);
-  }
-}
-
 // 时间轴便签表
-function migrateTimelineNotesTable() {
-  try {
-    const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='timeline_notes'").get();
-    if (!tableExists) {
-      console.log('[db] 迁移：创建 timeline_notes 表');
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS timeline_notes (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          sender_name TEXT NOT NULL UNIQUE,       -- 联系人名称
-          sender_avatar TEXT,                     -- 联系人头像
-          style_config TEXT DEFAULT '{}',         -- 样式配置 JSON
-          is_pinned INTEGER DEFAULT 0,            -- 是否置顶
-          is_visible INTEGER DEFAULT 1,           -- 是否显示（1=显示, 0=隐藏）
-          sort_order TEXT DEFAULT 'asc',         -- 排序方式 ('asc'=升序, 'desc'=降序)
-          position_x INTEGER,                     -- 窗口位置 X
-          position_y INTEGER,                     -- 窗口位置 Y
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      console.log('[db] 迁移完成：timeline_notes 表已创建');
-    } else {
-      // 增量迁移：添加缺失的列
-      const columns = db.prepare("PRAGMA table_info('timeline_notes')").all().map(c => c.name);
-      if (!columns.includes('is_visible')) {
-        try {
-          db.exec("ALTER TABLE timeline_notes ADD COLUMN is_visible INTEGER DEFAULT 1");
-          console.log('[db] 迁移完成：timeline_notes 表添加 is_visible 列');
-        } catch (err) {
-          console.error('[db] 迁移 timeline_notes.is_visible 失败:', err.message);
-        }
-      }
-      if (!columns.includes('sort_order')) {
-        try {
-          db.exec("ALTER TABLE timeline_notes ADD COLUMN sort_order TEXT DEFAULT 'asc'");
-          console.log('[db] 迁移完成：timeline_notes 表添加 sort_order 列');
-        } catch (err) {
-          console.error('[db] 迁移 timeline_notes.sort_order 失败:', err.message);
-        }
-      }
-    }
-  } catch (err) {
-    console.error('[db] 时间轴便签表迁移失败:', err.message);
-  }
-}
-
-// 立即执行迁移
-migrateContactsTable();
-migrateTimelineNotesTable();
+db.exec(`
+  CREATE TABLE IF NOT EXISTS timeline_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sender_name TEXT NOT NULL UNIQUE,       -- 联系人名称
+    sender_avatar TEXT,                     -- 联系人头像
+    style_config TEXT DEFAULT '{}',         -- 样式配置 JSON
+    is_pinned INTEGER DEFAULT 0,            -- 是否置顶
+    is_visible INTEGER DEFAULT 1,           -- 是否显示（1=显示, 0=隐藏）
+    sort_order TEXT DEFAULT 'asc',         -- 排序方式 ('asc'=升序, 'desc'=降序)
+    position_x INTEGER,                     -- 窗口位置 X
+    position_y INTEGER,                     -- 窗口位置 Y
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+  )
+`);
 
 module.exports = db;

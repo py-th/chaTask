@@ -13,6 +13,7 @@
           </div>
           <div class="confirm-dialog__footer">
             <button
+              v-if="cancelText"
               class="confirm-dialog__btn confirm-dialog__btn--cancel"
               @click="handleCancel"
             >

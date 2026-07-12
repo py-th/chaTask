@@ -9,12 +9,13 @@
       <div
         v-for="item in navItems"
         :key="item.id"
-        :class="['nav-item', { active: activeView === item.id }]"
+        :class="['nav-item', { active: activeView === item.id, locked: item.locked }]"
         @click="$emit('navigate', item.id)"
       >
         <span class="nav-icon">{{ item.icon }}</span>
         <span class="nav-label">{{ item.label }}</span>
-        <span v-if="item.badge" class="nav-badge">{{ item.badge }}</span>
+        <span v-if="item.locked" class="nav-lock">🔒</span>
+        <span v-else-if="item.badge" class="nav-badge">{{ item.badge }}</span>
       </div>
     </nav>
 
@@ -30,6 +31,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { FEATURES, isFeatureEnabled } from '../../utils/featureGate.js'
 
 const props = defineProps({
   activeView: { type: String, default: 'dashboard' },
@@ -43,7 +45,7 @@ const navItems = computed(() => [
   { id: 'dashboard', icon: '📊', label: '任务看板' },
   { id: 'tasklist',  icon: '📋', label: '任务列表', badge: props.pendingCount || null },
   { id: 'contacts',  icon: '👥',  label: '联系人' },
-  { id: 'taskviews', icon: '📅', label: '任务视图' },
+  { id: 'taskviews', icon: '📅', label: '任务视图', locked: !isFeatureEnabled(FEATURES.TASK_VIEWS) },
   { id: 'settings',  icon: '⚙️',  label: '设置中心' },
   { id: 'guide',     icon: '📖',  label: '操作指引' }
 ])
@@ -133,6 +135,15 @@ const navItems = computed(() => [
 
 .nav-item.active .nav-badge {
   background: rgba(255, 255, 255, 0.3);
+}
+
+.nav-item.locked {
+  opacity: 0.85;
+}
+
+.nav-lock {
+  font-size: var(--font-size-xs);
+  opacity: 0.7;
 }
 
 .sidebar-footer {

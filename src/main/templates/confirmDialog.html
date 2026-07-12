@@ -20,57 +20,57 @@
     }
     .dialog {
       background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-      width: 360px;
-      padding: 24px;
+      border-radius: 10px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+      width: 260px;
+      padding: 16px;
       animation: slideIn 0.2s ease-out;
     }
     @keyframes slideIn {
-      from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+      from { opacity: 0; transform: translateY(-16px) scale(0.95); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
     .header {
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
+      gap: 8px;
+      margin-bottom: 10px;
       cursor: move;
       -webkit-app-region: drag;
     }
     .icon {
-      font-size: 24px;
+      font-size: 20px;
     }
     .title {
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 600;
       color: #1a1a2e;
     }
     .body {
-      margin-bottom: 24px;
+      margin-bottom: 14px;
     }
     .message {
-      font-size: 14px;
+      font-size: 13px;
       color: #1a1a2e;
-      line-height: 1.6;
-      margin: 0 0 6px 0;
+      line-height: 1.5;
+      margin: 0 0 4px 0;
       white-space: pre-line;
     }
     .detail {
-      font-size: 12px;
+      font-size: 11px;
       color: #888;
-      line-height: 1.5;
+      line-height: 1.4;
       margin: 0;
     }
     .footer {
       display: flex;
-      justify-content: flex-end;
-      gap: 10px;
+      justify-content: center;
+      gap: 8px;
     }
     .btn {
-      padding: 8px 18px;
-      border-radius: 8px;
-      font-size: 13px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
       cursor: pointer;
       transition: all 0.2s;
       border: 1px solid transparent;
@@ -157,7 +157,13 @@
       document.getElementById('detail').textContent = data.detail || '';
       document.getElementById('icon').textContent = iconMap[data.type] || iconMap.warning;
       document.getElementById('confirmBtn').textContent = data.confirmText || '确认';
-      document.getElementById('cancelBtn').textContent = data.cancelText || '取消';
+      const cancelBtn = document.getElementById('cancelBtn');
+      if (data.cancelText === '' || data.cancelText === null || data.cancelText === undefined) {
+        cancelBtn.style.display = 'none';
+      } else {
+        cancelBtn.style.display = '';
+        cancelBtn.textContent = data.cancelText;
+      }
 
       if (data.type === 'danger') {
         document.getElementById('confirmBtn').classList.add('danger');

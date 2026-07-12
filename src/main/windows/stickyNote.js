@@ -5,6 +5,7 @@ const fs = require('fs');
 const { getReminderRuleByTaskId } = require('../../database/repositories/reminderRepository');
 const { updateTask, saveTimelineNote, deleteTimelineNote, hideTimelineNote, getTimelineSortOrder } = require('../../database/repositories/taskRepository');
 const { loadUserSettings } = require('../configManager');
+const { getDefaultSingleSkin, getDefaultTimelineSkin } = require('../services/skinService');
 
 function getStickyIconPath() {
   // 优先使用 48x48 图标，任务栏显示效果较好
@@ -319,17 +320,21 @@ class StickyNoteManager {
       const statusText = getStatusLabel(task.status);
       const priorityText = getPriorityLabel(task.priority);
 
-      // 样式配置
-      const styleConfig = task.style_config ? (typeof task.style_config === 'string' ? JSON.parse(task.style_config) : task.style_config) : {};
+      // 样式配置：以默认皮肤为基础，合并任务自定义配置
+      const savedStyleConfig = task.style_config ? (typeof task.style_config === 'string' ? JSON.parse(task.style_config) : task.style_config) : {};
+      const defaultSkin = getDefaultSingleSkin();
+      const styleConfig = Object.assign({}, defaultSkin.style, savedStyleConfig);
       const styleConfigJson = JSON.stringify({
-        opacity: task.opacity != null ? task.opacity : 1.0,
+        opacity: task.opacity != null ? task.opacity : styleConfig.opacity,
         bgColor: styleConfig.bgColor || '',
         textColor: styleConfig.textColor || '',
         bold: styleConfig.bold || false,
         fontSize: styleConfig.fontSize || 14,
         fontFamily: styleConfig.fontFamily || '',
         lineHeight: styleConfig.lineHeight || 1.4,
-        textAlign: styleConfig.textAlign || 'left'
+        textAlign: styleConfig.textAlign || 'left',
+        padding: styleConfig.padding || '',
+        borderRadius: styleConfig.borderRadius || ''
       });
 
       // 替换模板中的占位符
@@ -380,9 +385,11 @@ class StickyNoteManager {
       let template = fs.readFileSync(this.timelineTemplatePath, 'utf8');
       const scriptContent = fs.readFileSync(this.timelineScriptPath, 'utf8');
       const note = this.notes.get(id);
-      const timelineStyleConfig = styleConfig !== undefined
+      const savedTimelineStyleConfig = styleConfig !== undefined
         ? styleConfig
-        : (note && note.styleConfig ? note.styleConfig : { opacity: 1, bgColor: '' });
+        : (note && note.styleConfig ? note.styleConfig : {});
+      const defaultTimelineSkin = getDefaultTimelineSkin();
+      const timelineStyleConfig = Object.assign({}, defaultTimelineSkin.style, savedTimelineStyleConfig);
       const finalSortOrder = sortOrder !== undefined
         ? sortOrder
         : (note && note.sortOrder ? note.sortOrder : 'asc');

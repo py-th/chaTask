@@ -71,6 +71,7 @@ import StatusBar from './components/common/StatusBar.vue'
 import ConfirmDialog from './components/common/ConfirmDialog.vue'
 import GlobalToast from './components/common/GlobalToast.vue'
 import { toastBus } from './utils/toast.js'
+import { FEATURES, FEATURE_NAMES, isFeatureEnabled, showPremiumPrompt } from './utils/featureGate.js'
 import Dashboard from './views/Dashboard.vue'
 import TaskList from './views/TaskList.vue'
 import TaskViews from './views/TaskViews.vue'
@@ -146,7 +147,11 @@ let unsubscribeUpdateProgress = null
 let unsubscribeUpdateDownloaded = null
 let unsubscribeReminderDialog = null
 
-function switchView(viewId) {
+async function switchView(viewId) {
+  if (viewId === 'taskviews' && !isFeatureEnabled(FEATURES.TASK_VIEWS)) {
+    await showPremiumPrompt(FEATURE_NAMES[FEATURES.TASK_VIEWS]);
+    return;
+  }
   currentView.value = viewId
 }
 

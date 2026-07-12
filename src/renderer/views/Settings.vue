@@ -189,65 +189,13 @@
           <div class="setting-row">
             <div class="setting-info">
               <span class="setting-name">OCR 引擎</span>
-              <span class="setting-desc">本地使用 PaddleOCR，云端调用第三方 OCR API</span>
+              <span class="setting-desc">基础版仅支持本地 PaddleOCR，不涉及云端识别</span>
             </div>
-            <select v-model="settings.ocr.engine" @change="saveSettings">
-              <option value="paddle">本地 (PaddleOCR)</option>
-              <option value="baidu">百度云 OCR</option>
-              <option value="tencent">腾讯云 OCR</option>
-              <option value="aliyun">阿里云 OCR</option>
+            <select disabled>
+              <option>本地 PaddleOCR</option>
             </select>
           </div>
-          
-          <template v-if="settings.ocr.engine === 'baidu'">
-            <div class="setting-row">
-              <div class="setting-info">
-                <span class="setting-name">API Key</span>
-                <span class="setting-desc">百度云 OCR API Key</span>
-              </div>
-              <input type="text" v-model="settings.ocr.baidu.apiKey" @change="saveSettings" placeholder="请输入 API Key" />
-            </div>
-            <div class="setting-row">
-              <div class="setting-info">
-                <span class="setting-name">Secret Key</span>
-                <span class="setting-desc">百度云 OCR Secret Key</span>
-              </div>
-              <input type="password" v-model="settings.ocr.baidu.secretKey" @change="saveSettings" placeholder="请输入 Secret Key" />
-            </div>
-          </template>
-          <template v-if="settings.ocr.engine === 'aliyun'">
-            <div class="setting-row">
-              <div class="setting-info">
-                <span class="setting-name">AccessKey ID</span>
-                <span class="setting-desc">阿里云 RAM 用户 AccessKey ID</span>
-              </div>
-              <input type="text" v-model="settings.ocr.aliyun.accessKeyId" @change="saveSettings" placeholder="请输入 AccessKey ID" />
-            </div>
-            <div class="setting-row">
-              <div class="setting-info">
-                <span class="setting-name">AccessKey Secret</span>
-                <span class="setting-desc">阿里云 RAM 用户 AccessKey Secret</span>
-              </div>
-              <input type="password" v-model="settings.ocr.aliyun.accessKeySecret" @change="saveSettings" placeholder="请输入 AccessKey Secret" />
-            </div>
-          </template>
-          <template v-if="settings.ocr.engine === 'tencent'">
-            <div class="setting-row">
-              <div class="setting-info">
-                <span class="setting-name">SecretId</span>
-                <span class="setting-desc">腾讯云 API 密钥 SecretId</span>
-              </div>
-              <input type="text" v-model="settings.ocr.tencent.secretId" @change="saveSettings" placeholder="请输入 SecretId" />
-            </div>
-            <div class="setting-row">
-              <div class="setting-info">
-                <span class="setting-name">SecretKey</span>
-                <span class="setting-desc">腾讯云 API 密钥 SecretKey</span>
-              </div>
-              <input type="password" v-model="settings.ocr.tencent.secretKey" @change="saveSettings" placeholder="请输入 SecretKey" />
-            </div>
-          </template>
-          
+
           <div class="setting-row">
             <div class="setting-info">
               <span class="setting-name">识别语言</span>
@@ -257,18 +205,6 @@
               <option value="ch">中文</option>
               <option value="en">英文</option>
               <option value="ch_en">中英混合</option>
-            </select>
-          </div>
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-name">超时时间</span>
-              <span class="setting-desc">云端请求超时时间 ({{ settings.ocr.timeout }}ms)</span>
-            </div>
-            <select v-model.number="settings.ocr.timeout" @change="saveSettings">
-              <option :value="5000">5秒</option>
-              <option :value="10000">10秒</option>
-              <option :value="15000">15秒</option>
-              <option :value="30000">30秒</option>
             </select>
           </div>
         </div>
@@ -425,51 +361,6 @@
           </div>
         </div>
 
-        <h3 class="settings-section-title" style="margin-top: 24px;">备份与同步</h3>
-        <div class="settings-group card">
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-name">云同步</span>
-              <span class="setting-desc">启用后将自动同步数据到云端</span>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" v-model="settings.cloudSync.enabled" />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-name">提供商</span>
-              <span class="setting-desc">选择云存储服务提供商</span>
-            </div>
-            <select v-model="settings.cloudSync.provider" :disabled="!settings.cloudSync.enabled">
-              <option value="baidu">百度云</option>
-              <option value="aliyun">阿里云</option>
-              <option value="onedrive">OneDrive</option>
-              <option value="webdav">WebDAV</option>
-            </select>
-          </div>
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-name">自动备份</span>
-              <span class="setting-desc">每天自动备份数据到云端</span>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" v-model="settings.cloudSync.autoBackup" :disabled="!settings.cloudSync.enabled" />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="setting-row">
-            <div class="setting-info">
-              <span class="setting-name">手动操作</span>
-              <span class="setting-desc">立即执行备份或恢复操作</span>
-            </div>
-            <div class="btn-group">
-              <button class="btn btn-outline" :disabled="!settings.cloudSync.enabled">📤 立即备份</button>
-              <button class="btn btn-outline" :disabled="!settings.cloudSync.enabled">📥 恢复备份</button>
-            </div>
-          </div>
-        </div>
         <div v-if="dataMessage" :class="['data-msg', dataMsgType]">{{ dataMessage }}</div>
       </template>
 
@@ -524,17 +415,12 @@ const settings = reactive({
   screenshot: { mode: 'shortcut', confirmMode: 'on_mismatch', clipboardInterval: 1000, clipboardMinWidth: 50, clipboardMaxWidth: 500, clipboardMinHeight: 20, clipboardMaxHeight: 300 },
   ocr: {
     engine: 'paddle',
-    timeout: 10000,
-    baidu: { apiKey: '', secretKey: '' },
-    aliyun: { accessKeyId: '', accessKeySecret: '' },
-    tencent: { secretId: '', secretKey: '' },
     language: 'ch'
   },
   yolo: { confThreshold: 0.5 },
   matching: { avatarHashThreshold: 8, avatarColorThreshold: 0.7 },
   shortcuts: { screenshot: 'Ctrl+Alt+S', showWindow: 'Ctrl+Shift+A' },
-  reminder: { defaultTime: '09:00', advanceMinutes: 0, checkInterval: 30000 },
-  cloudSync: { enabled: false, provider: 'baidu', autoBackup: false }
+  reminder: { defaultTime: '09:00', advanceMinutes: 0, checkInterval: 30000 }
 })
 
 const yoloConfPercent = computed({
@@ -707,7 +593,7 @@ async function reloadSettings() {
   try {
     const saved = await window.electronAPI.getSettings()
     if (saved) {
-      const keys = ['general', 'sticky', 'screenshot', 'ocr', 'yolo', 'matching', 'shortcuts', 'reminder', 'cloudSync']
+      const keys = ['general', 'sticky', 'screenshot', 'ocr', 'yolo', 'matching', 'shortcuts', 'reminder']
       keys.forEach(k => {
         if (saved[k]) Object.assign(settings[k], saved[k])
       })

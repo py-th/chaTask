@@ -2,6 +2,8 @@ const { Menu } = require('electron');
 const { updateTask, getTaskById, getTasksBySenderName } = require('../../database/repositories/taskRepository');
 const { deleteReminderRulesByTaskId, deleteReminderLogsByTaskId } = require('../../database/repositories/reminderRepository');
 const { showConfirmDialog } = require('../windows/confirmDialog');
+const { FEATURES, FEATURE_NAMES, isFeatureEnabled, showPremiumPrompt } = require('../services/featureGate');
+const { getAllSkins } = require('../services/skinService');
 
 class StickyMenu {
   constructor(mainWindow, stickyManager, screenshotUtils) {
@@ -149,32 +151,22 @@ class StickyMenu {
         },
         {
           label: '皮肤模板',
-          submenu: [
-            {
-              label: '默认',
-              click: () => {
-                console.log('应用默认模板', taskId);
+          submenu: getAllSkins('single').map(skin => {
+            const isLocked = skin.isPremium && !isFeatureEnabled(FEATURES.SKIN_TEMPLATES);
+            return {
+              label: `${skin.name} ${isLocked ? '🔒' : ''}`,
+              click: (_, win) => {
+                const note = this.stickyManager.notes.get(noteId);
+                if (isLocked) {
+                  showPremiumPrompt(win, FEATURE_NAMES[FEATURES.SKIN_TEMPLATES]);
+                  return;
+                }
+                if (note && note.win && !note.win.isDestroyed()) {
+                  note.win.webContents.send('update-style-config', skin.style);
+                }
               }
-            },
-            {
-              label: '微信',
-              click: () => {
-                console.log('应用微信模板', taskId);
-              }
-            },
-            {
-              label: '飞书',
-              click: () => {
-                console.log('应用飞书模板', taskId);
-              }
-            },
-            {
-              label: '钉钉',
-              click: () => {
-                console.log('应用钉钉模板', taskId);
-              }
-            }
-          ]
+            };
+          })
         }
       ]
     }
@@ -234,21 +226,33 @@ class StickyMenu {
               }
             }] : []),
             {
-              label: '桌面倒计时',
-              click: () => {
-                console.log('桌面倒计时', taskId);
+              label: `桌面倒计时 ${isFeatureEnabled(FEATURES.TOOLBOX_COUNTDOWN) ? '' : '🔒'}`,
+              click: (_, win) => {
+                if (isFeatureEnabled(FEATURES.TOOLBOX_COUNTDOWN)) {
+                  console.log('桌面倒计时', taskId);
+                } else {
+                  showPremiumPrompt(win, FEATURE_NAMES[FEATURES.TOOLBOX_COUNTDOWN]);
+                }
               }
             },
             {
-              label: '番茄时钟',
-              click: () => {
-                console.log('番茄时钟', taskId);
+              label: `番茄时钟 ${isFeatureEnabled(FEATURES.TOOLBOX_POMODORO) ? '' : '🔒'}`,
+              click: (_, win) => {
+                if (isFeatureEnabled(FEATURES.TOOLBOX_POMODORO)) {
+                  console.log('番茄时钟', taskId);
+                } else {
+                  showPremiumPrompt(win, FEATURE_NAMES[FEATURES.TOOLBOX_POMODORO]);
+                }
               }
             },
             {
-              label: '定时关机',
-              click: () => {
-                console.log('定时关机', taskId);
+              label: `定时关机 ${isFeatureEnabled(FEATURES.TOOLBOX_SHUTDOWN) ? '' : '🔒'}`,
+              click: (_, win) => {
+                if (isFeatureEnabled(FEATURES.TOOLBOX_SHUTDOWN)) {
+                  console.log('定时关机', taskId);
+                } else {
+                  showPremiumPrompt(win, FEATURE_NAMES[FEATURES.TOOLBOX_SHUTDOWN]);
+                }
               }
             }
           ]

@@ -462,7 +462,9 @@
     fontSize: 14,
     fontFamily: '',
     lineHeight: 1.4,
-    textAlign: 'left'
+    textAlign: 'left',
+    padding: '',
+    borderRadius: ''
   }, window.styleConfig || {});
 
   function applyStyleConfig(config) {
@@ -480,6 +482,13 @@
       taskText.style.fontFamily = config.fontFamily || '';
       taskText.style.lineHeight = config.lineHeight || 1.4;
       taskText.style.textAlign = config.textAlign || 'left';
+      taskText.style.padding = config.padding || '';
+    }
+    const taskWrapper = document.querySelector('.task-wrapper');
+    if (taskWrapper && config.borderRadius != null && config.borderRadius !== '') {
+      taskWrapper.style.borderRadius = config.borderRadius + 'px';
+    } else if (taskWrapper) {
+      taskWrapper.style.borderRadius = '';
     }
   }
 
@@ -508,6 +517,14 @@
   }
 
   applyStyleConfig(currentStyleConfig);
+
+  // 应用皮肤模板（如默认皮肤）
+  electronAPI.on('update-style-config', (event, newStyleConfig) => {
+    currentStyleConfig = Object.assign({}, currentStyleConfig, newStyleConfig);
+    applyStyleConfig(currentStyleConfig);
+    syncStylePanel(currentStyleConfig);
+    saveStyleConfig(currentStyleConfig);
+  });
 
   electronAPI.on('show-style-panel', () => {
     if (stylePanel) {
