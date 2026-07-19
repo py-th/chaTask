@@ -147,6 +147,7 @@ class TaskContextMenu {
           if (!confirmed) return;
           try {
             deleteTask(task.id);
+            this._closeStickyNoteByTaskId(task.id);
             this._notifyRefresh();
             this._sendToast('success', '任务已彻底删除');
           } catch (err) {

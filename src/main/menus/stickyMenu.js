@@ -1,5 +1,5 @@
 const { Menu } = require('electron');
-const { updateTask, getTaskById, getTasksBySenderName } = require('../../database/repositories/taskRepository');
+const { updateTask, getTaskById, getTasksBySenderName, getTimelineNoteBySenderName } = require('../../database/repositories/taskRepository');
 const { deleteReminderRulesByTaskId, deleteReminderLogsByTaskId } = require('../../database/repositories/reminderRepository');
 const { showConfirmDialog } = require('../windows/confirmDialog');
 const { FEATURES, FEATURE_NAMES, isFeatureEnabled, showPremiumPrompt } = require('../services/featureGate');
@@ -200,31 +200,10 @@ class StickyMenu {
         }
       },
       // 后续功能扩展
-      {
+          {
           label: '工具箱',
           submenu: [
-            ...(showTimeline ? [{
-              label: '时间轴',
-              click: async () => {
-                try {
-                  const task = await getTaskById(taskId);
-                  if (!task || !task.sender_name) return;
-                  const tasks = getTasksBySenderName(task.sender_name);
-                  if (tasks.length > 0) {
-                    this.stickyManager.createTimelineNote(tasks, task.sender_name, task.sender_avatar);
-                    // 隐藏原便签（该任务已在时间轴中显示）
-                    await updateTask(taskId, { is_show_desk: 0 });
-                    const note = this.stickyManager.notes.get(noteId);
-                    if (note && note.win && !note.win.isDestroyed()) {
-                      note.win.close();
-                    }
-                    this.notifyMainWindowUpdate();
-                  }
-                } catch (err) {
-                  console.error('[StickyMenu] 创建时间轴失败:', err);
-                }
-              }
-            }] : []),
+            ...(await this._buildTimelineToolItem(noteId, taskId, showTimeline)),
             {
               label: `桌面倒计时 ${isFeatureEnabled(FEATURES.TOOLBOX_COUNTDOWN) ? '' : '🔒'}`,
               click: (_, win) => {
@@ -357,6 +336,64 @@ class StickyMenu {
     const note = this.stickyManager.notes.get(noteId);
     if (note && note.win && !note.win.isDestroyed()) {
       this.stickyManager.foldNote(note.win, noteId, edge);
+    }
+  }
+
+  async _buildTimelineToolItem(noteId, taskId, showTimeline) {
+    try {
+      const task = await getTaskById(taskId);
+      if (!task || !task.sender_name) return [];
+
+      const senderName = task.sender_name;
+      const visibleNote = this.stickyManager.findTimelineNoteBySenderName(senderName);
+      if (visibleNote) {
+        return [{
+          label: '关闭时间轴',
+          click: () => {
+            this.stickyManager.closeTimelineNote(senderName);
+            this.notifyMainWindowUpdate();
+          }
+        }];
+      }
+
+      const record = getTimelineNoteBySenderName(senderName);
+      if (record) {
+        return [{
+          label: '打开时间轴',
+          click: () => {
+            this.stickyManager.openTimelineNote(senderName);
+            this.notifyMainWindowUpdate();
+          }
+        }];
+      }
+
+      if (showTimeline) {
+        return [{
+          label: '创建时间轴',
+          click: async () => {
+            try {
+              const tasks = getTasksBySenderName(senderName);
+              if (tasks.length > 0) {
+                this.stickyManager.createTimelineNote(tasks, senderName, task.sender_avatar);
+                // 隐藏原便签（该任务已在时间轴中显示）
+                await updateTask(taskId, { is_show_desk: 0 });
+                const note = this.stickyManager.notes.get(noteId);
+                if (note && note.win && !note.win.isDestroyed()) {
+                  note.win.close();
+                }
+                this.notifyMainWindowUpdate();
+              }
+            } catch (err) {
+              console.error('[StickyMenu] 创建时间轴失败:', err);
+            }
+          }
+        }];
+      }
+
+      return [];
+    } catch (err) {
+      console.error('[StickyMenu] 构建时间轴工具项失败:', err);
+      return [];
     }
   }
 

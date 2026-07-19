@@ -10,6 +10,7 @@ const {
   deleteTask
 } = require('../../database/repositories/taskRepository');
 const { saveContact, findContactByName, updateContactTaskCount, updateContactSource } = require('../../database/repositories/contactRepository');
+const { deleteReminderRulesByTaskId, deleteReminderLogsByTaskId } = require('../../database/repositories/reminderRepository');
 const { computeImageHash } = require('../utils/hash');
 
 class TaskService {
@@ -102,9 +103,17 @@ class TaskService {
     // 删除前获取任务信息，以便更新联系人任务计数
     const task = getTaskById(id);
     const senderName = task ? task.sender_name : null;
-    
+
+    try {
+      // 彻底删除前清理提醒规则和日志
+      deleteReminderRulesByTaskId(id);
+      deleteReminderLogsByTaskId(id);
+    } catch (err) {
+      console.error('[TaskService] 彻底删除任务时清理提醒规则失败:', err);
+    }
+
     const result = await deleteTask(id);
-    
+
     // 如果有发送者名称，更新其任务计数
     if (senderName) {
       try {
@@ -113,7 +122,7 @@ class TaskService {
         console.error('[TaskService] 更新联系人任务计数失败:', err);
       }
     }
-    
+
     this.notifyMainWindow();
     return result;
   }
@@ -128,7 +137,7 @@ class TaskService {
     const senderName = task ? task.sender_name : null;
     
     const result = await updateTask(id, { is_deleted: 0 });
-    
+
     // 如果有发送者名称，更新其任务计数
     if (senderName) {
       try {
@@ -137,17 +146,29 @@ class TaskService {
         console.error('[TaskService] 更新联系人任务计数失败:', err);
       }
     }
-    
+
+    this.notifyMainWindow();
     return result;
   }
 
   async completeTask(id) {
-    return await updateTask(id, {
+    try {
+      // 完成任务前清理提醒规则和日志
+      deleteReminderRulesByTaskId(id);
+      deleteReminderLogsByTaskId(id);
+    } catch (err) {
+      console.error('[TaskService] 完成任务时清理提醒规则失败:', err);
+    }
+
+    const result = await updateTask(id, {
       status: 'completed',
       is_completed: 1,
       is_show_desk: 0,
       completed_at: new Date().toISOString()
     });
+
+    this.notifyMainWindow();
+    return result;
   }
 
   async showOnDesk(id, show = true) {

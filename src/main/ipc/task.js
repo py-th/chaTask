@@ -5,10 +5,12 @@ const { getReminderRuleByTaskId } = require('../../database/repositories/reminde
 
 let taskService = null;
 let stickyManagerRef = null;
+let reminderServiceRef = null;
 
-function registerTaskHandlers(getMainWindow, stickyManager) {
+function registerTaskHandlers(getMainWindow, stickyManager, reminderService) {
   taskService = new TaskService(getMainWindow);
   stickyManagerRef = stickyManager;
+  reminderServiceRef = reminderService;
 
   ipcMain.handle('save-task', (event, task) => taskService.createTask(task));
   ipcMain.handle('get-all-tasks', () => taskService.getAllTasks());
@@ -23,14 +25,19 @@ function registerTaskHandlers(getMainWindow, stickyManager) {
     return result;
   });
 
-  ipcMain.handle('delete-task', (event, id) => taskService.deleteTask(id));
+  ipcMain.handle('delete-task', async (event, id) => {
+    const result = await taskService.deleteTask(id);
+    // 彻底删除后关闭桌面便签
+    closeStickyNoteByTaskId(id);
+    return result;
+  });
 
   ipcMain.handle('restore-task', (event, id) => taskService.restoreTask(id));
 
   ipcMain.handle('complete-task', async (event, id) => {
     const result = await taskService.completeTask(id);
-    // 同步更新桌面便签显示
-    syncStickyNoteUpdate(id, { status: 'completed', is_completed: 1 });
+    // 同步更新桌面便签显示，并触发关闭
+    syncStickyNoteUpdate(id, { status: 'completed', is_completed: 1, is_show_desk: 0 });
     return result;
   });
 
@@ -57,18 +64,39 @@ function registerTaskHandlers(getMainWindow, stickyManager) {
   });
 }
 
+function closeStickyNoteByTaskId(taskId) {
+  if (!stickyManagerRef || !stickyManagerRef.notes) return;
+  for (const [noteId, note] of stickyManagerRef.notes.entries()) {
+    if (note.taskId === taskId && note.win && !note.win.isDestroyed()) {
+      note.win.close();
+      break;
+    }
+  }
+}
+
 function syncStickyNoteUpdate(taskId, updates) {
   if (!stickyManagerRef || !stickyManagerRef.notes) return;
 
-  // 获取任务信息用于时间轴更新
-  let taskSenderName = null;
-  for (const [, note] of stickyManagerRef.notes.entries()) {
-    if (note.taskId === taskId) {
-      // 对于单个便签，可以直接获取任务信息
-      break;
-    } else if (note.isTimeline) {
-      // 对于时间轴便签，需要记录 senderName
-      // 后续需要从数据库获取任务信息
+  // 判断是否需要关闭桌面便签（完成/删除）
+  const shouldCloseNote =
+    (updates.is_deleted !== undefined && updates.is_deleted === 1) ||
+    (updates.is_completed !== undefined && updates.is_completed === 1) ||
+    updates.status === 'completed';
+
+  // 获取最新提醒文本（如果提醒相关字段变化）
+  let reminderText = null;
+  let reminderChanged = false;
+  if (updates.reminder_enabled !== undefined || updates.reminder_rule_id !== undefined) {
+    reminderChanged = true;
+    if (reminderServiceRef) {
+      try {
+        const rule = getReminderRuleByTaskId(taskId);
+        if (rule && rule.is_enabled === 1) {
+          reminderText = reminderServiceRef.getNextReminderText(rule);
+        }
+      } catch (err) {
+        console.error('[TaskIPC] 同步提醒文本失败:', err);
+      }
     }
   }
 
@@ -79,32 +107,23 @@ function syncStickyNoteUpdate(taskId, updates) {
 
     if (note.isTimeline) {
       // 时间轴便签：检查该任务是否属于这个时间轴（同一联系人）
-      // 需要通过数据库查询任务的 sender_name 来匹配
-      // 这里我们向所有时间轴便签发送更新事件，由前端判断是否属于该时间轴
+      // 由前端判断是否属于该时间轴
       const updateEvent = {};
-      
-      if (updates.content !== undefined) {
-        updateEvent.content = updates.content;
-      }
-      if (updates.priority !== undefined) {
-        updateEvent.priority = updates.priority;
-      }
-      if (updates.status !== undefined) {
-        updateEvent.status = updates.status;
-      }
-      if (updates.due_date !== undefined) {
-        updateEvent.dueDate = updates.due_date;
-      }
-      if (updates.reminder_enabled !== undefined || updates.reminder_rule_id !== undefined) {
-        updateEvent.reminderChanged = true;
-      }
+
+      if (updates.content !== undefined) updateEvent.content = updates.content;
+      if (updates.priority !== undefined) updateEvent.priority = updates.priority;
+      if (updates.status !== undefined) updateEvent.status = updates.status;
+      if (updates.due_date !== undefined) updateEvent.dueDate = updates.due_date;
+      if (updates.color !== undefined) updateEvent.color = updates.color;
+      if (updates.is_pinned !== undefined) updateEvent.isPinned = updates.is_pinned === 1;
+      if (reminderChanged) updateEvent.reminderChanged = true;
 
       if (Object.keys(updateEvent).length > 0) {
         updateEvent.taskId = taskId;
         wc.send('timeline-update-task', updateEvent);
       }
 
-      // 如果任务被删除，通知时间轴移除该任务
+      // 如果任务被删除或完成，通知时间轴移除该任务
       if (updates.is_deleted !== undefined && updates.is_deleted === 1) {
         wc.send('timeline-remove-task', taskId);
       }
@@ -134,6 +153,26 @@ function syncStickyNoteUpdate(taskId, updates) {
       if (updates.due_date !== undefined) {
         wc.send('update-due-date', updates.due_date);
       }
+
+      // 同步颜色更新
+      if (updates.color !== undefined) {
+        wc.send('update-color', updates.color);
+      }
+
+      // 同步置顶状态更新
+      if (updates.is_pinned !== undefined) {
+        wc.send('update-pin', updates.is_pinned === 1);
+      }
+
+      // 同步提醒文本更新
+      if (reminderChanged) {
+        wc.send('update-reminder-info', reminderText);
+      }
+
+      // 任务完成或删除时关闭便签窗口
+      if (shouldCloseNote) {
+        note.win.close();
+      }
     }
   }
 }
@@ -142,4 +181,4 @@ function getTaskService() {
   return taskService;
 }
 
-module.exports = { registerTaskHandlers, getTaskService };
+module.exports = { registerTaskHandlers, getTaskService, syncStickyNoteUpdate };

@@ -43,6 +43,14 @@
           </div>
           <!-- 悬浮操作按钮 -->
           <div class="contact-card-actions">
+            <button
+              v-if="canCreateTimeline(contact) || hasTimelineRecord(contact)"
+              class="btn btn-xs btn-timeline"
+              :class="{ 'btn-timeline-open': isTimelineOpen(contact) }"
+              @click.stop="toggleTimelineNote(contact)"
+            >
+              {{ isTimelineOpen(contact) ? '隐藏📌' : (hasTimelineRecord(contact) ? '打开📋' : '时间轴📎') }}
+            </button>
             <button class="btn btn-xs btn-edit" @click.stop="openEditModal(contact)">✏️</button>
             <button class="btn btn-xs btn-danger" @click.stop="confirmDeleteContact(contact)">🗑️</button>
           </div>
@@ -193,6 +201,7 @@ const allTasks = ref([])
 const searchKeyword = ref('')
 const showTaskModal = ref(false)
 const selectedContact = ref(null)
+const timelineStatus = ref({ allNotes: [], openNames: [] })
 
 // 添加/编辑联系人弹窗状态
 const showAddModal = ref(false)
@@ -230,6 +239,46 @@ const contactTasks = computed(() => {
 
 function getTaskCount(contactName) {
   return allTasks.value.filter(t => t.sender_name === contactName).length
+}
+
+function getContactTasks(contactName) {
+  return allTasks.value.filter(t => t.sender_name === contactName && t.is_deleted !== 1)
+}
+
+function canCreateTimeline(contact) {
+  return getContactTasks(contact.name).length >= 2
+}
+
+function hasTimelineRecord(contact) {
+  return timelineStatus.value.allNotes.some(n => n.sender_name === contact.name)
+}
+
+function isTimelineOpen(contact) {
+  return timelineStatus.value.openNames.includes(contact.name)
+}
+
+async function loadTimelineStatus() {
+  try {
+    timelineStatus.value = await window.electronAPI.getTimelineNotesStatus()
+  } catch (err) {
+    console.error('加载时间轴便签状态失败:', err)
+  }
+}
+
+async function toggleTimelineNote(contact) {
+  try {
+    if (isTimelineOpen(contact)) {
+      await window.electronAPI.closeTimelineNote(contact.name)
+    } else if (hasTimelineRecord(contact)) {
+      await window.electronAPI.openTimelineNote(contact.name)
+    } else if (canCreateTimeline(contact)) {
+      await window.electronAPI.createTimelineNote(contact.name, contact.avatar_base64 || '')
+    }
+    await loadTimelineStatus()
+  } catch (err) {
+    console.error('切换时间轴便签失败:', err)
+    window.$toast.error('切换时间轴便签失败')
+  }
 }
 
 function onSearchInput() {
@@ -515,6 +564,7 @@ async function loadData() {
     ])
     contacts.value = contactList
     allTasks.value = [...taskList, ...completedTasks, ...deletedTasks]
+    await loadTimelineStatus()
   } catch (err) {
     console.error('加载联系人数据失败:', err)
     window.$toast.error('加载联系人数据失败')
@@ -662,6 +712,18 @@ onUnmounted(() => {
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--transition-fast);
+}
+
+.btn-timeline {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+.btn-timeline-open {
+  background: var(--color-success-light, #e6f7e6);
+  color: var(--color-success, #52c41a);
+  border: 1px solid var(--color-success, #52c41a);
 }
 
 /* 弹窗样式 */

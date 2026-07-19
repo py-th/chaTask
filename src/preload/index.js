@@ -29,6 +29,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
   createStickyNote: (data) => ipcRenderer.invoke('create-sticky-note', data),
   hideNote: (taskId) => ipcRenderer.send('hide-note', { taskId }),
+
+  // 时间轴便签
+  getTimelineNotesStatus: () => ipcRenderer.invoke('get-timeline-notes-status'),
+  openTimelineNote: (senderName) => ipcRenderer.invoke('open-timeline-note', { senderName }),
+  createTimelineNote: (senderName, senderAvatar) => ipcRenderer.invoke('create-timeline-note', { senderName, senderAvatar }),
+  closeTimelineNote: (senderName) => ipcRenderer.invoke('close-timeline-note', { senderName }),
   onRefreshTaskList: (callback) => {
     const listener = (event) => callback();
     ipcRenderer.on('refresh-task-list', listener);

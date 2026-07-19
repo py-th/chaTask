@@ -14,6 +14,7 @@ const {
   getAllPendingSnoozeLogs
 } = require('../../database/repositories/reminderRepository');
 const { updateTask, getTaskById } = require('../../database/repositories/taskRepository');
+const { getTaskService, syncStickyNoteUpdate } = require('../ipc/task');
 
 function getNotificationIconPath() {
   if (process.resourcesPath) {
@@ -481,23 +482,17 @@ class ReminderService {
 
     switch (action) {
       case 'complete': {
-        await updateTask(taskId, {
-          status: 'completed',
-          is_completed: 1,
-          is_show_desk: 0
-        });
-
-        deleteReminderRulesByTaskId(taskId);
-        deleteReminderLogsByTaskId(taskId);
+        try {
+          // 统一使用 taskService 完成任务：持久化、清理提醒、通知主窗口
+          await getTaskService().completeTask(taskId);
+          // 同步更新桌面便签（关闭单个便签、更新时间轴）
+          syncStickyNoteUpdate(taskId, { status: 'completed', is_completed: 1, is_show_desk: 0 });
+        } catch (err) {
+          console.error('[ReminderService] 标记完成任务失败:', err);
+        }
 
         this.stopAvatarBlink(taskId);
-
         this.closePopupWindow(taskId);
-
-        const note = this.findNoteByTaskId(taskId);
-        if (note && note.win && !note.win.isDestroyed()) {
-          setTimeout(() => note.win.close(), 500);
-        }
         break;
       }
 

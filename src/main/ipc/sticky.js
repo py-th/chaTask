@@ -1,6 +1,6 @@
 // src/main/ipc/sticky.js
 const { ipcMain, BrowserWindow, clipboard } = require('electron');
-const { updateTask, getTaskById, getTasksBySenderName, saveTimelineNote, deleteTimelineNote, updateTasksSortOrder } = require('../../database/repositories/taskRepository');
+const { updateTask, getTaskById, getTasksBySenderName, saveTimelineNote, deleteTimelineNote, updateTasksSortOrder, getAllTimelineNotes } = require('../../database/repositories/taskRepository');
 const { saveReminderRule, deleteReminderRulesByTaskId, deleteReminderLogsByTaskId, getReminderRuleByTaskId } = require('../../database/repositories/reminderRepository');
 const { StickyMenu } = require('../menus');
 const { showConfirmDialog } = require('../windows/confirmDialog');
@@ -515,29 +515,69 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
 
   // ========== 时间轴便签 IPC ==========
 
-  // 打开时间轴便签
-  ipcMain.on('open-timeline-note', async (event, { noteId, taskId }) => {
+  // ========== 时间轴便签状态与入口 IPC ==========
+
+  // 获取所有时间轴便签记录以及当前已打开的名称集合
+  ipcMain.handle('get-timeline-notes-status', async () => {
     try {
-      const task = await getTaskById(taskId);
-      if (!task) {
-        sendToastToMainWindow('error', '找不到任务信息');
-        return;
+      const allNotes = getAllTimelineNotes();
+      const openNames = [];
+      for (const [id, note] of stickyManager.notes.entries()) {
+        if (note.isTimeline && note.senderName && note.win && !note.win.isDestroyed()) {
+          openNames.push(note.senderName);
+        }
       }
-      const senderName = task.sender_name;
+      return { success: true, allNotes, openNames };
+    } catch (err) {
+      console.error('[Timeline] 获取时间轴便签状态失败:', err);
+      return { success: false, allNotes: [], openNames: [] };
+    }
+  });
+
+  // 打开时间轴便签（若已打开则聚焦）
+  ipcMain.handle('open-timeline-note', async (event, { senderName }) => {
+    try {
       if (!senderName) {
-        sendToastToMainWindow('error', '该任务没有关联联系人');
-        return;
+        return { success: false, error: '缺少联系人名称' };
+      }
+      const id = stickyManager.openTimelineNote(senderName);
+      return { success: !!id, id };
+    } catch (err) {
+      console.error('[Timeline] 打开时间轴便签失败:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 创建新的时间轴便签
+  ipcMain.handle('create-timeline-note', async (event, { senderName, senderAvatar }) => {
+    try {
+      if (!senderName) {
+        return { success: false, error: '缺少联系人名称' };
       }
       const tasks = getTasksBySenderName(senderName);
       if (tasks.length === 0) {
-        sendToastToMainWindow('info', '该联系人暂无其他任务');
-        return;
+        return { success: false, error: '该联系人暂无任务' };
       }
-      const noteId = stickyManager.createTimelineNote(tasks, senderName, task.sender_avatar);
-      console.log(`[Timeline] 时间轴便签已创建: noteId=${noteId}, sender=${senderName}, tasks=${tasks.length}`);
+      const id = stickyManager.createTimelineNote(tasks, senderName, senderAvatar);
+      console.log(`[Timeline] 时间轴便签已创建: noteId=${id}, sender=${senderName}, tasks=${tasks.length}`);
+      return { success: true, id };
     } catch (err) {
       console.error('[Timeline] 创建时间轴便签失败:', err);
-      sendToastToMainWindow('error', '创建时间轴便签失败');
+      return { success: false, error: err.message };
+    }
+  });
+
+  // 关闭时间轴便签（保存状态后隐藏）
+  ipcMain.handle('close-timeline-note', async (event, { senderName }) => {
+    try {
+      if (!senderName) {
+        return { success: false, error: '缺少联系人名称' };
+      }
+      const result = stickyManager.closeTimelineNote(senderName);
+      return { success: result };
+    } catch (err) {
+      console.error('[Timeline] 关闭时间轴便签失败:', err);
+      return { success: false, error: err.message };
     }
   });
 
@@ -827,9 +867,10 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
         }
     });
     template.push({
-      label: '关闭',
+      label: '隐藏',
       click: () => {
         stickyManager.deleteNote(noteId);
+        notifyMainWindow();
       }
     });
 

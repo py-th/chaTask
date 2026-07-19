@@ -136,6 +136,18 @@ function getTimelineNotes() {
   return stmt.all();
 }
 
+// 获取所有时间轴便签记录（包括隐藏的）
+function getAllTimelineNotes() {
+  const stmt = db.prepare(`SELECT * FROM timeline_notes ORDER BY updated_at DESC`);
+  return stmt.all();
+}
+
+// 根据联系人名称获取时间轴便签记录
+function getTimelineNoteBySenderName(senderName) {
+  const stmt = db.prepare(`SELECT * FROM timeline_notes WHERE sender_name = ?`);
+  return stmt.get(senderName);
+}
+
 // 获取某联系人的排序方式
 function getTimelineSortOrder(senderName) {
   const stmt = db.prepare(`SELECT sort_order FROM timeline_notes WHERE sender_name = ?`);
@@ -185,4 +197,4 @@ function updateTasksSortOrder(taskOrders) {
   updateMany(taskOrders);
 }
 
-module.exports = { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, getDeskTasks, updateTask, getTaskById, getTasksBySenderName, deleteTask, getTimelineNotes, getTimelineSortOrder, saveTimelineNote, deleteTimelineNote, hideTimelineNote, updateTasksSortOrder };
+module.exports = { insertTask, getAllTasks, getCompletedTasks, getDeletedTasks, getDeskTasks, updateTask, getTaskById, getTasksBySenderName, deleteTask, getTimelineNotes, getAllTimelineNotes, getTimelineNoteBySenderName, getTimelineSortOrder, saveTimelineNote, deleteTimelineNote, hideTimelineNote, updateTasksSortOrder };

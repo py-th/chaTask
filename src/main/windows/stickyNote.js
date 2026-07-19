@@ -3,7 +3,7 @@ const { BrowserWindow, screen, nativeImage, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { getReminderRuleByTaskId } = require('../../database/repositories/reminderRepository');
-const { updateTask, saveTimelineNote, deleteTimelineNote, hideTimelineNote, getTimelineSortOrder } = require('../../database/repositories/taskRepository');
+const { updateTask, saveTimelineNote, deleteTimelineNote, hideTimelineNote, getTimelineSortOrder, getTimelineNoteBySenderName, getTasksBySenderName } = require('../../database/repositories/taskRepository');
 const { loadUserSettings } = require('../configManager');
 const { getDefaultSingleSkin, getDefaultTimelineSkin } = require('../services/skinService');
 const { escapeHtml } = require('../../shared/utils');
@@ -42,8 +42,6 @@ class StickyNoteManager {
     this.timelineTemplatePath = path.join(__dirname, '../templates/stickyTimelineTemplate.html');
     this.timelineScriptPath = path.join(__dirname, '../templates/stickyTimelineScript.js');
     this.reminderService = reminderService;
-    this._windowPool = [];      // 窗口对象池：存储可复用的 BrowserWindow
-    this._maxPoolSize = 5;      // 池最大容量，避免内存浪费
     this._isQuitting = false;   // 应用退出标记，退出时不拦截 close 事件
     app.on('before-quit', () => { this._isQuitting = true; });
     this.settings = {
@@ -66,55 +64,6 @@ class StickyNoteManager {
       } catch (err) {
         console.error('[StickyNote] 加载便签图标失败:', err);
       }
-    }
-  }
-
-  // 从对象池获取窗口，池空时新建
-  _acquireWindow(winOptions) {
-    let win;
-    if (this._windowPool.length > 0) {
-      win = this._windowPool.pop();
-      // 恢复窗口基本属性
-      if (winOptions.width && winOptions.height) {
-        win.setSize(winOptions.width, winOptions.height);
-      }
-      if (winOptions.x != null && winOptions.y != null) {
-        win.setPosition(winOptions.x, winOptions.y);
-      }
-      win.setAlwaysOnTop(winOptions.alwaysOnTop || false);
-      if (winOptions.skipTaskbar !== undefined) {
-        win.setSkipTaskbar(winOptions.skipTaskbar);
-      }
-      if (winOptions.resizable !== undefined) {
-        win.setResizable(winOptions.resizable);
-      }
-      if (winOptions.minWidth && winOptions.minHeight) {
-        win.setMinimumSize(winOptions.minWidth, winOptions.minHeight);
-      }
-      if (winOptions.icon) {
-        win.setIcon(winOptions.icon);
-      }
-      win.show();
-    } else {
-      win = new BrowserWindow(winOptions);
-      win.setHasShadow(false);
-    }
-    return win;
-  }
-
-  // 将窗口归还对象池，池满时销毁
-  _releaseWindow(win) {
-    if (!win || win.isDestroyed()) return;
-    win.removeAllListeners();
-    if (win.webContents && !win.webContents.isDestroyed()) {
-      win.webContents.removeAllListeners();
-    }
-    delete win._stickyNoteId;
-    if (this._windowPool.length < this._maxPoolSize) {
-      win.hide();
-      this._windowPool.push(win);
-    } else {
-      win.destroy();
     }
   }
 
@@ -535,6 +484,70 @@ class StickyNoteManager {
     }
   }
 
+  // 根据联系人名称查找已打开的时间轴便签
+  findTimelineNoteBySenderName(senderName) {
+    for (const [id, note] of this.notes.entries()) {
+      if (note.isTimeline && note.senderName === senderName && note.win && !note.win.isDestroyed()) {
+        return { id, note };
+      }
+    }
+    return null;
+  }
+
+  // 打开时间轴便签（若已打开则聚焦，否则从数据库恢复或新建）
+  openTimelineNote(senderName) {
+    const existing = this.findTimelineNoteBySenderName(senderName);
+    if (existing) {
+      if (!existing.note.win.isDestroyed()) {
+        existing.note.win.focus();
+      }
+      return existing.id;
+    }
+
+    const record = getTimelineNoteBySenderName(senderName);
+    if (!record) return null;
+
+    const tasks = getTasksBySenderName(senderName);
+    let styleConfig = {};
+    try {
+      styleConfig = record.style_config ? (typeof record.style_config === 'string' ? JSON.parse(record.style_config) : record.style_config) : {};
+    } catch (err) {
+      console.error('[StickyNote] 解析时间轴样式配置失败:', err);
+    }
+
+    const options = {
+      position: { x: record.position_x, y: record.position_y },
+      isPinned: record.is_pinned === 1,
+      styleConfig,
+      sortOrder: record.sort_order || 'asc'
+    };
+    return this.createTimelineNote(tasks, senderName, record.sender_avatar, options);
+  }
+
+  // 关闭时间轴便签并保存状态
+  closeTimelineNote(senderName) {
+    const existing = this.findTimelineNoteBySenderName(senderName);
+    if (!existing) return false;
+
+    const { id, note } = existing;
+    try {
+      if (!note.win.isDestroyed()) {
+        const [x, y] = note.win.getPosition();
+        saveTimelineNote(note.senderName, note.senderAvatar, note.styleConfig,
+          note.win.isAlwaysOnTop(), x, y, note.sortOrder || 'asc');
+      }
+    } catch (err) {
+      console.error('[StickyNote] 关闭时间轴便签前保存状态失败:', err);
+    }
+
+    note._closing = true;
+    if (!note.win.isDestroyed()) {
+      note.win.close();
+    }
+    this.notes.delete(id);
+    return true;
+  }
+
   createTimelineNote(tasks, senderName, senderAvatar, options = {}) {
     const id = this.nextId++;
     this.loadSettings();
@@ -560,6 +573,7 @@ class StickyNoteManager {
     const winOptions = {
       width: 300,
       height: 400,
+      show: false,
       alwaysOnTop: false,
       frame: false,
       transparent: true,
@@ -585,7 +599,8 @@ class StickyNoteManager {
       winOptions.alwaysOnTop = true;
     }
 
-    const win = this._acquireWindow(winOptions);
+    const win = new BrowserWindow(winOptions);
+    win.setHasShadow(false);
     const initialStyleConfig = options.styleConfig || { opacity: 1, bgColor: '' };
     const initialSortOrder = options.sortOrder || getTimelineSortOrder(senderName) || 'asc';
 
@@ -639,7 +654,7 @@ class StickyNoteManager {
         }
       }
       this.notes.delete(id);
-      this._releaseWindow(win);
+      win.destroy();
     });
 
     // 监听位置变化，实时保存
@@ -658,6 +673,7 @@ class StickyNoteManager {
       if (initialSortOrder !== 'asc' && initialSortOrder !== 'custom') {
         win.webContents.send('timeline-sort-tasks', initialSortOrder);
       }
+      win.show();
     });
 
     // 创建时保存到数据库
@@ -696,9 +712,10 @@ class StickyNoteManager {
       }
     }
     // 创建便签窗口
-    const win = this._acquireWindow({
+    const win = new BrowserWindow({
       width: this.settings.defaultWidth || 300,
       height: this.settings.minHeight || 60,
+      show: false,
       x: task.position_x || undefined,
       y: task.position_y || undefined,
       alwaysOnTop: task.is_pinned === 1,
@@ -714,6 +731,7 @@ class StickyNoteManager {
         preload: path.join(__dirname, '../../preload/index.js')
       }
     });
+    win.setHasShadow(false);
 
     const html = this.generateHTML(task, id);
     win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
@@ -748,13 +766,14 @@ class StickyNoteManager {
       } else {
         console.log('[StickyNote] reminderService 未设置，跳过提醒信息加载');
       }
+      win.show();
     });
 
     win.on('close', (e) => {
       if (this._isQuitting) return; // 应用退出，让窗口正常关闭
       e.preventDefault();
       this.notes.delete(id);
-      this._releaseWindow(win);
+      win.destroy();
     });
 
     this.notes.set(id, { 
