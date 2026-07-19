@@ -12,10 +12,12 @@ const { showNameDialog } = require('./windows/nameDialog');
 const { integrateExtractionResults } = require('./services/integrationService');
 const { initOCR } = require('./services/ocrService');
 const ReminderService = require('./services/reminderService');
-const { getDeskTasks, getTimelineNotes, getTasksBySenderName } = require('../database/repositories/taskRepository');
+const { getDeskTasks, getTimelineNotes, getTasksBySenderName, deleteTimelineNote, saveTimelineNote } = require('../database/repositories/taskRepository');
 const db = require('../database/db');
 const { getEffectiveConfig, loadUserSettings } = require('./configManager');
 const { createTray, updateTrayTooltip } = require('./tray');
+const { updateContactAvatar } = require('../database/repositories/contactRepository');
+const logger = require('./utils/logger');
 
 let mainWindow = null;
 let clipboardService = null;
@@ -24,8 +26,7 @@ let stickyManager = null;
 let screenshotUtils = null;
 let yoloSenderDateService = null;
 let reminderService = null;
-
-app.isQuitting = false;
+let isQuitting = false;
 
 function registerDynamicShortcuts(shortcutConfig) {
   globalShortcut.unregisterAll();
@@ -83,7 +84,7 @@ app.whenReady().then(async () => {
   const closeToTray = effectiveConfig.general.minimizeToTray !== false;
 
   mainWindow.on('close', (event) => {
-    if (!app.isQuitting) {
+    if (!isQuitting) {
       event.preventDefault();
       if (closeToTray) {
         mainWindow.hide();
@@ -172,7 +173,6 @@ app.whenReady().then(async () => {
         restoredTimelineCount++;
       } else {
         // 该联系人没有任务，清理数据库记录
-        const { deleteTimelineNote } = require('../database/repositories/taskRepository');
         deleteTimelineNote(note.sender_name);
       }
     }
@@ -277,7 +277,7 @@ app.whenReady().then(async () => {
               if (dialogResult.contactUpdates && dialogResult.contactUpdates.length > 0) {
                 for (const update of dialogResult.contactUpdates) {
                   try {
-                    await require('../database/repositories/contactRepository').updateContactAvatar(
+                    await updateContactAvatar(
                       update.name, update.avatarHash, update.avatarBase64
                     );
                     console.log(`[main] 更新联系人[${update.name}]头像`);
@@ -420,14 +420,13 @@ app.on('will-quit', () => {
 });
 
 app.on('before-quit', () => {
-  app.isQuitting = true;
+  isQuitting = true;
   // 程序退出前保存所有时间轴便签的位置和状态
   try {
     if (stickyManager && stickyManager.notes) {
       for (const [id, note] of stickyManager.notes.entries()) {
         if (note.isTimeline && note.win && !note.win.isDestroyed()) {
           const [x, y] = note.win.getPosition();
-          const { saveTimelineNote } = require('../database/repositories/taskRepository');
           saveTimelineNote(note.senderName, note.senderAvatar, note.styleConfig, note.win.isAlwaysOnTop(), x, y, note.sortOrder || 'asc');
         }
       }

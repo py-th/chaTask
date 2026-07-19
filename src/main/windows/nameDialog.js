@@ -1,6 +1,7 @@
 const { BrowserWindow, ipcMain, app } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const { DEFAULT_AVATAR_SVG_45 } = require('../../shared/constants');
 
 function showNameDialog(messages, contacts, windowName, screenshotInfo) {
   return new Promise((resolve) => {
@@ -19,9 +20,9 @@ function showNameDialog(messages, contacts, windowName, screenshotInfo) {
       skipTaskbar: true,
       show: false,
       webPreferences: {
-        preload: null,
-        nodeIntegration: true,
-        contextIsolation: false
+        preload: path.join(__dirname, '../../preload/index.js'),
+        nodeIntegration: false,
+        contextIsolation: true
       }
     });
 
@@ -42,7 +43,7 @@ function showNameDialog(messages, contacts, windowName, screenshotInfo) {
       }
     });
 
-    const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='45' height='45' viewBox='0 0 45 45'%3E%3Ccircle cx='22.5' cy='22.5' r='22.5' fill='%23e8e8e8'/%3E%3Ccircle cx='22.5' cy='16.5' r='7' fill='none' stroke='%23888' stroke-width='2.5'/%3E%3Cpath d='M8 37.5Q22.5 26 37 37.5' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E";
+    const defaultAvatar = DEFAULT_AVATAR_SVG_45;
     const contactsJson = JSON.stringify(contacts.map(c => ({ name: c.name, avatarBase64: c.avatar_base64 })));
     const messagesJson = JSON.stringify(messages.map((m, i) => ({
       idx: i,
@@ -158,12 +159,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     var _defaultAvatar = "${defaultAvatar}";
     var _imType = "${imType}";
     var _screenshotInfo = ${screenshotJson};
-    var _ipc = null;
-    try {
-      _ipc = require('electron').ipcRenderer;
-    } catch(err) {
-      console.error('ipcRenderer加载失败:', err);
-    }
 
     function e(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
@@ -424,20 +419,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
       var result = { results: results, contactUpdates: contactUpdates };
 
-      if(_ipc) {
-        _ipc.send(_channel, result);
-      } else {
-        console.error('IPC未初始化，无法发送结果');
-      }
+      window.electronAPI.send(_channel, result);
     }
 
     function cancel(){
-      if(_ipc) {
-        _ipc.send(_channel, null);
-      } else {
-        console.error('IPC未初始化，无法取消');
-        window.close();
-      }
+      window.electronAPI.send(_channel, null);
     }
 
     // 暴露到全局

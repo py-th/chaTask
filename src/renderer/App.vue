@@ -72,6 +72,8 @@ import ConfirmDialog from './components/common/ConfirmDialog.vue'
 import GlobalToast from './components/common/GlobalToast.vue'
 import { toastBus } from './utils/toast.js'
 import { FEATURES, FEATURE_NAMES, isFeatureEnabled, showPremiumPrompt } from './utils/featureGate.js'
+import { DEFAULT_AVATAR_SVG_45 } from './shared/constants.js';
+const defaultAvatar = DEFAULT_AVATAR_SVG_45;
 import Dashboard from './views/Dashboard.vue'
 import TaskList from './views/TaskList.vue'
 import TaskViews from './views/TaskViews.vue'
@@ -96,8 +98,6 @@ const viewMetaMap = {
   settings:  { icon: '⚙️',  title: '设置中心' },
   guide:     { icon: '📖',  title: '操作指引' }
 }
-
-const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='45' height='45' viewBox='0 0 45 45'%3E%3Ccircle cx='22.5' cy='22.5' r='22.5' fill='%23e8e8e8'/%3E%3Ccircle cx='22.5' cy='16.5' r='7' fill='none' stroke='%23888' stroke-width='2.5'/%3E%3Cpath d='M8 37.5Q22.5 26 37 37.5' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"
 
 const currentView = ref('dashboard')
 const currentComponent = computed(() => viewComponents[currentView.value] || Dashboard)
@@ -146,6 +146,7 @@ let unsubscribeUpdateAvailable = null
 let unsubscribeUpdateProgress = null
 let unsubscribeUpdateDownloaded = null
 let unsubscribeReminderDialog = null
+let unsubscribeRendererConfirm = null
 
 async function switchView(viewId) {
   if (viewId === 'taskviews' && !isFeatureEnabled(FEATURES.TASK_VIEWS)) {
@@ -390,6 +391,12 @@ onMounted(async () => {
     window.electronAPI.openReminderDialog(taskId)
   })
 
+  // 监听主进程请求，在渲染层显示确认对话框
+  unsubscribeRendererConfirm = window.electronAPI.on('show-renderer-confirm', async (event, { id, options }) => {
+    const result = await window.$confirm(options)
+    window.electronAPI.send(`renderer-confirm-result-${id}`, { result })
+  })
+
   try {
     const screenshotConfig = await window.electronAPI.getScreenshotConfig()
     if (screenshotConfig) {
@@ -408,6 +415,7 @@ onUnmounted(() => {
   if (unsubscribeUpdateProgress) unsubscribeUpdateProgress()
   if (unsubscribeUpdateDownloaded) unsubscribeUpdateDownloaded()
   if (unsubscribeReminderDialog) unsubscribeReminderDialog()
+  if (unsubscribeRendererConfirm) unsubscribeRendererConfirm()
 })
 </script>
 

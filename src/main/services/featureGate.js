@@ -1,22 +1,7 @@
 // src/main/services/featureGate.js
 // 功能开关服务（阶段 0：基础版，所有 Pro 功能均锁定）
 const { showConfirmDialog } = require('../windows/confirmDialog');
-
-const FEATURES = {
-  TASK_VIEWS: 'taskViews',
-  SKIN_TEMPLATES: 'skinTemplates',
-  TOOLBOX_COUNTDOWN: 'toolboxCountdown',
-  TOOLBOX_POMODORO: 'toolboxPomodoro',
-  TOOLBOX_SHUTDOWN: 'toolboxShutdown'
-};
-
-const FEATURE_NAMES = {
-  [FEATURES.TASK_VIEWS]: '任务视图',
-  [FEATURES.SKIN_TEMPLATES]: '皮肤模板',
-  [FEATURES.TOOLBOX_COUNTDOWN]: '桌面倒计时',
-  [FEATURES.TOOLBOX_POMODORO]: '番茄时钟',
-  [FEATURES.TOOLBOX_SHUTDOWN]: '定时关机'
-};
+const { FEATURES, FEATURE_NAMES } = require('../../shared/constants');
 
 // 阶段 0：所有增值功能均未解锁，后续可接入订阅服务动态返回
 function isFeatureEnabled(featureId) {

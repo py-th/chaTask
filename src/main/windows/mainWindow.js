@@ -2,20 +2,7 @@
 const { BrowserWindow, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
-
-function getResourcePath(...relativePaths) {
-  if (process.resourcesPath) {
-    const prodPath = path.join(process.resourcesPath, ...relativePaths);
-    if (fs.existsSync(prodPath)) {
-      return prodPath;
-    }
-  }
-  const devPath = path.join(process.cwd(), 'public', ...relativePaths);
-  if (fs.existsSync(devPath)) {
-    return devPath;
-  }
-  return path.join(process.cwd(), 'public', ...relativePaths);
-}
+const { getResourcePath } = require('../utils/resourcePath');
 
 function createAppIcon() {
   const icon48 = getResourcePath('resource', 'desk_icon48.png');

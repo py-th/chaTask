@@ -67,7 +67,7 @@ class StickyMenu {
             title: '确认删除',
             message: '确定要删除这个任务吗？',
             detail: '删除后任务将移动到回收站，您可以在回收站中恢复。',
-            type: 'warning',
+            type: 'danger',
             confirmText: '删除',
             cancelText: '取消'
           });

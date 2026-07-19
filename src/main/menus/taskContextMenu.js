@@ -2,7 +2,7 @@
 const { Menu, clipboard } = require('electron');
 const { updateTask, getTaskById, deleteTask } = require('../../database/repositories/taskRepository');
 const { deleteReminderRulesByTaskId, deleteReminderLogsByTaskId } = require('../../database/repositories/reminderRepository');
-const { showConfirmDialog } = require('../windows/confirmDialog');
+const { showRendererConfirmDialog } = require('../utils/rendererConfirmDialog');
 
 class TaskContextMenu {
   constructor(mainWindow, stickyManager) {
@@ -136,7 +136,7 @@ class TaskContextMenu {
       template.push({
         label: '💣 彻底删除',
         click: async () => {
-          const confirmed = await showConfirmDialog(this.mainWindow, {
+          const confirmed = await showRendererConfirmDialog(this.mainWindow, {
             title: '确认彻底删除',
             message: '确定要彻底删除这个任务吗？',
             detail: '此操作不可恢复，请谨慎操作！',
@@ -159,11 +159,11 @@ class TaskContextMenu {
       template.push({
         label: '🗑️ 删除',
         click: async () => {
-          const confirmed = await showConfirmDialog(this.mainWindow, {
+          const confirmed = await showRendererConfirmDialog(this.mainWindow, {
             title: '确认删除',
             message: '确定要删除这个任务吗？',
             detail: '删除后任务将移动到回收站，您可以在回收站中恢复。',
-            type: 'warning',
+            type: 'danger',
             confirmText: '删除',
             cancelText: '取消'
           });

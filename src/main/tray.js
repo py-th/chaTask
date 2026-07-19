@@ -1,22 +1,9 @@
 const { Tray, Menu, nativeImage, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { getResourcePath } = require('./utils/resourcePath');
 
 let tray = null;
-
-function getResourcePath(...relativePaths) {
-  if (process.resourcesPath) {
-    const prodPath = path.join(process.resourcesPath, ...relativePaths);
-    if (fs.existsSync(prodPath)) {
-      return prodPath;
-    }
-  }
-  const devPath = path.join(process.cwd(), 'public', ...relativePaths);
-  if (fs.existsSync(devPath)) {
-    return devPath;
-  }
-  return path.join(process.cwd(), 'public', ...relativePaths);
-}
 
 function createTrayIcon() {
   const iconPath = getResourcePath('resource', 'tray_icon32.png');

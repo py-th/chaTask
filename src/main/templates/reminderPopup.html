@@ -285,13 +285,11 @@
   </div>
 
   <script>
-    const { ipcRenderer } = require('electron');
-
     let currentTaskId = null;
     let currentNoteId = null;
     let actionHandled = false;
 
-    ipcRenderer.on('show-reminder-popup', (event, data) => {
+    window.electronAPI.on('show-reminder-popup', (event, data) => {
       currentTaskId = data.taskId;
       currentNoteId = data.noteId;
       actionHandled = false;
@@ -349,7 +347,7 @@
 
     function handleAction(action) {
       actionHandled = true;
-      ipcRenderer.invoke('reminder-action', {
+      window.electronAPI.invoke('reminder-action', {
         taskId: currentTaskId,
         action: action,
         noteId: currentNoteId
@@ -359,7 +357,7 @@
 
     function handleSnooze(minutes) {
       actionHandled = true;
-      ipcRenderer.invoke('reminder-action', {
+      window.electronAPI.invoke('reminder-action', {
         taskId: currentTaskId,
         action: 'snooze',
         noteId: currentNoteId,
@@ -370,7 +368,7 @@
 
     window.addEventListener('beforeunload', () => {
       if (currentTaskId && !actionHandled) {
-        ipcRenderer.invoke('reminder-action', {
+        window.electronAPI.invoke('reminder-action', {
           taskId: currentTaskId,
           action: 'dismiss',
           noteId: currentNoteId
@@ -379,7 +377,7 @@
     });
 
     function minimizeWindow() {
-      ipcRenderer.send('minimize-reminder-popup');
+      window.electronAPI.send('minimize-reminder-popup');
     }
   </script>
 </body>

@@ -142,8 +142,6 @@
   </div>
 
   <script>
-    const { ipcRenderer } = require('electron');
-
     const iconMap = {
       warning: '⚠️',
       danger: '💣',
@@ -151,7 +149,7 @@
       success: '✅'
     };
 
-    ipcRenderer.on('dialog-data', (event, data) => {
+    window.electronAPI.on('dialog-data', (event, data) => {
       document.getElementById('title').textContent = data.title || '确认';
       document.getElementById('message').textContent = data.message || '';
       document.getElementById('detail').textContent = data.detail || '';
@@ -173,21 +171,19 @@
     });
 
     function handleConfirm() {
-      ipcRenderer.send('confirm-dialog-result', true);
+      window.electronAPI.send('confirm-dialog-result', true);
     }
 
     function handleCancel() {
-      ipcRenderer.send('confirm-dialog-result', false);
+      window.electronAPI.send('confirm-dialog-result', false);
     }
 
-    // 点击遮罩关闭
     document.getElementById('overlay').addEventListener('click', (e) => {
       if (e.target.id === 'overlay') {
         handleCancel();
       }
     });
 
-    // ESC 关闭
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         handleCancel();

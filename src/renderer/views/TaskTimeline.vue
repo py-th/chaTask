@@ -55,8 +55,8 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-
-const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='45' height='45' viewBox='0 0 45 45'%3E%3Ccircle cx='22.5' cy='22.5' r='22.5' fill='%23e8e8e8'/%3E%3Ccircle cx='22.5' cy='16.5' r='7' fill='none' stroke='%23888' stroke-width='2.5'/%3E%3Cpath d='M8 37.5Q22.5 26 37 37.5' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E"
+import { DEFAULT_AVATAR_SVG_45 } from '../shared/constants.js';
+const defaultAvatar = DEFAULT_AVATAR_SVG_45;
 
 const allTasks = ref([])
 

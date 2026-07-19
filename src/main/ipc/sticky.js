@@ -42,22 +42,20 @@ function registerStickyHandlers(mainWindow, stickyManager, screenshotUtils, remi
 
   let currentDraggingNoteId = null;
   let reminderDialogWindows = new Map(); // taskId -> dialogWindow
+  const dragStateMap = new Map(); // noteId -> { startScreenX, startScreenY, winX, winY }
 
   ipcMain.on('start-sticky-drag', (event, noteId, startScreenX, startScreenY) => {
     const note = stickyManager.notes.get(noteId);
     if (!note || note.win.isDestroyed()) return;
 
-    // 可能触发展开（内部会同步改变窗口位置）
     stickyManager.startDrag(noteId, startScreenX, startScreenY);
 
-    // 重新获取展开后的窗口位置
     const [winX, winY] = note.win.getPosition();
-    if (!global.dragState) global.dragState = {};
-    global.dragState[noteId] = { startScreenX, startScreenY, winX, winY };
+    dragStateMap.set(noteId, { startScreenX, startScreenY, winX, winY });
 });
 
 ipcMain.on('sticky-drag-move', (event, noteId, screenX, screenY) => {
-    const state = global.dragState?.[noteId];
+    const state = dragStateMap.get(noteId);
     if (!state) return;
     const note = stickyManager.notes.get(noteId);
     if (!note || note.win.isDestroyed()) return;
@@ -68,7 +66,7 @@ ipcMain.on('sticky-drag-move', (event, noteId, screenX, screenY) => {
 });
 
 ipcMain.on('sticky-drag-end', (event, noteId) => {
-    if (global.dragState) delete global.dragState[noteId];
+    dragStateMap.delete(noteId);
     stickyManager.endDrag(noteId);
 });
 
@@ -491,15 +489,25 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
         style_config: JSON.stringify(styleConfig),
         opacity: styleConfig.opacity
       };
-      
-      // 如果用户设置了背景颜色，保存到 task.color 字段
+
+      // 用户设置了背景颜色则保存到 task.color；重置时清空 task.color，让默认优先级色生效
       if (styleConfig.bgColor && styleConfig.bgColor.trim()) {
         updateData.color = styleConfig.bgColor;
         console.log('[Sticky] 保存背景颜色到 task.color:', styleConfig.bgColor);
+      } else {
+        updateData.color = null;
       }
-      
+
       await updateTask(taskId, updateData);
       console.log('[Sticky] 样式配置已保存:', styleConfig);
+
+      // 重置背景色后，通知当前便签恢复优先级默认色
+      if (!styleConfig.bgColor || !styleConfig.bgColor.trim()) {
+        const task = getTaskById(taskId);
+        if (task && event.sender && !event.sender.isDestroyed()) {
+          event.sender.send('update-priority', task.priority || 'none');
+        }
+      }
     } catch (err) {
       console.error('[Sticky] 保存样式配置失败:', err);
     }

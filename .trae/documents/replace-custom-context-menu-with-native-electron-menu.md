@@ -10,44 +10,65 @@
 
 ### 已完成（无需改动）
 
-- `src/main/menus/taskContextMenu.js`：原生菜单构建类，支持 详情/添加到桌面/从桌面隐藏/复制文本/提醒设置/恢复/删除/彻底删除。
-- `src/main/ipc/taskContextMenu.js`：注册 `show-task-context-menu` 事件。
-- `src/main/ipc/index.js`：已注册 `registerTaskContextMenuHandlers`。
-- `src/preload/index.js`：已暴露 `showTaskContextMenu`、`onOpenTaskDetail`、`onOpenTaskReminderDialog`。
-- `src/renderer/App.vue`：已订阅 `open-task-reminder-dialog` 并打开提醒设置窗口。
+* `src/main/menus/taskContextMenu.js`：原生菜单构建类，支持 详情/添加到桌面/从桌面隐藏/复制文本/提醒设置/恢复/删除/彻底删除。
+
+* `src/main/ipc/taskContextMenu.js`：注册 `show-task-context-menu` 事件。
+
+* `src/main/ipc/index.js`：已注册 `registerTaskContextMenuHandlers`。
+
+* `src/preload/index.js`：已暴露 `showTaskContextMenu`、`onOpenTaskDetail`、`onOpenTaskReminderDialog`。
+
+* `src/renderer/App.vue`：已订阅 `open-task-reminder-dialog` 并打开提醒设置窗口。
 
 ### 仍使用旧实现（需要改动）
 
-- `src/renderer/views/TaskList.vue`
-  - 仍 `import TaskContextMenu from '../components/common/TaskContextMenu.vue'`
-  - 模板中仍有 `<TaskContextMenu ... />`
-  - 仍维护 `contextMenuVisible`、`contextMenuPosition`、`contextMenuTask` 等状态与 `handleContextMenuAction`
-  - `showContextMenu` 需要改为调用 `window.electronAPI.showTaskContextMenu`
-  - 需要新增监听主进程 `open-task-detail` 事件，用于打开本视图详情面板
+* `src/renderer/views/TaskList.vue`
 
-- `src/renderer/views/TaskTimeline.vue`、`src/renderer/views/TaskCalendar.vue`、`src/renderer/views/TaskQuadrant.vue`
-  - 同样仍使用 `<TaskContextMenu>` 与相关状态/处理函数
-  - 需要改为调用原生菜单，并订阅 `refresh-task-list` 以在菜单操作后刷新列表
-  - 视图专属的上下文处理函数（`contextCreateSticky`、`contextHideSticky`、`contextRestoreTask`、`contextSoftDeleteTask`、`contextPermanentDeleteTask`）可删除
+  * 仍 `import TaskContextMenu from '../components/common/TaskContextMenu.vue'`
+
+  * 模板中仍有 `<TaskContextMenu ... />`
+
+  * 仍维护 `contextMenuVisible`、`contextMenuPosition`、`contextMenuTask` 等状态与 `handleContextMenuAction`
+
+  * `showContextMenu` 需要改为调用 `window.electronAPI.showTaskContextMenu`
+
+  * 需要新增监听主进程 `open-task-detail` 事件，用于打开本视图详情面板
+
+* `src/renderer/views/TaskTimeline.vue`、`src/renderer/views/TaskCalendar.vue`、`src/renderer/views/TaskQuadrant.vue`
+
+  * 同样仍使用 `<TaskContextMenu>` 与相关状态/处理函数
+
+  * 需要改为调用原生菜单，并订阅 `refresh-task-list` 以在菜单操作后刷新列表
+
+  * 视图专属的上下文处理函数（`contextCreateSticky`、`contextHideSticky`、`contextRestoreTask`、`contextSoftDeleteTask`、`contextPermanentDeleteTask`）可删除
 
 ### 待删除文件
 
-- `src/renderer/components/common/TaskContextMenu.vue`
-- `src/renderer/composables/useTaskContextMenu.js`
+* `src/renderer/components/common/TaskContextMenu.vue`
+
+* `src/renderer/composables/useTaskContextMenu.js`
 
 ## 三、具体改动方案
 
 ### 1. TaskList.vue
 
-- **移除导入**：删除 `import TaskContextMenu from '../components/common/TaskContextMenu.vue'`。
-- **移除模板**：删除 `<TaskContextMenu ... />` 组件调用。
-- **移除状态与函数**：删除以下代码块：
-  - `contextMenuVisible`、`contextMenuPosition`、`contextMenuTask`
-  - `showContextMenu(event, task)` 的旧实现
-  - `hideContextMenu()`
-  - `handleContextMenuAction({ type, task })`
-  - 仅被旧菜单调用的辅助函数：`softDeleteTask`、`restoreTask`、`permanentDelete`、`removeFromDesktop`、`copyTaskText`、`createSticky`
-- **新增原生菜单调用**：在 `@contextmenu` 处改为：
+* **移除导入**：删除 `import TaskContextMenu from '../components/common/TaskContextMenu.vue'`。
+
+* **移除模板**：删除 `<TaskContextMenu ... />` 组件调用。
+
+* **移除状态与函数**：删除以下代码块：
+
+  * `contextMenuVisible`、`contextMenuPosition`、`contextMenuTask`
+
+  * `showContextMenu(event, task)` 的旧实现
+
+  * `hideContextMenu()`
+
+  * `handleContextMenuAction({ type, task })`
+
+  * 仅被旧菜单调用的辅助函数：`softDeleteTask`、`restoreTask`、`permanentDelete`、`removeFromDesktop`、`copyTaskText`、`createSticky`
+
+* **新增原生菜单调用**：在 `@contextmenu` 处改为：
 
   ```js
   function showContextMenu(event, task) {
@@ -57,7 +78,7 @@
   }
   ```
 
-- **新增详情事件监听**：
+* **新增详情事件监听**：
 
   ```js
   let unregisterOpenDetail = null
@@ -83,10 +104,13 @@
 
 ### 2. TaskTimeline.vue
 
-- **移除导入**：删除 `TaskContextMenu` 导入。
-- **移除模板**：删除 `<TaskContextMenu ... />`。
-- **移除状态与函数**：删除 `contextMenuVisible`、`contextMenuPosition`、`contextMenuTask`、`showContextMenu`、`hideContextMenu`、`handleContextMenuAction`，以及 `contextCreateSticky`、`contextHideSticky`、`contextRestoreTask`、`contextSoftDeleteTask`、`contextPermanentDeleteTask`。
-- **新增原生菜单调用**：
+* **移除导入**：删除 `TaskContextMenu` 导入。
+
+* **移除模板**：删除 `<TaskContextMenu ... />`。
+
+* **移除状态与函数**：删除 `contextMenuVisible`、`contextMenuPosition`、`contextMenuTask`、`showContextMenu`、`hideContextMenu`、`handleContextMenuAction`，以及 `contextCreateSticky`、`contextHideSticky`、`contextRestoreTask`、`contextSoftDeleteTask`、`contextPermanentDeleteTask`。
+
+* **新增原生菜单调用**：
 
   ```js
   function showContextMenu(event, task) {
@@ -96,7 +120,7 @@
   }
   ```
 
-- **保留并修复 `createSticky(task)`**：该函数仍被“📌 便签”按钮使用。改为：
+* **保留并修复** **`createSticky(task)`**：该函数仍被“📌 便签”按钮使用。改为：
 
   ```js
   async function createSticky(task) {
@@ -109,7 +133,7 @@
   }
   ```
 
-- **新增生命周期监听**：导入 `onUnmounted`，在 `onMounted` 中订阅 `refresh-task-list`：
+* **新增生命周期监听**：导入 `onUnmounted`，在 `onMounted` 中订阅 `refresh-task-list`：
 
   ```js
   let unregisterRefresh = null
@@ -128,25 +152,35 @@
 
 ### 3. TaskCalendar.vue
 
-- 改动与 `TaskTimeline.vue` 基本一致：
-  - 删除 `TaskContextMenu` 相关代码。
-  - `showContextMenu` 改为调用 `window.electronAPI.showTaskContextMenu(task.id, event.clientX, event.clientY, 'calendar')`。
-  - 删除 `contextCreateSticky`、`contextHideSticky`、`contextRestoreTask`、`contextSoftDeleteTask`、`contextPermanentDeleteTask`。
-  - 保留 `createSticky(task)` 按钮处理函数，并补充 `updateTask({ is_show_desk: 1 })` 与 `loadTasks()`。
-  - 在 `onMounted` 中订阅 `refresh-task-list`，在 `onUnmounted` 中取消订阅。
+* 改动与 `TaskTimeline.vue` 基本一致：
+
+  * 删除 `TaskContextMenu` 相关代码。
+
+  * `showContextMenu` 改为调用 `window.electronAPI.showTaskContextMenu(task.id, event.clientX, event.clientY, 'calendar')`。
+
+  * 删除 `contextCreateSticky`、`contextHideSticky`、`contextRestoreTask`、`contextSoftDeleteTask`、`contextPermanentDeleteTask`。
+
+  * 保留 `createSticky(task)` 按钮处理函数，并补充 `updateTask({ is_show_desk: 1 })` 与 `loadTasks()`。
+
+  * 在 `onMounted` 中订阅 `refresh-task-list`，在 `onUnmounted` 中取消订阅。
 
 ### 4. TaskQuadrant.vue
 
-- 删除 `TaskContextMenu` 相关代码。
-- `showContextMenu` 改为调用 `window.electronAPI.showTaskContextMenu(task.id, event.clientX, event.clientY, 'quadrant')`。
-- 删除 `contextCreateSticky`、`contextHideSticky`、`contextRestoreTask`、`contextSoftDeleteTask`、`contextPermanentDeleteTask`。
-- 在 `onMounted` 中订阅 `refresh-task-list`，在 `onUnmounted` 中取消订阅。
+* 删除 `TaskContextMenu` 相关代码。
+
+* `showContextMenu` 改为调用 `window.electronAPI.showTaskContextMenu(task.id, event.clientX, event.clientY, 'quadrant')`。
+
+* 删除 `contextCreateSticky`、`contextHideSticky`、`contextRestoreTask`、`contextSoftDeleteTask`、`contextPermanentDeleteTask`。
+
+* 在 `onMounted` 中订阅 `refresh-task-list`，在 `onUnmounted` 中取消订阅。
 
 ### 5. 删除旧文件
 
-- 确认上述 4 个视图不再引用后，删除：
-  - `src/renderer/components/common/TaskContextMenu.vue`
-  - `src/renderer/composables/useTaskContextMenu.js`
+* 确认上述 4 个视图不再引用后，删除：
+
+  * `src/renderer/components/common/TaskContextMenu.vue`
+
+  * `src/renderer/composables/useTaskContextMenu.js`
 
 ## 四、假设与决策
 
@@ -160,17 +194,29 @@
 
 1. **编译与启动**：运行 `npm run dev`（或项目等价命令），确认无编译错误。
 2. **任务列表视图**：
-   - 在任务卡片上右键，确认弹出系统原生菜单。
-   - 测试“详情”是否打开详情面板。
-   - 测试“添加到桌面 / 从桌面隐藏”后，任务卡片上的 📌 标记与桌面便签同步变化。
-   - 测试“复制文本”后剪贴板内容正确。
-   - 测试“提醒设置”打开提醒对话框。
-   - 在回收站任务上测试“恢复”与“彻底删除”。
-   - 在正常任务上测试“删除”后任务进入回收站并关闭桌面便签。
+
+   * 在任务卡片上右键，确认弹出系统原生菜单。
+
+   * 测试“详情”是否打开详情面板。
+
+   * 测试“添加到桌面 / 从桌面隐藏”后，任务卡片上的 📌 标记与桌面便签同步变化。
+
+   * 测试“复制文本”后剪贴板内容正确。
+
+   * 测试“提醒设置”打开提醒对话框。
+
+   * 在回收站任务上测试“恢复”与“彻底删除”。
+
+   * 在正常任务上测试“删除”后任务进入回收站并关闭桌面便签。
 3. **时间轴 / 日历 / 四象限视图**：
-   - 右键任务卡片弹出原生菜单。
-   - 测试删除、恢复、添加到桌面/隐藏后，对应视图数据自动刷新。
+
+   * 右键任务卡片弹出原生菜单。
+
+   * 测试删除、恢复、添加到桌面/隐藏后，对应视图数据自动刷新。
 4. **清理检查**：
-   - 确认 `src/renderer/components/common/TaskContextMenu.vue` 与 `src/renderer/composables/useTaskContextMenu.js` 已删除。
-   - 全局搜索 `TaskContextMenu` 与 `useTaskContextMenu`，确认无残留引用。
+
+   * 确认 `src/renderer/components/common/TaskContextMenu.vue` 与 `src/renderer/composables/useTaskContextMenu.js` 已删除。
+
+   * 全局搜索 `TaskContextMenu` 与 `useTaskContextMenu`，确认无残留引用。
 5. **回归测试**：截图创建新任务后，主程序各视图仍正常显示；桌面便签右键菜单不受本次改动影响。
+

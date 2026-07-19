@@ -22,8 +22,9 @@ function showConfirmDialog(parentWindow, options = {}) {
       show: false,
       alwaysOnTop: true,
       webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, '../../preload/index.js')
       }
     };
 

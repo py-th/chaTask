@@ -22,7 +22,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // 便签相关
   send: (channel, ...args) => ipcRenderer.send(channel, ...args),
-  on: (channel, listener) => ipcRenderer.on(channel, listener),
+  on: (channel, listener) => {
+    ipcRenderer.on(channel, listener);
+    return () => ipcRenderer.removeListener(channel, listener);
+  },
   invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
   createStickyNote: (data) => ipcRenderer.invoke('create-sticky-note', data),
   hideNote: (taskId) => ipcRenderer.send('hide-note', { taskId }),

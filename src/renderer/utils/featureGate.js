@@ -1,21 +1,9 @@
 // src/renderer/utils/featureGate.js
 // 功能开关（阶段 0：基础版，所有 Pro 功能均锁定）
+// 从共享常量导入，与主进程保持一致
+import { FEATURES, FEATURE_NAMES } from '../shared/constants.js';
 
-export const FEATURES = {
-  TASK_VIEWS: 'taskViews',
-  SKIN_TEMPLATES: 'skinTemplates',
-  TOOLBOX_COUNTDOWN: 'toolboxCountdown',
-  TOOLBOX_POMODORO: 'toolboxPomodoro',
-  TOOLBOX_SHUTDOWN: 'toolboxShutdown'
-};
-
-export const FEATURE_NAMES = {
-  [FEATURES.TASK_VIEWS]: '任务视图',
-  [FEATURES.SKIN_TEMPLATES]: '皮肤模板',
-  [FEATURES.TOOLBOX_COUNTDOWN]: '桌面倒计时',
-  [FEATURES.TOOLBOX_POMODORO]: '番茄时钟',
-  [FEATURES.TOOLBOX_SHUTDOWN]: '定时关机'
-};
+export { FEATURES, FEATURE_NAMES };
 
 // 后续接入订阅时，只需把 isFeatureEnabled() 改为读取用户订阅状态即可，
 // 所有加锁点无需改动。

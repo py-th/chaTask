@@ -9,7 +9,7 @@ const {
   updateTask,
   deleteTask
 } = require('../../database/repositories/taskRepository');
-const { saveContact, findContactByName } = require('../../database/repositories/contactRepository');
+const { saveContact, findContactByName, updateContactTaskCount, updateContactSource } = require('../../database/repositories/contactRepository');
 const { computeImageHash } = require('../utils/hash');
 
 class TaskService {
@@ -37,17 +37,11 @@ class TaskService {
     // 如果有发送者名称，自动创建/更新联系人，保持 source 一致
     if (task.senderName) {
       try {
-        const { updateContactTaskCount } = require('../../database/repositories/contactRepository');
         const existingContact = findContactByName(task.senderName);
         
         if (existingContact) {
-          // 如果联系人已存在，更新其 source 字段（保持一致）
-          const stmt = require('../../database/db').prepare(`
-            UPDATE contacts SET source = ? WHERE id = ?
-          `);
-          stmt.run(task.source || 'unknow', existingContact.id);
-          
-          // 更新联系人的任务计数
+          // 更新联系人 source 字段（保持一致）
+          updateContactSource(existingContact.id, task.source || 'unknow');
           updateContactTaskCount(task.senderName);
         } else {
           // 如果联系人不存在，创建新联系人
@@ -114,7 +108,6 @@ class TaskService {
     // 如果有发送者名称，更新其任务计数
     if (senderName) {
       try {
-        const { updateContactTaskCount } = require('../../database/repositories/contactRepository');
         updateContactTaskCount(senderName);
       } catch (err) {
         console.error('[TaskService] 更新联系人任务计数失败:', err);
@@ -139,7 +132,6 @@ class TaskService {
     // 如果有发送者名称，更新其任务计数
     if (senderName) {
       try {
-        const { updateContactTaskCount } = require('../../database/repositories/contactRepository');
         updateContactTaskCount(senderName);
       } catch (err) {
         console.error('[TaskService] 更新联系人任务计数失败:', err);

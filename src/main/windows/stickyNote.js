@@ -1,36 +1,17 @@
 // src/main/windows/stickyNote.js
-const { BrowserWindow, screen, nativeImage } = require('electron');
+const { BrowserWindow, screen, nativeImage, app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { getReminderRuleByTaskId } = require('../../database/repositories/reminderRepository');
 const { updateTask, saveTimelineNote, deleteTimelineNote, hideTimelineNote, getTimelineSortOrder } = require('../../database/repositories/taskRepository');
 const { loadUserSettings } = require('../configManager');
 const { getDefaultSingleSkin, getDefaultTimelineSkin } = require('../services/skinService');
+const { escapeHtml } = require('../../shared/utils');
+const { DEFAULT_AVATAR_SVG_45, DEFAULT_AVATAR_SVG_40, PRIORITY_COLORS } = require('../../shared/constants');
+const { getResourcePath } = require('../utils/resourcePath');
 
 function getStickyIconPath() {
-  // 优先使用 48x48 图标，任务栏显示效果较好
-  if (process.resourcesPath) {
-    const prodPath = path.join(process.resourcesPath, 'resource', 'tray_icon48.png');
-    if (fs.existsSync(prodPath)) {
-      return prodPath;
-    }
-  }
-  const devPath = path.join(process.cwd(), 'public', 'resource', 'tray_icon48.png');
-  if (fs.existsSync(devPath)) {
-    return devPath;
-  }
-  // 降级使用 32x32
-  if (process.resourcesPath) {
-    const prodPath32 = path.join(process.resourcesPath, 'resource', 'tray_icon32.png');
-    if (fs.existsSync(prodPath32)) {
-      return prodPath32;
-    }
-  }
-  const devPath32 = path.join(process.cwd(), 'public', 'resource', 'tray_icon32.png');
-  if (fs.existsSync(devPath32)) {
-    return devPath32;
-  }
-  return null;
+  return getResourcePath('resource', 'tray_icon48.png') || getResourcePath('resource', 'tray_icon32.png') || null;
 }
 
 function formatDateTime(isoString) {
@@ -61,6 +42,10 @@ class StickyNoteManager {
     this.timelineTemplatePath = path.join(__dirname, '../templates/stickyTimelineTemplate.html');
     this.timelineScriptPath = path.join(__dirname, '../templates/stickyTimelineScript.js');
     this.reminderService = reminderService;
+    this._windowPool = [];      // 窗口对象池：存储可复用的 BrowserWindow
+    this._maxPoolSize = 5;      // 池最大容量，避免内存浪费
+    this._isQuitting = false;   // 应用退出标记，退出时不拦截 close 事件
+    app.on('before-quit', () => { this._isQuitting = true; });
     this.settings = {
       edgeSnap: true,
       edgeSnapThreshold: 10,
@@ -81,6 +66,55 @@ class StickyNoteManager {
       } catch (err) {
         console.error('[StickyNote] 加载便签图标失败:', err);
       }
+    }
+  }
+
+  // 从对象池获取窗口，池空时新建
+  _acquireWindow(winOptions) {
+    let win;
+    if (this._windowPool.length > 0) {
+      win = this._windowPool.pop();
+      // 恢复窗口基本属性
+      if (winOptions.width && winOptions.height) {
+        win.setSize(winOptions.width, winOptions.height);
+      }
+      if (winOptions.x != null && winOptions.y != null) {
+        win.setPosition(winOptions.x, winOptions.y);
+      }
+      win.setAlwaysOnTop(winOptions.alwaysOnTop || false);
+      if (winOptions.skipTaskbar !== undefined) {
+        win.setSkipTaskbar(winOptions.skipTaskbar);
+      }
+      if (winOptions.resizable !== undefined) {
+        win.setResizable(winOptions.resizable);
+      }
+      if (winOptions.minWidth && winOptions.minHeight) {
+        win.setMinimumSize(winOptions.minWidth, winOptions.minHeight);
+      }
+      if (winOptions.icon) {
+        win.setIcon(winOptions.icon);
+      }
+      win.show();
+    } else {
+      win = new BrowserWindow(winOptions);
+      win.setHasShadow(false);
+    }
+    return win;
+  }
+
+  // 将窗口归还对象池，池满时销毁
+  _releaseWindow(win) {
+    if (!win || win.isDestroyed()) return;
+    win.removeAllListeners();
+    if (win.webContents && !win.webContents.isDestroyed()) {
+      win.webContents.removeAllListeners();
+    }
+    delete win._stickyNoteId;
+    if (this._windowPool.length < this._maxPoolSize) {
+      win.hide();
+      this._windowPool.push(win);
+    } else {
+      win.destroy();
     }
   }
 
@@ -227,15 +261,6 @@ class StickyNoteManager {
       let template = fs.readFileSync(this.templatePath, 'utf8');
       const scriptContent = fs.readFileSync(this.scriptPath, 'utf8');
       
-      // 转义函数
-      const escapeHtml = (str) => {
-        if (!str) return '';
-        return str.replace(/[&<>"'/]/g, (tag) => {
-          const escapeMap = { '&': '&amp;', '<': '&gt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;' };
-          return escapeMap[tag] || tag;
-        });
-      };
-
       // 获取状态图标（与折叠时头像上显示的一致）
       const getStatusIcon = (status) => {
         switch (status) {
@@ -280,18 +305,8 @@ class StickyNoteManager {
         }
       };
 
-      // 获取优先级颜色（仅作为默认颜色）
-      const getPriorityDefaultColor = (priority) => {
-        switch (priority) {
-          case 'high': return '#ffcccc';
-          case 'medium': return '#cce5ff';
-          case 'low': return '#ccffcc';
-          default: return 'rgba(255,249,196,0.95)';
-        }
-      };
-
       // 获取便签背景色：用户手动设置 > 优先级默认颜色
-      const priorityDefaultColor = getPriorityDefaultColor(task.priority);
+      const priorityDefaultColor = PRIORITY_COLORS[task.priority] || PRIORITY_COLORS.none;
       const noteBackgroundColor = task.color && task.color.trim() ? task.color : priorityDefaultColor;
 
       // 获取状态图标
@@ -305,10 +320,9 @@ class StickyNoteManager {
       }
 
       // 头像图片 - 使用实际背景色
-      const defaultAvatarSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='45' height='45' viewBox='0 0 45 45'%3E%3Ccircle cx='22.5' cy='22.5' r='22.5' fill='%23e8e8e8'/%3E%3Ccircle cx='22.5' cy='16.5' r='7' fill='none' stroke='%23888' stroke-width='2.5'/%3E%3Cpath d='M8 37.5Q22.5 26 37 37.5' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E";
       const avatarImg = task.sender_avatar ? 
         `<img class="avatar" src="${escapeHtml(task.sender_avatar)}" style="border: 2px solid ${noteBackgroundColor};" />` : 
-        `<img class="avatar" src="${defaultAvatarSvg}" style="border: 2px solid ${noteBackgroundColor};" />`;
+        `<img class="avatar" src="${DEFAULT_AVATAR_SVG_45}" style="border: 2px solid ${noteBackgroundColor};" />`;
       
         // 截止日期文本
       const dueDateText = task.due_date ? new Date(task.due_date).toLocaleDateString() : '未设置';
@@ -413,14 +427,6 @@ class StickyNoteManager {
         });
       }
 
-      const escapeHtml = (str) => {
-        if (!str) return '';
-        return str.replace(/[&<>"'/]/g, (tag) => {
-          const escapeMap = { '&': '&amp;', '<': '&gt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;' };
-          return escapeMap[tag] || tag;
-        });
-      };
-
       const getStatusText = (status) => {
         switch (status) {
           case 'pending': return '待办';
@@ -441,10 +447,9 @@ class StickyNoteManager {
       };
 
       // 头像
-      const defaultAvatarSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 45 45'%3E%3Ccircle cx='22.5' cy='22.5' r='22.5' fill='%23e8e8e8'/%3E%3Ccircle cx='22.5' cy='16.5' r='7' fill='none' stroke='%23888' stroke-width='2.5'/%3E%3Cpath d='M8 37.5Q22.5 26 37 37.5' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E";
       const avatarImg = senderAvatar
         ? `<img class="avatar" src="${escapeHtml(senderAvatar)}" />`
-        : `<img class="avatar" src="${defaultAvatarSvg}" />`;
+        : `<img class="avatar" src="${DEFAULT_AVATAR_SVG_40}" />`;
 
       // 构建任务列表 HTML
       let timelineItemsHtml = '';
@@ -580,11 +585,7 @@ class StickyNoteManager {
       winOptions.alwaysOnTop = true;
     }
 
-    const win = new BrowserWindow(winOptions);
-    // 关闭窗口阴影
-    //win.setFrame(false);
-    //win.setAlwaysOnTop(true);
-    win.setHasShadow(false);
+    const win = this._acquireWindow(winOptions);
     const initialStyleConfig = options.styleConfig || { opacity: 1, bgColor: '' };
     const initialSortOrder = options.sortOrder || getTimelineSortOrder(senderName) || 'asc';
 
@@ -621,11 +622,24 @@ class StickyNoteManager {
       }
     };
 
-    // 关闭前保存状态
-    win.on('close', saveTimelineState);
-
-    win.on('closed', () => {
+    // 关闭时：保存状态 → 清理注册 → 窗口归还对象池（应用退出时不拦截）
+    win.on('close', (e) => {
+      if (this._isQuitting) return; // 应用退出，让窗口正常关闭
+      e.preventDefault();
+      const n = this.notes.get(id);
+      if (!n) return;
+      // 非 deleteNote 触发的关闭（如直接点击关闭），需要保存状态
+      if (n.isTimeline && !n._closing) {
+        try {
+          const [x, y] = win.getPosition();
+          saveTimelineNote(n.senderName, n.senderAvatar, n.styleConfig,
+            win.isAlwaysOnTop(), x, y, n.sortOrder || 'asc');
+        } catch (err) {
+          console.error('[StickyNote] 保存时间轴便签状态失败:', err);
+        }
+      }
       this.notes.delete(id);
+      this._releaseWindow(win);
     });
 
     // 监听位置变化，实时保存
@@ -682,7 +696,7 @@ class StickyNoteManager {
       }
     }
     // 创建便签窗口
-    const win = new BrowserWindow({
+    const win = this._acquireWindow({
       width: this.settings.defaultWidth || 300,
       height: this.settings.minHeight || 60,
       x: task.position_x || undefined,
@@ -700,7 +714,6 @@ class StickyNoteManager {
         preload: path.join(__dirname, '../../preload/index.js')
       }
     });
-    win.setHasShadow(false); // 默认主窗口无阴影，展开时可根据需要恢复
 
     const html = this.generateHTML(task, id);
     win.loadURL(`data:text/html,${encodeURIComponent(html)}`);
@@ -737,7 +750,12 @@ class StickyNoteManager {
       }
     });
 
-    win.on('closed', () => this.notes.delete(id));
+    win.on('close', (e) => {
+      if (this._isQuitting) return; // 应用退出，让窗口正常关闭
+      e.preventDefault();
+      this.notes.delete(id);
+      this._releaseWindow(win);
+    });
 
     this.notes.set(id, { 
       win, 
@@ -940,8 +958,11 @@ class StickyNoteManager {
         console.error('[StickyNote] 隐藏时间轴便签失败:', err);
       }
     }
-    if (note && !note.win.isDestroyed()) note.win.close();
-    this.notes.delete(id);
+    if (note && note.win && !note.win.isDestroyed()) {
+      note.win.close(); // close 事件中处理 notes.delete + 窗口归还对象池
+    } else {
+      this.notes.delete(id); // 窗口已销毁，直接清理注册
+    }
   }
 }
 
