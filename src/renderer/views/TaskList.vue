@@ -175,7 +175,16 @@
             </div>
             <div class="detail-meta-item">
               <label>截止日期</label>
-              <input type="date" :value="detailTask.due_date ? detailTask.due_date.slice(0,10) : ''" @change="setDueDate" />
+              <div class="date-picker-trigger" @click="openDueDatePicker">
+                <span>{{ detailTask.due_date ? formatDate(detailTask.due_date) : '📅 未设置' }}</span>
+                <input
+                  ref="dueDateInput"
+                  type="date"
+                  style="position: fixed; opacity: 0; pointer-events: none; width: 0; height: 0;"
+                  :value="detailTask.due_date ? detailTask.due_date.slice(0,10) : ''"
+                  @change="setDueDate"
+                />
+              </div>
             </div>
             <div class="detail-meta-item">
               <label>提醒规则</label>
@@ -229,6 +238,7 @@ const showDetail = ref(false)
 const detailTask = ref(null)
 const editingDetailContent = ref(false)
 const detailContentInput = ref(null)
+const dueDateInput = ref(null)
 let desktopUpdateTimer = null
 
 function showContextMenu(event, task) {
@@ -764,6 +774,22 @@ function cancelContentEdit() {
   editingDetailContent.value = false
 }
 
+function openDueDatePicker() {
+  const input = dueDateInput.value
+  if (!input) return
+  const trigger = input.parentElement
+  if (trigger) {
+    const rect = trigger.getBoundingClientRect()
+    input.style.left = rect.left + 'px'
+    input.style.top = (rect.bottom - 30) + 'px'
+    input.style.width = rect.width + 'px'
+    input.style.height = rect.height + 'px'
+    // 强制刷新布局，避免第一次打开时位置未生效
+    input.offsetHeight
+  }
+  input.showPicker?.()
+}
+
 async function setDueDate(e) {
   if (!detailTask.value) return
   detailTask.value.due_date = e.target.value
@@ -1181,6 +1207,21 @@ onUnmounted(() => {
 .detail-meta-item select,
 .detail-meta-item input {
   width: 100%;
+}
+
+.date-picker-trigger {
+  display: flex;
+  align-items: center;
+  padding: 6px 10px;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.date-picker-trigger:hover {
+  border-color: var(--color-primary);
 }
 
 .reminder-rule-info {

@@ -13,8 +13,8 @@ function showConfirmDialog(parentWindow, options = {}) {
     currentResolve = resolve;
 
     const dialogOptions = {
-      width: 300,
-      height: 150,
+      width: 200,
+      height: 100,
       frame: false,
       transparent: true,
       skipTaskbar: false,

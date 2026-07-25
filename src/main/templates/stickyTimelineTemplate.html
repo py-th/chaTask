@@ -429,99 +429,6 @@
       color: #F53F3F;
     }
 
-    /* 日期选择器弹层 */
-    .date-picker-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.3);
-      z-index: 1001;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .date-picker-overlay.show {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    .date-picker-card {
-      background: rgba(255, 255, 255, 0.98);
-      border-radius: 12px;
-      padding: 16px;
-      width: 220px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    }
-    .date-picker-header {
-      font-size: 14px;
-      font-weight: 600;
-      color: #1D2129;
-      margin-bottom: 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .date-picker-header .close-btn {
-      cursor: pointer;
-      width: 20px;
-      height: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 4px;
-      font-size: 12px;
-      color: #86909C;
-    }
-    .date-picker-header .close-btn:hover {
-      background: rgba(0, 0, 0, 0.06);
-      color: #1D2129;
-    }
-    .date-picker-card input[type="date"] {
-      width: 100%;
-      padding: 8px 10px;
-      border: 1px solid rgba(0, 0, 0, 0.12);
-      border-radius: 8px;
-      font-size: 13px;
-      color: #1D2129;
-      outline: none;
-      margin-bottom: 12px;
-      background: #fff;
-    }
-    .date-picker-card input[type="date"]:focus {
-      border-color: #4A90D9;
-    }
-    .date-picker-actions {
-      display: flex;
-      gap: 8px;
-    }
-    .date-picker-actions button {
-      flex: 1;
-      padding: 6px 0;
-      border: none;
-      border-radius: 6px;
-      font-size: 12px;
-      cursor: pointer;
-      transition: background 0.15s ease;
-    }
-    .date-picker-actions .btn-clear {
-      background: #F2F3F5;
-      color: #F53F3F;
-    }
-    .date-picker-actions .btn-clear:hover {
-      background: #FFE5E5;
-    }
-    .date-picker-actions .btn-confirm {
-      background: #4A90D9;
-      color: #fff;
-    }
-    .date-picker-actions .btn-confirm:hover {
-      background: #3570B0;
-    }
-
     /* ========== 折叠模式样式 ========== */
     /* 折叠状态：隐藏所有非头像内容 */
     .timeline-container.folded-mode .timeline-scroll,
@@ -574,6 +481,7 @@
       border-radius: 6px;
       border: 2px solid var(--fold-avatar-border, rgba(255, 249, 196, 0.95));
       object-fit: cover;
+      transition: opacity 0.2s ease;
     }
 
     /* 任务数量徽章 - 头像底部中间位置 */
@@ -618,20 +526,7 @@
     <div class="scroll-hint" id="scrollHint">▼</div>
   </div>
 
-  <!-- 日期选择器弹层 -->
-  <div class="date-picker-overlay" id="datePickerOverlay">
-    <div class="date-picker-card">
-      <div class="date-picker-header">
-        <span>设置截止日期</span>
-        <span class="close-btn" id="datePickerClose">✕</span>
-      </div>
-      <input type="date" id="datePickerInput">
-      <div class="date-picker-actions">
-        <button class="btn-clear" id="datePickerClear">清除日期</button>
-        <button class="btn-confirm" id="datePickerConfirm">确定</button>
-      </div>
-    </div>
-  </div>
+  <input type="date" id="hiddenDatePicker" style="position: fixed; opacity: 0; pointer-events: none; width: 0; height: 0;" />
 
   <script>
     window.noteId = {{noteId}};

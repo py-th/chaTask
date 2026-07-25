@@ -12,10 +12,7 @@
   const taskTextDiv = document.getElementById('taskText');
   const taskMeta = document.getElementById('taskMeta');
   const container = document.querySelector('.sticky-container');
-  const datePickerPopup = document.getElementById('datePickerPopup');
-  const popupDatePicker = document.getElementById('popupDatePicker');
-  const popupConfirmBtn = document.getElementById('popupConfirmBtn');
-  const popupClearBtn = document.getElementById('popupClearBtn');
+  const hiddenDatePicker = document.getElementById('hiddenDatePicker');
   const reminderInfo = document.getElementById('reminderInfo');
   const avatarImg = document.querySelector('.avatar-area img');
   const statusIconEl = document.querySelector('.status-icon');
@@ -291,7 +288,6 @@
     if (taskMeta) taskMeta.style.backgroundColor = color;
     const toolbarDiv = document.querySelector('.toolbar');
     if (toolbarDiv) toolbarDiv.style.backgroundColor = color;
-    if (datePickerPopup) datePickerPopup.style.backgroundColor = color;
     const avatarImg = document.querySelector('.avatar-area img');
     if (avatarImg) avatarImg.style.border = '2px solid ' + color;
 
@@ -379,43 +375,29 @@
     electronAPI.send('open-reminder-dialog', { noteId, taskId });
   }
 
-  function showDatePicker() {
+  function openDatePicker() {
     const dueDateSpan = document.getElementById('dueDate');
+    if (!dueDateSpan || !hiddenDatePicker) return;
+    hiddenDatePicker.value = dueDateSpan.getAttribute('data-due-date') || '';
     const rect = dueDateSpan.getBoundingClientRect();
-    datePickerPopup.style.left = rect.left + 'px';
-    datePickerPopup.style.top = (rect.bottom + 5) + 'px';
-    datePickerPopup.style.display = 'block';
-    
-    const originalDueDate = dueDateSpan.getAttribute('data-due-date') || '';
-    popupDatePicker.value = originalDueDate || '';
+    hiddenDatePicker.style.left = rect.left + 'px';
+    hiddenDatePicker.style.top = (rect.bottom - 12) + 'px';
+    hiddenDatePicker.style.width = rect.width + 'px';
+    hiddenDatePicker.style.height = rect.height + 'px';
+    // 强制刷新布局，避免第一次打开时位置未生效
+    hiddenDatePicker.offsetHeight;
+    hiddenDatePicker.showPicker?.();
   }
 
-  function hideDatePicker() {
-    datePickerPopup.style.display = 'none';
-  }
-
-  popupConfirmBtn.addEventListener('click', () => {
-    const selectedDate = popupDatePicker.value;
-    if (selectedDate) {
-      electronAPI.send('set-due-date', { noteId, taskId, date: selectedDate });
-    }
-    hideDatePicker();
-  });
-
-  popupClearBtn.addEventListener('click', () => {
-    electronAPI.send('set-due-date', { noteId, taskId, date: '' });
-    hideDatePicker();
+  hiddenDatePicker.addEventListener('change', () => {
+    const selectedDate = hiddenDatePicker.value;
+    electronAPI.send('set-due-date', { noteId, taskId, date: selectedDate });
+    hiddenDatePicker.value = '';
   });
 
   document.getElementById('dueDate').addEventListener('click', (e) => {
     e.stopPropagation();
-    showDatePicker();
-  });
-
-  document.addEventListener('click', (e) => {
-    if (!datePickerPopup.contains(e.target) && e.target.id !== 'dueDate') {
-      hideDatePicker();
-    }
+    openDatePicker();
   });
 
   document.getElementById('taskStatus').addEventListener('click', () => {
@@ -563,7 +545,6 @@
       if (taskDiv) taskDiv.style.backgroundColor = val;
       if (taskMeta) taskMeta.style.backgroundColor = val;
       if (toolbarDiv) toolbarDiv.style.backgroundColor = val;
-      if (datePickerPopup) datePickerPopup.style.backgroundColor = val;
       if (avatarImg) avatarImg.style.border = '2px solid ' + val;
       const config = Object.assign({}, currentStyleConfig, { bgColor: val });
       saveStyleConfig(config);
@@ -578,7 +559,6 @@
       if (taskDiv) taskDiv.style.backgroundColor = originalColor;
       if (taskMeta) taskMeta.style.backgroundColor = originalColor;
       if (toolbarDiv) toolbarDiv.style.backgroundColor = originalColor;
-      if (datePickerPopup) datePickerPopup.style.backgroundColor = originalColor;
       if (avatarImg) avatarImg.style.border = '';
       if (styleBgColor) styleBgColor.value = '#ffffff';
       const config = Object.assign({}, currentStyleConfig, { bgColor: '' });

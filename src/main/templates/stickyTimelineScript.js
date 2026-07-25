@@ -27,9 +27,19 @@
     return el ? el.innerText.replace(/\n$/, '') : '';
   }
 
+  function getOrCreateExpandLink(taskText) {
+    let expandLink = taskText.querySelector('.expand-link');
+    if (!expandLink) {
+      expandLink = document.createElement('span');
+      expandLink.className = 'expand-link';
+      expandLink.textContent = '展开';
+    }
+    return expandLink;
+  }
+
   function truncateTaskText(taskText) {
     if (!taskText) return;
-    const expandLink = taskText.querySelector('.expand-link');
+    const expandLink = getOrCreateExpandLink(taskText);
     // 先移除展开链接，避免其文本被计入长度
     if (expandLink && expandLink.parentNode === taskText) {
       taskText.removeChild(expandLink);
@@ -41,47 +51,39 @@
     }
     if (fullText.length > taskTextMaxLength) {
       taskText.innerText = fullText.slice(0, taskTextMaxLength) + '...';
-      if (expandLink) {
-        taskText.appendChild(expandLink);
-        expandLink.classList.add('visible');
-        expandLink.textContent = '展开';
-      }
+      taskText.appendChild(expandLink);
+      expandLink.classList.add('visible');
+      expandLink.textContent = '展开';
     } else {
       taskText.innerText = fullText;
-      if (expandLink) {
-        taskText.appendChild(expandLink);
-        expandLink.classList.remove('visible');
-      }
+      taskText.appendChild(expandLink);
+      expandLink.classList.remove('visible');
     }
   }
 
   function expandTaskText(taskText) {
     if (!taskText || !taskText.dataset.fullContent) return;
-    const expandLink = taskText.querySelector('.expand-link');
+    const expandLink = getOrCreateExpandLink(taskText);
     if (expandLink && expandLink.parentNode === taskText) {
       taskText.removeChild(expandLink);
     }
     taskText.innerText = taskText.dataset.fullContent;
-    if (expandLink) {
-      taskText.appendChild(expandLink);
-      expandLink.classList.add('visible');
-      expandLink.textContent = '收起';
-    }
+    taskText.appendChild(expandLink);
+    expandLink.classList.add('visible');
+    expandLink.textContent = '收起';
   }
 
   function collapseTaskText(taskText) {
     if (!taskText || !taskText.dataset.fullContent) return;
-    const expandLink = taskText.querySelector('.expand-link');
+    const expandLink = getOrCreateExpandLink(taskText);
     if (expandLink && expandLink.parentNode === taskText) {
       taskText.removeChild(expandLink);
     }
     const fullText = taskText.dataset.fullContent;
     taskText.innerText = fullText.slice(0, taskTextMaxLength) + '...';
-    if (expandLink) {
-      taskText.appendChild(expandLink);
-      expandLink.classList.add('visible');
-      expandLink.textContent = '展开';
-    }
+    taskText.appendChild(expandLink);
+    expandLink.classList.add('visible');
+    expandLink.textContent = '展开';
   }
 
   function truncateAllTaskTexts() {
@@ -430,7 +432,7 @@
       const taskId = timelineItem ? timelineItem.dataset.taskId : null;
       if (taskId) {
         const dot = timelineItem.querySelector('.timeline-dot');
-        showDatePicker(taskId, dot ? dot.dataset.dueDate || '' : '');
+        showDatePicker(taskId, dot ? dot.dataset.dueDate || '' : '', dueBadge);
       }
       return;
     }
@@ -619,26 +621,23 @@
   // ========== 日期选择器 ==========
   let currentDateTaskId = null;
 
-  const datePickerOverlay = document.getElementById('datePickerOverlay');
-  const datePickerClose = document.getElementById('datePickerClose');
-  const datePickerInput = document.getElementById('datePickerInput');
-  const datePickerClear = document.getElementById('datePickerClear');
-  const datePickerConfirm = document.getElementById('datePickerConfirm');
+  const hiddenDatePicker = document.getElementById('hiddenDatePicker');
 
-  function showDatePicker(taskId, currentDueDate) {
+  function showDatePicker(taskId, currentDueDate, badgeEl) {
     currentDateTaskId = taskId;
-    if (datePickerInput) {
-      datePickerInput.value = currentDueDate || '';
-    }
-    if (datePickerOverlay) {
-      datePickerOverlay.classList.add('show');
-    }
-  }
-
-  function hideDatePicker() {
-    currentDateTaskId = null;
-    if (datePickerOverlay) {
-      datePickerOverlay.classList.remove('show');
+    if (hiddenDatePicker) {
+      hiddenDatePicker.value = currentDueDate || '';
+      const badge = badgeEl || (currentDateTaskId ? document.querySelector('.timeline-item[data-task-id="' + currentDateTaskId + '"] .due-date-badge') : null);
+      if (badge) {
+        const rect = badge.getBoundingClientRect();
+        hiddenDatePicker.style.left = rect.left + 'px';
+        hiddenDatePicker.style.top = (rect.bottom - 12) + 'px';
+        hiddenDatePicker.style.width = rect.width + 'px';
+        hiddenDatePicker.style.height = rect.height + 'px';
+        // 强制刷新布局，避免第一次打开时位置未生效
+        hiddenDatePicker.offsetHeight;
+      }
+      hiddenDatePicker.showPicker?.();
     }
   }
 
@@ -698,36 +697,14 @@
     updateDueDateBadge(item, dueDate);
   }
 
-  if (datePickerClose) {
-    datePickerClose.addEventListener('click', hideDatePicker);
-  }
-
-  if (datePickerOverlay) {
-    datePickerOverlay.addEventListener('click', function(e) {
-      if (e.target === datePickerOverlay) {
-        hideDatePicker();
-      }
-    });
-  }
-
-  if (datePickerClear) {
-    datePickerClear.addEventListener('click', function() {
-      if (currentDateTaskId) {
-        applyDueDate(currentDateTaskId, '');
-        electronAPI.send('timeline-set-due-date', { noteId: noteId, taskId: currentDateTaskId, dueDate: null });
-      }
-      hideDatePicker();
-    });
-  }
-
-  if (datePickerConfirm) {
-    datePickerConfirm.addEventListener('click', function() {
-      if (currentDateTaskId && datePickerInput) {
-        var dueDate = datePickerInput.value;
-        applyDueDate(currentDateTaskId, dueDate);
-        electronAPI.send('timeline-set-due-date', { noteId: noteId, taskId: currentDateTaskId, dueDate: dueDate || null });
-      }
-      hideDatePicker();
+  if (hiddenDatePicker) {
+    hiddenDatePicker.addEventListener('change', function() {
+      if (!currentDateTaskId) return;
+      var dueDate = hiddenDatePicker.value;
+      applyDueDate(currentDateTaskId, dueDate);
+      electronAPI.send('timeline-set-due-date', { noteId: noteId, taskId: currentDateTaskId, dueDate: dueDate || null });
+      currentDateTaskId = null;
+      hiddenDatePicker.value = '';
     });
   }
 

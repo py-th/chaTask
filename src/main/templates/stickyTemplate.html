@@ -48,6 +48,7 @@
         border-radius:50%;
         object-fit:cover;
         box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        transition: opacity 0.2s ease;
       }
       .status-icon { 
         display:none;
@@ -251,35 +252,6 @@
         color: #4A90D9;
       }
 
-      .datePickerPopup {
-        display: none;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        padding: 12px;
-        box-shadow:0 2px 5px rgba(0,0,0,0.2);
-        z-index: 2;
-        width: 200px;
-        background: {{priorityColor}};
-        backdrop-filter: blur(4px);
-        font-size: 12px;
-        margin-left: calc(45px + 6px); /* 与 task-wrapper / toolbar 左边缘对齐 */
-      }
-
-      .datePickerPopup input[type="date"] {
-        width: 100%;
-        padding: 8px 10px;
-        border: 1px solid rgba(0, 0, 0, 0.12);
-        border-radius: 8px;
-        font-size: 13px;
-        color: #1D2129;
-        outline: none;
-        margin-bottom: 12px;
-        background: #fff;
-      }
-      .datePickerPopup input[type="date"]:focus {
-        border-color: #4A90D9;
-      }
-
       .sticky-container:hover .toolbar {
         visibility: visible;
         background: {{priorityColor}};
@@ -288,7 +260,6 @@
 
       /* 折叠状态：隐藏所有非头像内容 */
       .sticky-container.folded-mode .task-wrapper,
-      .sticky-container.folded-mode .datePickerPopup,
       .sticky-container.folded-mode .toolbar {
         display: none !important;
       }
@@ -486,29 +457,6 @@
         color: #fff;
       }
 
-      .datePickerPopup button {
-        flex: 1;
-        padding: 6px 0;
-        border: none;
-        border-radius: 6px;
-        font-size: 12px;
-        cursor: pointer;
-        transition: background 0.15s ease;
-      }
-      .datePickerPopup .btn-clear {
-        background: #F2F3F5;
-        color: #F53F3F;
-      }
-      .datePickerPopup .btn-clear:hover {
-        background: #FFE5E5;
-      }
-      .datePickerPopup .btn-confirm {
-        background: #4A90D9;
-        color: #fff;
-      }
-      .datePickerPopup .btn-confirm:hover {
-        background: #3570B0;
-      }
     </style>
   </head>
   <body>
@@ -564,14 +512,7 @@
           ></div>
         </div>
       </div>
-      <div class="datePickerPopup" id="datePickerPopup">
-        <div style="margin-bottom: 10px">📅 选择截止日期</div>
-        <input type="date" id="popupDatePicker" />
-        <div style="display: flex; gap: 8px">
-          <button id="popupClearBtn" class="btn-clear">清除日期</button>
-          <button id="popupConfirmBtn" class="btn-confirm">确定</button>
-        </div>
-      </div>
+      <input type="date" id="hiddenDatePicker" style="position: fixed; opacity: 0; pointer-events: none; width: 0; height: 0;" />
       <div class="style-panel" id="stylePanel">
         <div class="style-panel-header">
           <span>🎨 样式设置</span>
