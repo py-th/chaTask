@@ -6,7 +6,7 @@
           <input
             v-model="searchKeyword"
             type="text"
-            placeholder="🔎搜索任务内容、发送者..."
+            placeholder="搜索任务内容、发送者..."
             @input="onSearchInput"
           />
         </div>
@@ -39,7 +39,7 @@
 
     <div class="tasklist-body">
       <div v-if="filteredTasks.length === 0" class="empty-state">
-        <div class="empty-state-icon">📭</div>
+        <Inbox class="empty-state-icon" />
         <p>{{ searchKeyword ? '没有匹配的任务' : '暂无任务，试试截图吧~' }}</p>
       </div>
 
@@ -61,7 +61,7 @@
             />
             <div class="avatar-wrapper">
               <img :src="task.sender_avatar || defaultAvatar" class="task-avatar" />
-              <span v-if="task.is_show_desk === 1" class="desktop-badge">📌</span>
+              <Pin v-if="task.is_show_desk === 1" class="desktop-badge" />
             </div>
             <div class="task-card-info">
               <div class="task-card-text">
@@ -71,12 +71,12 @@
                 <span :class="getStatusTag(task)">{{ statusText(task.status) }}</span>
                 <span :class="getPriorityTag(task)">{{ priorityText(task.priority) }}</span>
                 <span v-if="task.reminderRule && formatNextReminder(task.reminderRule)" class="tag tag-pending">
-                  {{ formatNextReminder(task.reminderRule) }}
+                  <Bell class="tag-icon" /> {{ formatNextReminder(task.reminderRule) }}
                 </span>
                 <span v-else-if="task.reminder_enabled === 1 && task.reminder_time" class="tag tag-pending">
-                  🔔 {{ formatDate(task.reminder_time) }}
+                  <Bell class="tag-icon" /> {{ formatDate(task.reminder_time) }}
                 </span>
-                <span class="tag tag-pending" v-if="task.is_show_desk === 1" >📌</span>
+                <span class="tag tag-pending" v-if="task.is_show_desk === 1" ><Pin class="tag-icon" /></span>
                 <span class="tag tag-pending" v-if="task.source">{{ task.source }}</span>
                 <span class="tag tag-pending" v-if="task.due_date">截止: {{ formatDate(task.due_date) }}</span>
                 <span>创建: {{ formatDate(task.created_at) }}</span>
@@ -93,18 +93,18 @@
     <div v-if="selectedIds.size > 0" class="batch-bar">
       <span>已选择 {{ selectedIds.size }} 项</span>
       <template v-if="currentFilter === 'deleted'">
-        <button class="btn btn-sm btn-success" @click="batchRestore">🔄 批量恢复</button>
-        <button class="btn btn-sm btn-danger" @click="batchPermanentDelete">💣 彻底删除</button>
+        <button class="btn btn-sm btn-success" @click="batchRestore"><RotateCcw class="btn-icon" /> 批量恢复</button>
+        <button class="btn btn-sm btn-danger" @click="batchPermanentDelete"><Trash2 class="btn-icon" /> 彻底删除</button>
       </template>
       <template v-else-if="currentFilter === 'desktop'">
-        <button class="btn btn-sm btn-outline" @click="batchRemoveFromDesktop">� 批量隐藏</button>
+        <button class="btn btn-sm btn-outline" @click="batchRemoveFromDesktop"><PinOff class="btn-icon" /> 批量隐藏</button>
       </template>
       <template v-else>
-        <button class="btn btn-sm btn-outline" @click="batchComplete">✅ 批量完成</button>
-        <button class="btn btn-sm btn-danger" @click="batchDelete">🗑️ 批量删除</button>
+        <button class="btn btn-sm btn-outline" @click="batchComplete"><Check class="btn-icon" /> 批量完成</button>
+        <button class="btn btn-sm btn-danger" @click="batchDelete"><Trash2 class="btn-icon" /> 批量删除</button>
       </template>
-      <button class="btn btn-sm btn-outline" @click="selectAll">☑️ 全选</button>
-      <button class="btn btn-sm btn-outline" @click="invertSelection">🔃 反选</button>
+      <button class="btn btn-sm btn-outline" @click="selectAll"><CheckSquare class="btn-icon" /> 全选</button>
+      <button class="btn btn-sm btn-outline" @click="invertSelection"><Shuffle class="btn-icon" /> 反选</button>
       <button class="btn btn-sm btn-outline" @click="clearSelection">取消选择</button>
     </div>
 
@@ -112,7 +112,7 @@
       <div class="detail-panel card">
         <div class="detail-header">
           <h3>任务详情</h3>
-          <button class="btn btn-sm btn-outline" @click="showDetail = false">✕</button>
+          <button class="btn btn-sm btn-outline" @click="showDetail = false"><X class="btn-icon" /></button>
         </div>
         <div v-if="detailTask" class="detail-body">
           <div class="detail-row">
@@ -176,7 +176,7 @@
             <div class="detail-meta-item">
               <label>截止日期</label>
               <div class="date-picker-trigger" @click="openDueDatePicker">
-                <span>{{ detailTask.due_date ? formatDate(detailTask.due_date) : '📅 未设置' }}</span>
+                <span><CalendarDays class="meta-icon" /> {{ detailTask.due_date ? formatDate(detailTask.due_date) : '未设置' }}</span>
                 <input
                   ref="dueDateInput"
                   type="date"
@@ -191,12 +191,12 @@
               <div v-if="detailTask.reminderRule" class="reminder-rule-info" @click="openReminderFromDetail">
                 <span class="reminder-type">{{ formatReminderType(detailTask.reminderRule.repeat_type) }}</span>
                 <span v-if="detailTask.reminderRule.reminder_time" class="reminder-time">
-                  ⏰ {{ detailTask.reminderRule.reminder_time }}
+                  <Clock class="meta-icon" /> {{ detailTask.reminderRule.reminder_time }}
                 </span>
                 <span class="reminder-edit-hint">点击修改</span>
               </div>
               <div v-else class="reminder-rule-info" @click="openReminderFromDetail">
-                <span class="reminder-badge">🔕 未设置</span>
+                <span class="reminder-badge"><BellOff class="meta-icon" /> 未设置</span>
                 <span class="reminder-edit-hint">点击设置</span>
               </div>
             </div>
@@ -225,6 +225,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { RotateCcw, Trash2, PinOff, Check, CheckSquare, Shuffle, X, Inbox, Pin, Bell, BellOff, CalendarDays, Clock, Volume2, VolumeX } from 'lucide-vue-next'
 import { DEFAULT_AVATAR_SVG_45 } from '../shared/constants.js';
 const defaultAvatar = DEFAULT_AVATAR_SVG_45;
 
@@ -700,25 +701,25 @@ function formatNextReminder(rule) {
 
   switch (rule.repeat_type) {
     case 'once':
-      return `🔔 ${dateText} ${timeText}`;
+      return `${dateText} ${timeText}`;
     case 'daily':
-      return `🔔 每天 ${timeText}`;
+      return `每天 ${timeText}`;
     case 'weekly':
-      return `🔔 每周 ${dateText} ${timeText}`;
+      return `每周 ${dateText} ${timeText}`;
     case 'monthly':
-      return `🔔 每月 ${dateText} ${timeText}`;
+      return `每月 ${dateText} ${timeText}`;
     case 'custom':
-      return `🔔 自选 ${dateText} ${timeText}`;
+      return `自选 ${dateText} ${timeText}`;
     default:
-      return `🔔 ${dateText} ${timeText}`;
+      return `${dateText} ${timeText}`;
   }
 }
 
 function formatReminderWay(way) {
   const wayMap = {
-    'popup': '💬 弹窗',
-    'sound': '🔊 声音',
-    'silent': '🔇 静默'
+    'popup': '弹窗',
+    'sound': '声音',
+    'silent': '静默'
   }
   return wayMap[way] || way
 }
@@ -974,16 +975,12 @@ onUnmounted(() => {
 
 .desktop-badge {
   position: absolute;
-  top: -1px;      /* 调整到顶部 */
-  right: 0px;    /* 调整到右侧 */
-  font-size: 7px;
-  width: 10px;
-  height: 10px;
-  align-items: center;
-  justify-content: center;
-  background: var(--color-primary);
-  border-radius: 50%;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  top: -3px;
+  right: -3px;
+  width: 14px;
+  height: 14px;
+  color: var(--color-primary);
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
 }
 
 .task-card-info {
@@ -1282,5 +1279,28 @@ onUnmounted(() => {
 .reminder-rule-info:hover .reminder-edit-hint {
   opacity: 1;
   color: var(--color-primary);
+}
+
+.btn-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.empty-state-icon {
+  width: 48px;
+  height: 48px;
+  opacity: 0.5;
+}
+
+.tag-icon {
+  width: 12px;
+  height: 12px;
+  vertical-align: -2px;
+}
+
+.meta-icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
 }
 </style>

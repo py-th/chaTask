@@ -5,17 +5,17 @@
         <input
           v-model="searchKeyword"
           type="text"
-          placeholder="🔎搜索联系人名称..."
+          placeholder="搜索联系人名称..."
           @input="onSearchInput"
         />
         <span class="contact-count">共 {{ contacts.length }} 位联系人</span>
-        <button class="btn btn-sm btn-primary" @click="openAddModal">➕ 添加联系人</button>
+        <button class="btn btn-sm btn-primary" @click="openAddModal"><UserPlus class="btn-icon" /> 添加联系人</button>
       </div>
     </div>
 
     <div class="contactlist-body">
       <div v-if="filteredContacts.length === 0" class="empty-state">
-        <div class="empty-state-icon">👥</div>
+        <Users class="empty-state-icon" />
         <p>{{ searchKeyword ? '没有匹配的联系人' : '暂无联系人，试试截图识别任务吧~' }}</p>
       </div>
 
@@ -36,8 +36,8 @@
                 </span>
               </div>
               <div class="contact-card-meta">
-                <span class="tag">📅 {{ formatDate(contact.created_at) }}</span>
-                <span class="tag">📌 {{ contact.source || '手动' }}</span>
+                <span class="tag"><CalendarDays class="tag-icon" /> {{ formatDate(contact.created_at) }}</span>
+                <span class="tag"><Pin class="tag-icon" /> {{ contact.source || '手动' }}</span>
               </div>
             </div>
           </div>
@@ -49,10 +49,18 @@
               :class="{ 'btn-timeline-open': isTimelineOpen(contact) }"
               @click.stop="toggleTimelineNote(contact)"
             >
-              {{ isTimelineOpen(contact) ? '隐藏📌' : (hasTimelineRecord(contact) ? '打开📋' : '时间轴📎') }}
+              <template v-if="isTimelineOpen(contact)">
+                <EyeOff class="btn-icon" /> 隐藏
+              </template>
+              <template v-else-if="hasTimelineRecord(contact)">
+                <Eye class="btn-icon" /> 打开
+              </template>
+              <template v-else>
+                <Paperclip class="btn-icon" /> 时间轴
+              </template>
             </button>
-            <button class="btn btn-xs btn-edit" @click.stop="openEditModal(contact)">✏️</button>
-            <button class="btn btn-xs btn-danger" @click.stop="confirmDeleteContact(contact)">🗑️</button>
+            <button class="btn btn-xs btn-edit" @click.stop="openEditModal(contact)"><Pencil class="btn-icon" /></button>
+            <button class="btn btn-xs btn-danger" @click.stop="confirmDeleteContact(contact)"><Trash2 class="btn-icon" /></button>
           </div>
         </div>
       </div>
@@ -63,7 +71,7 @@
       <div class="modal-panel card add-contact-panel">
         <div class="modal-header">
           <h3>{{ showEditModal ? '修改联系人' : '添加联系人' }}</h3>
-          <button class="btn btn-sm btn-outline" @click="closeModal">✕</button>
+          <button class="btn btn-sm btn-outline" @click="closeModal"><X class="btn-icon" /></button>
         </div>
         <div class="modal-body">
           <div class="form-group">
@@ -115,7 +123,7 @@
               <span class="modal-subtitle">共 {{ contactTasks.length }} 条任务</span>
             </div>
           </div>
-          <button class="btn btn-sm btn-outline" @click="showTaskModal = false">✕</button>
+          <button class="btn btn-sm btn-outline" @click="showTaskModal = false"><X class="btn-icon" /></button>
         </div>
         <div class="modal-body">
           <div v-if="contactTasks.length === 0" class="empty-state">
@@ -163,14 +171,14 @@
                         class="btn btn-xs btn-success task-action-btn"
                         @click.stop="completeTask(task)"
                       >
-                        ✅
+                        <Check class="btn-icon" />
                       </button>
                       <button
                         v-if="task.is_deleted !== 1"
                         class="btn btn-xs btn-danger task-action-btn"
                         @click.stop="deleteTask(task)"
                       >
-                        🗑️
+                        <Trash2 class="btn-icon" />
                       </button>
                     </div>
                   </div>
@@ -193,6 +201,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { UserPlus, Pencil, Trash2, X, Eye, EyeOff, ListTodo, Paperclip, Users, CalendarDays, Pin, Check } from 'lucide-vue-next'
 import { DEFAULT_AVATAR_SVG_45 } from '../shared/constants.js';
 const defaultAvatar = DEFAULT_AVATAR_SVG_45;
 
@@ -973,5 +982,22 @@ onUnmounted(() => {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--color-border-light);
+}
+
+.btn-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.empty-state-icon {
+  width: 48px;
+  height: 48px;
+  opacity: 0.5;
+}
+
+.tag-icon {
+  width: 12px;
+  height: 12px;
+  vertical-align: -2px;
 }
 </style>

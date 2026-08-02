@@ -1,7 +1,7 @@
 <template>
   <div class="timeline-view">
     <div v-if="groups.length === 0" class="empty-state">
-      <div class="empty-state-icon">📅</div>
+      <CalendarDays class="empty-state-icon" />
       <p>暂无任务，试试截图创建任务吧~</p>
     </div>
 
@@ -34,15 +34,15 @@
                 <div class="timeline-card-content">{{ task.content }}</div>
                 <div class="timeline-card-footer">
                   <span v-if="task.due_date" class="timeline-due">
-                    ⏰ {{ formatDueDate(task.due_date) }}
+                    <Clock class="meta-icon" /> {{ formatDueDate(task.due_date) }}
                   </span>
                   <span class="timeline-source">
-                    🕐 {{ formatDate(task.created_at) }}
+                    <History class="meta-icon" /> {{ formatDate(task.created_at) }}
                   </span>
                 </div>
               </div>
               <div class="timeline-card-actions">
-                <button class="btn btn-xs btn-outline" @click="createSticky(task)">📌 便签</button>
+                <button class="btn btn-xs btn-outline" @click="createSticky(task)"><Pin class="btn-icon" /> 便签</button>
               </div>
             </div>
           </div>
@@ -55,6 +55,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { Pin, CalendarDays, Clock, History } from 'lucide-vue-next'
 import { DEFAULT_AVATAR_SVG_45 } from '../shared/constants.js';
 const defaultAvatar = DEFAULT_AVATAR_SVG_45;
 
@@ -323,5 +324,22 @@ onUnmounted(() => {
 .timeline-card-actions {
   flex-shrink: 0;
   margin-top: 2px;
+}
+
+.btn-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.empty-state-icon {
+  width: 48px;
+  height: 48px;
+  opacity: 0.5;
+}
+
+.meta-icon {
+  width: 12px;
+  height: 12px;
+  vertical-align: -2px;
 }
 </style>

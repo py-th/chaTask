@@ -11,7 +11,7 @@
         @drop="onDrop($event, q.id)"
       >
         <div class="quadrant-header">
-          <span class="quadrant-icon">{{ q.icon }}</span>
+          <component :is="q.icon" class="quadrant-icon" :style="{ color: q.color }" />
           <div class="quadrant-info">
             <h4>{{ q.label }}</h4>
             <span class="quadrant-desc">{{ q.desc }}</span>
@@ -35,7 +35,7 @@
                 <strong>{{ task.sender_name || '未知' }}</strong>: {{ task.content }}
               </div>
               <div class="qt-meta">
-                <span v-if="task.due_date" class="qt-due">⏰ {{ formatDue(task.due_date) }}</span>
+                <span v-if="task.due_date" class="qt-due"><Clock class="meta-icon" /> {{ formatDue(task.due_date) }}</span>
                 <span v-else class="qt-no-due">未设截止</span>
                 <span :class="['tag', getPriorityTag(task.priority)]">{{ priorityText(task.priority) }}</span>
               </div>
@@ -54,6 +54,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { Disc, Clock } from 'lucide-vue-next'
 import { DEFAULT_AVATAR_SVG_45 } from '../shared/constants.js';
 const defaultAvatar = DEFAULT_AVATAR_SVG_45;
 
@@ -70,10 +71,10 @@ function showContextMenu(event, task) {
 let unregisterRefresh = null
 
 const quadrantDefs = [
-  { id: 'q1', label: '重要且紧急', desc: '立即处理', icon: '🔴', color: '#FF4D4F' },
-  { id: 'q2', label: '重要不紧急', desc: '计划安排', icon: '🟠', color: '#FAAD14' },
-  { id: 'q3', label: '不重要不紧急', desc: '尽量减少', icon: '🟢', color: '#52C41A' },
-  { id: 'q4', label: '紧急不重要', desc: '委派他人', icon: '🔵', color: '#1890FF' }
+  { id: 'q1', label: '重要且紧急', desc: '立即处理', icon: Disc, color: '#FF4D4F' },
+  { id: 'q2', label: '重要不紧急', desc: '计划安排', icon: Disc, color: '#FAAD14' },
+  { id: 'q3', label: '不重要不紧急', desc: '尽量减少', icon: Disc, color: '#52C41A' },
+  { id: 'q4', label: '紧急不重要', desc: '委派他人', icon: Disc, color: '#1890FF' }
 ]
 
 function isUrgent(task) {
@@ -254,7 +255,9 @@ onUnmounted(() => {
 }
 
 .quadrant-icon {
-  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .quadrant-info {
@@ -368,5 +371,11 @@ onUnmounted(() => {
   border-radius: var(--radius-sm);
   margin: 8px;
   min-height: 60px;
+}
+
+.meta-icon {
+  width: 12px;
+  height: 12px;
+  vertical-align: -2px;
 }
 </style>

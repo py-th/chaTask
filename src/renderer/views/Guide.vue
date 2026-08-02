@@ -1,12 +1,12 @@
 <template>
   <div class="guide-page">
     <div class="guide-header">
-      <h2>📖 操作指引</h2>
+      <h2><BookOpen class="guide-icon" /> 操作指引</h2>
       <p>快速了解如何使用 ChaTask 的各项功能</p>
     </div>
 
     <div class="guide-section card">
-      <h3>🚀 快速入门</h3>
+      <h3><Rocket class="guide-icon" /> 快速入门</h3>
       <div class="guide-steps">
         <div class="guide-step">
           <div class="step-num">1</div>
@@ -33,7 +33,7 @@
     </div>
 
     <div class="guide-section card">
-      <h3>⌨️ 快捷键速查</h3>
+      <h3><Keyboard class="guide-icon" /> 快捷键速查</h3>
       <div class="shortcut-list">
         <div class="shortcut-item">
           <span><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>S</kbd></span>
@@ -47,7 +47,7 @@
     </div>
 
     <div class="guide-section card">
-      <h3>💡 桌面便签技巧</h3>
+      <h3><Lightbulb class="guide-icon" /> 桌面便签技巧</h3>
       <ul>
         <li>OCR识别不准确 → 设置中心切换到云端OCR提高识别精度</li>
         <li>拖拽便签到屏幕边缘 → 自动折叠成小头像图标，双击头像自动贴边</li>
@@ -61,6 +61,7 @@
 </template>
 
 <script setup>
+import { BookOpen, Rocket, Keyboard, Lightbulb } from 'lucide-vue-next'
 </script>
 
 <style scoped>
@@ -74,8 +75,16 @@
 }
 
 .guide-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: var(--font-size-2xl);
   margin-bottom: 8px;
+}
+
+.guide-icon {
+  width: 22px;
+  height: 22px;
 }
 
 .guide-header p {

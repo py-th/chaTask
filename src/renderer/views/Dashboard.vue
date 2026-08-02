@@ -2,28 +2,28 @@
   <div class="dashboard">
     <div class="stat-cards">
       <div class="stat-card card stat-pending">
-        <div class="stat-icon">⏰</div>
+        <Clock class="stat-icon" />
         <div class="stat-info">
           <div class="stat-value">{{ stats.pending }}</div>
           <div class="stat-label">待办</div>
         </div>
       </div>
       <div class="stat-card card stat-overdue">
-        <div class="stat-icon">⚠️</div>
+        <AlertTriangle class="stat-icon" />
         <div class="stat-info">
           <div class="stat-value">{{ stats.overdue }}</div>
           <div class="stat-label">逾期</div>
         </div>
       </div>
       <div class="stat-card card stat-completed">
-        <div class="stat-icon">✅</div>
+        <CheckCircle2 class="stat-icon" />
         <div class="stat-info">
           <div class="stat-value">{{ stats.completed }}</div>
           <div class="stat-label">完成</div>
         </div>
       </div>
       <div class="stat-card card stat-total">
-        <div class="stat-icon">📌</div>
+        <Pin class="stat-icon" />
         <div class="stat-info">
           <div class="stat-value">{{ stats.total }}</div>
           <div class="stat-label">总数</div>
@@ -82,7 +82,7 @@
     <div class="card dashboard-section">
       <h3 class="section-title">今日待办</h3>
       <div v-if="todayTasks.length === 0" class="empty-state">
-        <div class="empty-state-icon">🎉</div>
+        <PartyPopper class="empty-state-icon" />
         <p>今天没有待办任务</p>
       </div>
       <div v-else class="today-list">
@@ -108,6 +108,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { Clock, AlertTriangle, CheckCircle2, Pin, PartyPopper } from 'lucide-vue-next'
 import { DEFAULT_AVATAR_SVG_45 } from '../shared/constants.js';
 const defaultAvatar = DEFAULT_AVATAR_SVG_45;
 
@@ -230,7 +231,8 @@ onMounted(loadData)
 .stat-total { border-left-color: var(--color-primary); }
 
 .stat-icon {
-  font-size: 32px;
+  width: 32px;
+  height: 32px;
 }
 
 .stat-info {

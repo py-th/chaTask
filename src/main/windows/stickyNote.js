@@ -80,9 +80,30 @@ class StickyNoteManager {
       this.settings.taskTextMaxLength = this._clampTaskTextMaxLength(stickySettings.taskTextMaxLength);
       this.settings.foldedDimDelay = this._clampFoldedDimDelay(generalSettings.foldedDimDelay);
       this.settings.skipTaskbar = stickySettings.skipTaskbar !== false;
+      this.settings.defaultWidth = this._clampSingleWidth(stickySettings.defaultWidth);
+      this.settings.timelineWidth = this._clampTimelineWidth(stickySettings.timelineWidth);
+      this.settings.timelineHeight = this._clampTimelineHeight(stickySettings.timelineHeight);
     } catch (err) {
       console.error('[StickyNote] 加载便签设置失败:', err);
     }
+  }
+
+  _clampSingleWidth(size) {
+    const n = parseInt(size, 10);
+    if (isNaN(n)) return 300;
+    return Math.max(200, Math.min(600, n));
+  }
+
+  _clampTimelineWidth(size) {
+    const n = parseInt(size, 10);
+    if (isNaN(n)) return 300;
+    return Math.max(250, Math.min(800, n));
+  }
+
+  _clampTimelineHeight(size) {
+    const n = parseInt(size, 10);
+    if (isNaN(n)) return 400;
+    return Math.max(200, Math.min(1000, n));
   }
 
   _clampFoldedAvatarSize(size) {
@@ -569,10 +590,12 @@ class StickyNoteManager {
         taskbarIcon = this.stickyIcon;
       }
     }
+    const timelineWidth = this.settings.timelineWidth;
+    const timelineHeight = this.settings.timelineHeight;
     // 创建时间轴便签窗口
     const winOptions = {
-      width: 300,
-      height: 400,
+      width: timelineWidth,
+      height: timelineHeight,
       show: false,
       alwaysOnTop: false,
       frame: false,
@@ -581,8 +604,8 @@ class StickyNoteManager {
       movable: true,
       skipTaskbar: skipTaskbar,
       icon: taskbarIcon || undefined,
-      minWidth: 300,
-      minHeight: 200,
+      minWidth: timelineWidth,
+      minHeight: timelineHeight,
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,

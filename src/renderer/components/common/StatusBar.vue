@@ -2,33 +2,34 @@
   <footer class="statusbar">
     <div class="statusbar-left">
       <span class="status-item">
-        📌 总计 <strong>{{ total }}</strong>
+        <Pin class="status-icon" /> 总计 <strong>{{ total }}</strong>
       </span>
       <span class="status-sep">|</span>
       <span class="status-item">
-        ⏰ 待办 <strong>{{ pending }}</strong>
+        <Clock class="status-icon" /> 待办 <strong>{{ pending }}</strong>
       </span>
       <span class="status-sep">|</span>
       <span class="status-item">
-        ⚠️ 逾期 <strong class="text-danger">{{ overdue }}</strong>
+        <AlertTriangle class="status-icon" /> 逾期 <strong class="text-danger">{{ overdue }}</strong>
       </span>
       <span class="status-sep">|</span>
       <span class="status-item">
-        ✅ 今日完成 <strong>{{ todayCompleted }}</strong>
+        <CheckCircle2 class="status-icon" /> 今日完成 <strong>{{ todayCompleted }}</strong>
       </span>
     </div>
     <div class="statusbar-right">
       <span class="status-item" :class="{ synced: syncStatus === 'synced' }">
-        {{ syncIcon }} {{ syncText }}
+        <component :is="syncIcon" class="status-icon" :class="{ 'status-icon--spin': syncStatus === 'syncing' }" /> {{ syncText }}
       </span>
       <span class="status-sep">|</span>
-      <span class="status-item">🖥️ {{ screenshotMode === 'shortcut' ? 'Ctrl+Alt+S 截图' : '剪贴板监听中' }}</span>
+      <span class="status-item"><Monitor class="status-icon" /> {{ screenshotMode === 'shortcut' ? 'Ctrl+Alt+S 截图' : '剪贴板监听中' }}</span>
     </div>
   </footer>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { Pin, Clock, AlertTriangle, CheckCircle2, Monitor, Cloud, RefreshCw } from 'lucide-vue-next'
 
 const props = defineProps({
   total: { type: Number, default: 0 },
@@ -41,9 +42,9 @@ const props = defineProps({
 
 const syncIcon = computed(() => {
   switch (props.syncStatus) {
-    case 'synced': return '☁️'
-    case 'syncing': return '🔄'
-    default: return '💻'
+    case 'synced': return Cloud
+    case 'syncing': return RefreshCw
+    default: return Monitor
   }
 })
 
@@ -97,5 +98,19 @@ const syncText = computed(() => {
 
 .status-item.synced {
   color: var(--color-success);
+}
+
+.status-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.status-icon--spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>

@@ -41,7 +41,9 @@ const builtinDefaults = {
   sticky: {
     defaultWidth: 300,
     minHeight: 60,
-    foldedSize: 45
+    foldedSize: 45,
+    timelineWidth: 300,
+    timelineHeight: 400
   },
   reminder: {
     popupWidth: 400,
@@ -65,7 +67,10 @@ const userDefaults = {
     skipTaskbar: true,
     foldedAvatarSize: 45,
     foldedEdge: 'right',
-    taskTextMaxLength: 200
+    taskTextMaxLength: 200,
+    defaultWidth: 300,
+    timelineWidth: 300,
+    timelineHeight: 400
   },
   screenshot: {
     mode: 'shortcut',

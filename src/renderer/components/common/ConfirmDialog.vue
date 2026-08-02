@@ -4,7 +4,7 @@
       <div v-if="visible" class="confirm-dialog-overlay" @click="handleOverlayClick">
         <div class="confirm-dialog" :class="[`confirm-dialog--${type}`]" @click.stop>
           <div class="confirm-dialog__header">
-            <span class="confirm-dialog__icon">{{ icon }}</span>
+            <component :is="icon" class="confirm-dialog__icon" :class="`confirm-dialog__icon--${type}`" />
             <h3 class="confirm-dialog__title">{{ title }}</h3>
           </div>
           <div class="confirm-dialog__body">
@@ -35,6 +35,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { AlertTriangle, OctagonAlert, Info, CheckCircle2 } from 'lucide-vue-next'
 
 const visible = ref(false)
 const title = ref('确认')
@@ -47,10 +48,10 @@ const cancelText = ref('取消')
 let resolvePromise = null
 
 const iconMap = {
-  warning: '⚠️',
-  danger: '💣',
-  info: 'ℹ️',
-  success: '✅'
+  warning: AlertTriangle,
+  danger: OctagonAlert,
+  info: Info,
+  success: CheckCircle2
 }
 
 const icon = computed(() => iconMap[type.value] || iconMap.warning)
@@ -136,7 +137,25 @@ defineExpose({ show })
 }
 
 .confirm-dialog__icon {
-  font-size: 24px;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.confirm-dialog__icon--warning {
+  color: var(--color-warning);
+}
+
+.confirm-dialog__icon--danger {
+  color: var(--color-danger);
+}
+
+.confirm-dialog__icon--info {
+  color: var(--color-info);
+}
+
+.confirm-dialog__icon--success {
+  color: var(--color-success);
 }
 
 .confirm-dialog__title {

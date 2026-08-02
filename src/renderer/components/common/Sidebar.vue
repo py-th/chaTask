@@ -1,7 +1,7 @@
 <template>
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <span class="brand-icon">📌</span>
+      <Pin class="brand-icon" />
       <span class="brand-text">ChaTask</span>
     </div>
 
@@ -12,9 +12,9 @@
         :class="['nav-item', { active: activeView === item.id, locked: item.locked }]"
         @click="$emit('navigate', item.id)"
       >
-        <span class="nav-icon">{{ item.icon }}</span>
+        <component :is="item.icon" class="nav-icon" />
         <span class="nav-label">{{ item.label }}</span>
-        <span v-if="item.locked" class="nav-lock">🔒</span>
+        <Lock v-if="item.locked" class="nav-lock" />
         <span v-else-if="item.badge" class="nav-badge">{{ item.badge }}</span>
       </div>
     </nav>
@@ -22,7 +22,7 @@
     <div class="sidebar-footer">
       <div class="sidebar-divider"></div>
       <div class="sidebar-user">
-        <div class="user-avatar">👤</div>
+        <div class="user-avatar"><User class="user-avatar-icon" /></div>
         <span class="user-name">本地用户</span>
       </div>
     </div>
@@ -31,6 +31,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { LayoutDashboard, ListTodo, Users, CalendarDays, Settings, BookOpen, Lock, Pin, User } from 'lucide-vue-next'
 import { FEATURES, isFeatureEnabled } from '../../utils/featureGate.js'
 
 const props = defineProps({
@@ -42,12 +43,12 @@ const props = defineProps({
 defineEmits(['navigate'])
 
 const navItems = computed(() => [
-  { id: 'dashboard', icon: '📊', label: '任务看板' },
-  { id: 'tasklist',  icon: '📋', label: '任务列表', badge: props.pendingCount || null },
-  { id: 'contacts',  icon: '👥',  label: '联系人' },
-  { id: 'taskviews', icon: '📅', label: '任务视图', locked: !isFeatureEnabled(FEATURES.TASK_VIEWS) },
-  { id: 'settings',  icon: '⚙️',  label: '设置中心' },
-  { id: 'guide',     icon: '📖',  label: '操作指引' }
+  { id: 'dashboard', icon: LayoutDashboard, label: '任务看板' },
+  { id: 'tasklist',  icon: ListTodo, label: '任务列表', badge: props.pendingCount || null },
+  { id: 'contacts',  icon: Users,  label: '联系人' },
+  { id: 'taskviews', icon: CalendarDays, label: '任务视图', locked: !isFeatureEnabled(FEATURES.TASK_VIEWS) },
+  { id: 'settings',  icon: Settings,  label: '设置中心' },
+  { id: 'guide',     icon: BookOpen,     label: '操作指引' }
 ])
 </script>
 
@@ -71,7 +72,8 @@ const navItems = computed(() => [
 }
 
 .brand-icon {
-  font-size: 22px;
+  width: 22px;
+  height: 22px;
 }
 
 .brand-text {
@@ -112,9 +114,8 @@ const navItems = computed(() => [
 }
 
 .nav-icon {
-  font-size: 18px;
-  width: 24px;
-  text-align: center;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
 }
 
@@ -142,7 +143,8 @@ const navItems = computed(() => [
 }
 
 .nav-lock {
-  font-size: var(--font-size-xs);
+  width: 14px;
+  height: 14px;
   opacity: 0.7;
 }
 
@@ -177,7 +179,11 @@ const navItems = computed(() => [
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+}
+
+.user-avatar-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .user-name {

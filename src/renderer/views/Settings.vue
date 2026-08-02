@@ -7,7 +7,7 @@
         :class="['settings-nav-item', { active: currentSection === section.key }]"
         @click="currentSection = section.key"
       >
-        <span class="settings-nav-icon">{{ section.icon }}</span>
+        <component :is="section.icon" class="settings-nav-icon" />
         <span>{{ section.label }}</span>
       </div>
     </div>
@@ -156,6 +156,51 @@
               step="50"
               v-model.number="settings.sticky.taskTextMaxLength"
               @change="saveSettings"
+            />
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">单桌面便签宽度</span>
+              <span class="setting-desc">新建单任务便签的默认宽度 ({{ settings.sticky.defaultWidth }}px)</span>
+            </div>
+            <input
+              type="number"
+              min="200"
+              max="600"
+              step="10"
+              v-model.number="settings.sticky.defaultWidth"
+              @change="saveSettings"
+              style="width: 70px; text-align: center;"
+            />
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">时间轴便签宽度</span>
+              <span class="setting-desc">新建时间轴便签的默认宽度 ({{ settings.sticky.timelineWidth }}px)</span>
+            </div>
+            <input
+              type="number"
+              min="250"
+              max="800"
+              step="10"
+              v-model.number="settings.sticky.timelineWidth"
+              @change="saveSettings"
+              style="width: 70px; text-align: center;"
+            />
+          </div>
+          <div class="setting-row">
+            <div class="setting-info">
+              <span class="setting-name">时间轴便签高度</span>
+              <span class="setting-desc">新建时间轴便签的默认高度 ({{ settings.sticky.timelineHeight }}px)</span>
+            </div>
+            <input
+              type="number"
+              min="200"
+              max="1000"
+              step="10"
+              v-model.number="settings.sticky.timelineHeight"
+              @change="saveSettings"
+              style="width: 70px; text-align: center;"
             />
           </div>
         </div>
@@ -336,28 +381,28 @@
               <span class="setting-name">导出数据</span>
               <span class="setting-desc">将所有任务、联系人和设置导出为 JSON 文件</span>
             </div>
-            <button class="btn btn-outline" @click="exportData">📤 导出</button>
+            <button class="btn btn-outline" @click="exportData"><Download class="btn-icon" /> 导出</button>
           </div>
           <div class="setting-row">
             <div class="setting-info">
               <span class="setting-name">导入数据</span>
               <span class="setting-desc">从 JSON 文件恢复任务、联系人和设置</span>
             </div>
-            <button class="btn btn-outline" @click="importData">📥 导入</button>
+            <button class="btn btn-outline" @click="importData"><Upload class="btn-icon" /> 导入</button>
           </div>
           <div class="setting-row">
             <div class="setting-info">
               <span class="setting-name">重置设置</span>
               <span class="setting-desc">将所有设置恢复为默认值</span>
             </div>
-            <button class="btn btn-outline" @click="resetSettings">🔄 重置</button>
+            <button class="btn btn-outline" @click="resetSettings"><RotateCcw class="btn-icon" /> 重置</button>
           </div>
           <div class="setting-row">
             <div class="setting-info">
               <span class="setting-name">清空所有数据</span>
               <span class="setting-desc">删除所有任务和联系人（不可恢复）</span>
             </div>
-            <button class="btn btn-danger" @click="clearAllData">🗑️ 清空</button>
+            <button class="btn btn-danger" @click="clearAllData"><Trash2 class="btn-icon" /> 清空</button>
           </div>
         </div>
 
@@ -393,16 +438,17 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { Settings, Pin, ScanSearch, Bot, Keyboard, Bell, Database, Info, Download, Upload, RotateCcw, Trash2 } from 'lucide-vue-next'
 
 const sections = [
-  { key: 'general', icon: '⚙️', label: '基础设置' },
-  { key: 'sticky', icon: '📌', label: '便签设置' },
-  { key: 'ocr', icon: '🔍', label: '截图&OCR' },
-  { key: 'ai', icon: '🤖', label: 'AI 设置' },
-  { key: 'shortcuts', icon: '⌨️', label: '快捷键' },
-  { key: 'reminder', icon: '🔔', label: '提醒设置' },
-  { key: 'data', icon: '☁️', label: '数据管理' },
-  { key: 'about', icon: 'ℹ️', label: '关于' }
+  { key: 'general', icon: Settings, label: '基础设置' },
+  { key: 'sticky', icon: Pin, label: '便签设置' },
+  { key: 'ocr', icon: ScanSearch, label: '截图&OCR' },
+  { key: 'ai', icon: Bot, label: 'AI 设置' },
+  { key: 'shortcuts', icon: Keyboard, label: '快捷键' },
+  { key: 'reminder', icon: Bell, label: '提醒设置' },
+  { key: 'data', icon: Database, label: '数据管理' },
+  { key: 'about', icon: Info, label: '关于' }
 ]
 
 const currentSection = ref('general')
@@ -411,7 +457,7 @@ const dataMsgType = ref('success')
 
 const settings = reactive({
   general: { autoLaunch: false, minimizeToTray: true, theme: 'system', foldedDimDelay: 1 },
-  sticky: { defaultOpacity: 100, edgeSnap: true, edgeSnapThreshold: 10, skipTaskbar: true, foldedAvatarSize: 45, foldedEdge: 'right', taskTextMaxLength: 200 },
+  sticky: { defaultOpacity: 100, edgeSnap: true, edgeSnapThreshold: 10, skipTaskbar: true, foldedAvatarSize: 45, foldedEdge: 'right', taskTextMaxLength: 200, defaultWidth: 300, timelineWidth: 300, timelineHeight: 400 },
   screenshot: { mode: 'shortcut', confirmMode: 'on_mismatch', clipboardInterval: 1000, clipboardMinWidth: 50, clipboardMaxWidth: 500, clipboardMinHeight: 20, clipboardMaxHeight: 300 },
   ocr: {
     engine: 'paddle',
@@ -616,6 +662,7 @@ onMounted(async () => {
   display: flex;
   gap: 0;
   height: 100%;
+  margin: -20px -20px 0;
 }
 
 .settings-sidebar {
@@ -650,13 +697,31 @@ onMounted(async () => {
 }
 
 .settings-nav-icon {
-  font-size: 16px;
+  width: 16px;
+  height: 16px;
 }
 
 .settings-content {
   flex: 1;
-  padding: 0 20px 20px;
+  padding: 0 20px 20px 20px;
   overflow-y: auto;
+}
+
+.settings-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.settings-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.settings-content::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+.settings-content::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
 }
 
 .settings-section-title {
@@ -817,5 +882,10 @@ onMounted(async () => {
 
 .about-row span:first-child {
   color: var(--color-text-secondary);
+}
+
+.btn-icon {
+  width: 16px;
+  height: 16px;
 }
 </style>

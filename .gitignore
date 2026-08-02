@@ -1,4 +1,5 @@
 .vscode/
+.trae/
 node_modules/
 out/
 debug/

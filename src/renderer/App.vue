@@ -11,15 +11,15 @@
       <div class="app-main">
         <div class="app-header">
           <div class="header-left">
-            <span class="header-icon">{{ viewMeta.icon }}</span>
+            <component :is="viewMeta.icon" class="header-icon" />
             <h2 class="header-title">{{ viewMeta.title }}</h2>
           </div>
           <div class="header-right">
             <span v-if="processing" class="processing-indicator">
-              ⏳ AI模型分析中...
+              <Loader2 class="processing-icon" /> AI模型分析中...
             </span>
             <button class="btn btn-primary btn-sm" @click="quickScreenshot">
-              📸 截图识别
+              <Camera class="btn-icon" /> 截图识别
             </button>
           </div>
         </div>
@@ -65,6 +65,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
+import { LayoutDashboard, ListTodo, Users, CalendarDays, Settings as SettingsIcon, BookOpen, Loader2, Camera } from 'lucide-vue-next'
 
 import Sidebar from './components/common/Sidebar.vue'
 import StatusBar from './components/common/StatusBar.vue'
@@ -91,12 +92,12 @@ const viewComponents = {
 }
 
 const viewMetaMap = {
-  dashboard: { icon: '📊', title: '任务看板' },
-  tasklist:  { icon: '📋', title: '任务列表' },
-  taskviews: { icon: '📅', title: '任务视图' },
-  contacts:  { icon: '👥',  title: '联系人' },
-  settings:  { icon: '⚙️',  title: '设置中心' },
-  guide:     { icon: '📖',  title: '操作指引' }
+  dashboard: { icon: LayoutDashboard, title: '任务看板' },
+  tasklist:  { icon: ListTodo, title: '任务列表' },
+  taskviews: { icon: CalendarDays, title: '任务视图' },
+  contacts:  { icon: Users,  title: '联系人' },
+  settings:  { icon: SettingsIcon,  title: '设置中心' },
+  guide:     { icon: BookOpen,     title: '操作指引' }
 }
 
 const currentView = ref('dashboard')
@@ -444,7 +445,8 @@ onUnmounted(() => {
 }
 
 .header-icon {
-  font-size: 20px;
+  width: 20px;
+  height: 20px;
 }
 
 .header-title {
@@ -459,14 +461,33 @@ onUnmounted(() => {
 }
 
 .processing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   color: var(--color-info);
   font-size: var(--font-size-sm);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
+.processing-icon {
+  width: 16px;
+  height: 16px;
+  animation: spin 1.5s linear infinite;
+}
+
+.btn-icon {
+  width: 16px;
+  height: 16px;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .screenshot-preview {

@@ -7,7 +7,7 @@
         :class="['btn btn-sm', activeMode === tab.id ? 'btn-primary' : 'btn-outline']"
         @click="activeMode = tab.id"
       >
-        <span class="tab-icon">{{ tab.icon }}</span>
+        <component :is="tab.icon" class="tab-icon" />
         {{ tab.label }}
       </button>
     </div>
@@ -22,14 +22,15 @@
 
 <script setup>
 import { ref } from 'vue'
+import { CalendarDays, Calendar, Target } from 'lucide-vue-next'
 import TaskTimeline from './TaskTimeline.vue'
 import TaskCalendar from './TaskCalendar.vue'
 import TaskQuadrant from './TaskQuadrant.vue'
 
 const tabs = [
-  { id: 'timeline', icon: '📅', label: '时间轴' },
-  { id: 'calendar', icon: '🗓️', label: '日历' },
-  { id: 'quadrant', icon: '🎯', label: '四象限' }
+  { id: 'timeline', icon: CalendarDays, label: '时间轴' },
+  { id: 'calendar', icon: Calendar, label: '日历' },
+  { id: 'quadrant', icon: Target, label: '四象限' }
 ]
 
 const activeMode = ref('timeline')
@@ -61,7 +62,8 @@ const activeMode = ref('timeline')
 }
 
 .tab-icon {
-  font-size: 14px;
+  width: 14px;
+  height: 14px;
 }
 
 .view-body {

@@ -1,9 +1,9 @@
 <template>
   <div class="calendar-view">
     <div class="calendar-header">
-      <button class="btn btn-sm btn-outline" @click="prevMonth">◀</button>
+      <button class="btn btn-sm btn-outline" @click="prevMonth"><ChevronLeft class="btn-icon" /></button>
       <h3>{{ currentYear }}年 {{ currentMonth + 1 }}月</h3>
-      <button class="btn btn-sm btn-outline" @click="nextMonth">▶</button>
+      <button class="btn btn-sm btn-outline" @click="nextMonth"><ChevronRight class="btn-icon" /></button>
       <button class="btn btn-sm btn-outline" @click="goToday">今天</button>
     </div>
 
@@ -39,7 +39,7 @@
     <div v-if="selectedDay" class="day-detail-panel card">
       <div class="day-detail-header">
         <h4>{{ selectedDay.dateStr }} 的任务</h4>
-        <button class="btn btn-xs btn-outline" @click="selectedDay = null">✕</button>
+        <button class="btn btn-xs btn-outline" @click="selectedDay = null"><X class="btn-icon" /></button>
       </div>
       <div v-if="selectedDay.tasks.length === 0" class="empty-state">
         <p>当天没有任务</p>
@@ -51,7 +51,7 @@
             <strong>{{ task.sender_name || '未知' }}</strong>: {{ task.content }}
           </div>
           <span :class="['tag', getPriorityTag(task.priority)]">{{ priorityText(task.priority) }}</span>
-          <button class="btn btn-xs btn-outline" @click="createSticky(task)">📌</button>
+          <button class="btn btn-xs btn-outline" @click="createSticky(task)"><Pin class="btn-icon" /></button>
         </div>
       </div>
     </div>
@@ -61,6 +61,7 @@
 
 <script setup>
 import { ref, computed, reactive, onMounted, onUnmounted } from 'vue'
+import { ChevronLeft, ChevronRight, X, Pin } from 'lucide-vue-next'
 import { DEFAULT_AVATAR_SVG_45 } from '../shared/constants.js';
 const defaultAvatar = DEFAULT_AVATAR_SVG_45;
 
@@ -387,5 +388,10 @@ onUnmounted(() => {
 .day-task-info {
   flex: 1;
   font-size: var(--font-size-sm);
+}
+
+.btn-icon {
+  width: 14px;
+  height: 14px;
 }
 </style>

@@ -7,7 +7,7 @@
           :key="toast.id"
           :class="['toast', `toast-${toast.type}`]"
         >
-          <span class="toast-icon">{{ getIcon(toast.type) }}</span>
+          <component :is="getIcon(toast.type)" class="toast-icon" />
           <span class="toast-message">{{ toast.message }}</span>
         </div>
       </TransitionGroup>
@@ -17,19 +17,21 @@
 
 <script setup>
 import { ref } from 'vue'
+import { CheckCircle2, XCircle, AlertTriangle, Info } from 'lucide-vue-next'
 
 const toasts = ref([])
 
 let toastId = 0
 
+const iconMap = {
+  success: CheckCircle2,
+  error: XCircle,
+  warning: AlertTriangle,
+  info: Info
+}
+
 function getIcon(type) {
-  const icons = {
-    success: '✅',
-    error: '❌',
-    warning: '⚠️',
-    info: 'ℹ️'
-  }
-  return icons[type] || icons.info
+  return iconMap[type] || iconMap.info
 }
 
 function addToast(message, type = 'info', duration = 3000) {
@@ -126,7 +128,8 @@ defineExpose({
 }
 
 .toast-icon {
-  font-size: 18px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
 }
 
