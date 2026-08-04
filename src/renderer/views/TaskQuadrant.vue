@@ -54,7 +54,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Disc, Clock } from 'lucide-vue-next'
+import { Flame, CalendarClock, Coffee, Zap, Clock } from 'lucide-vue-next'
 import { DEFAULT_AVATAR_SVG_45 } from '../shared/constants.js';
 const defaultAvatar = DEFAULT_AVATAR_SVG_45;
 
@@ -71,10 +71,10 @@ function showContextMenu(event, task) {
 let unregisterRefresh = null
 
 const quadrantDefs = [
-  { id: 'q1', label: '重要且紧急', desc: '立即处理', icon: Disc, color: '#FF4D4F' },
-  { id: 'q2', label: '重要不紧急', desc: '计划安排', icon: Disc, color: '#FAAD14' },
-  { id: 'q3', label: '不重要不紧急', desc: '尽量减少', icon: Disc, color: '#52C41A' },
-  { id: 'q4', label: '紧急不重要', desc: '委派他人', icon: Disc, color: '#1890FF' }
+  { id: 'q1', label: '重要且紧急', desc: '立即处理', icon: Flame, color: '#FF4D4F' },
+  { id: 'q2', label: '重要不紧急', desc: '计划安排', icon: CalendarClock, color: '#FAAD14' },
+  { id: 'q3', label: '不重要不紧急', desc: '尽量减少', icon: Coffee, color: '#52C41A' },
+  { id: 'q4', label: '紧急不重要', desc: '委派他人', icon: Zap, color: '#1890FF' }
 ]
 
 function isUrgent(task) {

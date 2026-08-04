@@ -4,7 +4,7 @@
       <button class="btn btn-sm btn-outline" @click="prevMonth"><ChevronLeft class="btn-icon" /></button>
       <h3>{{ currentYear }}年 {{ currentMonth + 1 }}月</h3>
       <button class="btn btn-sm btn-outline" @click="nextMonth"><ChevronRight class="btn-icon" /></button>
-      <button class="btn btn-sm btn-outline" @click="goToday">今天</button>
+      <button class="btn btn-sm btn-outline" @click="goToday"><CalendarCheck class="btn-icon" /> 今天</button>
     </div>
 
     <div class="calendar-grid">
@@ -42,6 +42,7 @@
         <button class="btn btn-xs btn-outline" @click="selectedDay = null"><X class="btn-icon" /></button>
       </div>
       <div v-if="selectedDay.tasks.length === 0" class="empty-state">
+        <CalendarDays class="empty-state-icon" />
         <p>当天没有任务</p>
       </div>
       <div v-else class="day-tasks">
@@ -61,7 +62,7 @@
 
 <script setup>
 import { ref, computed, reactive, onMounted, onUnmounted } from 'vue'
-import { ChevronLeft, ChevronRight, X, Pin } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, X, Pin, CalendarDays, CalendarCheck } from 'lucide-vue-next'
 import { DEFAULT_AVATAR_SVG_45 } from '../shared/constants.js';
 const defaultAvatar = DEFAULT_AVATAR_SVG_45;
 
@@ -393,5 +394,11 @@ onUnmounted(() => {
 .btn-icon {
   width: 14px;
   height: 14px;
+}
+
+.empty-state-icon {
+  width: 40px;
+  height: 40px;
+  opacity: 0.5;
 }
 </style>

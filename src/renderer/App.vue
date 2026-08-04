@@ -27,6 +27,7 @@
         <div class="app-content">
           <component :is="currentComponent" :key="currentView" ref="currentViewRef" />
 
+          <!-- 双截图结果显示区域，包含局部截图和完整窗口截图
           <fieldset v-if="latestScreenshot" class="screenshot-preview card">
             <legend>截图预览：提取到 {{ lastResult.rawResults?.avatarText?.messageCount || 0 }} 条消息</legend>
             <div style="display: flex; gap: 12px; align-items: flex-start;">
@@ -44,7 +45,7 @@
               <p>发送者/日期模型：{{ lastResult.rawResults?.senderDate?.senderCount || 0 }} 个发送者，{{ lastResult.rawResults?.senderDate?.dateCount || 0 }} 个日期</p>
               <p v-if="lastResult.screenshotInfo">来源窗口: {{ lastResult.screenshotInfo.windowName }}</p>
             </div>
-          </fieldset>
+          </fieldset> -->
         </div>
       </div>
     </div>

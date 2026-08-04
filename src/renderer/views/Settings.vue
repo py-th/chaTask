@@ -14,7 +14,7 @@
 
     <div class="settings-content">
       <template v-if="currentSection === 'general'">
-        <h3 class="settings-section-title">基础设置</h3>
+        <h3 class="settings-section-title"><Settings class="section-icon" /> 基础设置</h3>
         <div class="settings-group card">
           <div class="setting-row">
             <div class="setting-info">
@@ -82,7 +82,7 @@
       </template>
 
       <template v-if="currentSection === 'sticky'">
-        <h3 class="settings-section-title">便签设置</h3>
+        <h3 class="settings-section-title"><Pin class="section-icon" /> 便签设置</h3>
         <div class="settings-group card">
           <div class="setting-row">
             <div class="setting-info">
@@ -207,7 +207,7 @@
       </template>
 
       <template v-if="currentSection === 'ocr'">
-        <h3 class="settings-section-title">截图&OCR识别</h3>
+        <h3 class="settings-section-title"><ScanSearch class="section-icon" /> 截图&OCR识别</h3>
         <div class="settings-group card">
           <div class="setting-row">
             <div class="setting-info">
@@ -256,7 +256,7 @@
       </template>
 
       <template v-if="currentSection === 'ai'">
-        <h3 class="settings-section-title">AI 识别设置</h3>
+        <h3 class="settings-section-title"><Bot class="section-icon" /> AI 识别设置</h3>
         <div class="settings-group card">
           <div class="setting-row">
             <div class="setting-info">
@@ -301,7 +301,7 @@
       </template>
 
       <template v-if="currentSection === 'shortcuts'">
-        <h3 class="settings-section-title">快捷键设置</h3>
+        <h3 class="settings-section-title"><Keyboard class="section-icon" /> 快捷键设置</h3>
         <div class="settings-group card">
           <div class="setting-row">
             <div class="setting-info">
@@ -337,7 +337,7 @@
       </template>
 
       <template v-if="currentSection === 'reminder'">
-        <h3 class="settings-section-title">提醒设置</h3>
+        <h3 class="settings-section-title"><Bell class="section-icon" /> 提醒设置</h3>
         <div class="settings-group card">
           <div class="setting-row">
             <div class="setting-info">
@@ -374,7 +374,7 @@
       </template>
 
       <template v-if="currentSection === 'data'">
-        <h3 class="settings-section-title">数据管理</h3>
+        <h3 class="settings-section-title"><Database class="section-icon" /> 数据管理</h3>
         <div class="settings-group card">
           <div class="setting-row">
             <div class="setting-info">
@@ -410,7 +410,7 @@
       </template>
 
       <template v-if="currentSection === 'about'">
-        <h3 class="settings-section-title">关于 ChaTask</h3>
+        <h3 class="settings-section-title"><Info class="section-icon" /> 关于 ChaTask</h3>
         <div class="settings-group card">
           <div class="about-info">
             <div class="about-row">
@@ -725,10 +725,19 @@ onMounted(async () => {
 }
 
 .settings-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: var(--font-size-lg);
   font-weight: 600;
   margin-bottom: 16px;
   padding-top: 4px;
+}
+
+.section-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--color-text-secondary);
 }
 
 .settings-group {

@@ -3,12 +3,15 @@
     <div class="tasklist-header">
       <div class="tasklist-toolbar">
         <div class="toolbar-search">
-          <input
-            v-model="searchKeyword"
-            type="text"
-            placeholder="搜索任务内容、发送者..."
-            @input="onSearchInput"
-          />
+          <div class="search-input-wrap">
+            <Search class="search-icon" />
+            <input
+              v-model="searchKeyword"
+              type="text"
+              placeholder="搜索任务内容、发送者..."
+              @input="onSearchInput"
+            />
+          </div>
         </div>
         <div class="toolbar-actions">
           <select v-model="filterSource" @change="onSourceFilterChange">
@@ -68,8 +71,8 @@
                 <strong>{{ task.sender_name || '未知' }}</strong>: {{ task.content }}
               </div>
               <div class="task-card-meta">
-                <span :class="getStatusTag(task)">{{ statusText(task.status) }}</span>
-                <span :class="getPriorityTag(task)">{{ priorityText(task.priority) }}</span>
+                <span :class="getStatusTag(task)"><component :is="getStatusIcon(task)" class="tag-icon" /> {{ statusText(task.status) }}</span>
+                <span :class="getPriorityTag(task)"><component :is="getPriorityIcon(task.priority)" class="tag-icon" /> {{ priorityText(task.priority) }}</span>
                 <span v-if="task.reminderRule && formatNextReminder(task.reminderRule)" class="tag tag-pending">
                   <Bell class="tag-icon" /> {{ formatNextReminder(task.reminderRule) }}
                 </span>
@@ -77,11 +80,11 @@
                   <Bell class="tag-icon" /> {{ formatDate(task.reminder_time) }}
                 </span>
                 <span class="tag tag-pending" v-if="task.is_show_desk === 1" ><Pin class="tag-icon" /></span>
-                <span class="tag tag-pending" v-if="task.source">{{ task.source }}</span>
-                <span class="tag tag-pending" v-if="task.due_date">截止: {{ formatDate(task.due_date) }}</span>
-                <span>创建: {{ formatDate(task.created_at) }}</span>
-                <span v-if="task.source_time">消息时间: {{ formatDate(task.source_time) }}</span>
-                <span v-if="task.status === 'completed' && task.completed_at">完成: {{ formatDate(task.completed_at) }}</span>
+                <span class="tag tag-pending" v-if="task.source"><Tag class="tag-icon" /> {{ task.source }}</span>
+                <span class="tag tag-pending" v-if="task.due_date"><CalendarDays class="tag-icon" /> {{ formatDate(task.due_date) }}</span>
+                <span><History class="tag-icon" /> {{ formatDate(task.created_at) }}</span>
+                <span v-if="task.source_time"><MessageCircle class="tag-icon" /> {{ formatDate(task.source_time) }}</span>
+                <span v-if="task.status === 'completed' && task.completed_at"><Check class="tag-icon" /> {{ formatDate(task.completed_at) }}</span>
               </div>
             </div>
 
@@ -105,7 +108,7 @@
       </template>
       <button class="btn btn-sm btn-outline" @click="selectAll"><CheckSquare class="btn-icon" /> 全选</button>
       <button class="btn btn-sm btn-outline" @click="invertSelection"><Shuffle class="btn-icon" /> 反选</button>
-      <button class="btn btn-sm btn-outline" @click="clearSelection">取消选择</button>
+      <button class="btn btn-sm btn-outline" @click="clearSelection"><X class="btn-icon" /> 取消选择</button>
     </div>
 
     <div v-if="showDetail" class="detail-overlay" @click.self="showDetail = false">
@@ -116,7 +119,7 @@
         </div>
         <div v-if="detailTask" class="detail-body">
           <div class="detail-row">
-            <label>发送者</label>
+            <label><User class="label-icon" /> 发送者</label>
             <div class="detail-sender-info">
               <img
                 v-if="detailTask.sender_avatar"
@@ -130,7 +133,7 @@
           </div>
           <div class="detail-row detail-content-row">
             <div class="detail-row-header">
-              <label>内容</label>
+              <label><FileText class="label-icon" /> 内容</label>
               <span v-if="editingDetailContent" class="detail-edit-hint">Ctrl+Enter 保存 · Esc 取消</span>
             </div>
             <div class="detail-content-wrapper" title="双击编辑">
@@ -156,7 +159,7 @@
           </div>
           <div class="detail-meta-grid">
             <div class="detail-meta-item">
-              <label>优先级</label>
+              <label><Flag class="label-icon" /> 优先级</label>
               <select v-model="detailTask.priority" @change="saveDetail">
                 <option value="high">高</option>
                 <option value="medium">中</option>
@@ -165,7 +168,7 @@
               </select>
             </div>
             <div class="detail-meta-item">
-              <label>状态</label>
+              <label><Activity class="label-icon" /> 状态</label>
               <select v-model="detailTask.status" @change="saveDetail">
                 <option value="pending">待办</option>
                 <option value="in_progress">进行中</option>
@@ -174,9 +177,13 @@
               </select>
             </div>
             <div class="detail-meta-item">
-              <label>截止日期</label>
+              <label><CalendarDays class="label-icon" /> 截止日期</label>
               <div class="date-picker-trigger" @click="openDueDatePicker">
-                <span><CalendarDays class="meta-icon" /> {{ detailTask.due_date ? formatDate(detailTask.due_date) : '未设置' }}</span>
+                <span>
+                  <CalendarDays v-if="detailTask.due_date" class="meta-icon" />
+                  <CircleOff v-else class="meta-icon" />
+                  {{ detailTask.due_date ? formatDate(detailTask.due_date) : '未设置' }}
+                </span>
                 <input
                   ref="dueDateInput"
                   type="date"
@@ -187,7 +194,7 @@
               </div>
             </div>
             <div class="detail-meta-item">
-              <label>提醒规则</label>
+              <label><Bell class="label-icon" /> 提醒规则</label>
               <div v-if="detailTask.reminderRule" class="reminder-rule-info" @click="openReminderFromDetail">
                 <span class="reminder-type">{{ formatReminderType(detailTask.reminderRule.repeat_type) }}</span>
                 <span v-if="detailTask.reminderRule.reminder_time" class="reminder-time">
@@ -201,19 +208,19 @@
               </div>
             </div>
             <div class="detail-meta-item">
-              <label>创建时间</label>
+              <label><History class="label-icon" /> 创建时间</label>
               <span>{{ formatDateTime(detailTask.created_at) }}</span>
             </div>
             <div class="detail-meta-item">
-              <label>更新时间</label>
+              <label><Clock class="label-icon" /> 更新时间</label>
               <span>{{ detailTask.updated_at ? formatDateTime(detailTask.updated_at) : '无' }}</span>
             </div>
             <div class="detail-meta-item">
-              <label>消息时间</label>
+              <label><MessageCircle class="label-icon" /> 消息时间</label>
               <span>{{ detailTask.source_time ? formatDateTime(detailTask.source_time) : '无' }}</span>
             </div>
             <div class="detail-meta-item">
-              <label>完成时间</label>
+              <label><Check class="label-icon" /> 完成时间</label>
               <span>{{ detailTask.completed_at ? formatDateTime(detailTask.completed_at) : '无' }}</span>
             </div>
           </div>
@@ -225,7 +232,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { RotateCcw, Trash2, PinOff, Check, CheckSquare, Shuffle, X, Inbox, Pin, Bell, BellOff, CalendarDays, Clock, Volume2, VolumeX } from 'lucide-vue-next'
+import { RotateCcw, Trash2, PinOff, Check, CheckSquare, Shuffle, X, Inbox, Pin, Bell, BellOff, CalendarDays, Clock, Search, History, MessageCircle, Tag, Play, AlertTriangle, CheckCircle2, ArrowUp, ArrowDown, Minus, CircleOff, User, FileText, Flag, Activity } from 'lucide-vue-next'
 import { DEFAULT_AVATAR_SVG_45 } from '../shared/constants.js';
 const defaultAvatar = DEFAULT_AVATAR_SVG_45;
 
@@ -270,12 +277,12 @@ const sourceOptions = computed(() => {
 
 function getFilterCount(key) {
   switch (key) {
-    case 'all': return allTasks.value.length
-    case 'pending': return allTasks.value.filter(t => t.status === 'pending').length
-    case 'in_progress': return allTasks.value.filter(t => t.status === 'in_progress').length
-    case 'overdue': return allTasks.value.filter(t => t.status === 'overdue').length
-    case 'high': return allTasks.value.filter(t => t.priority === 'high').length
-    case 'completed': return allTasks.value.filter(t => t.is_completed === 1).length
+    case 'all': return allTasks.value.filter(t => t.is_deleted !== 1).length
+    case 'pending': return allTasks.value.filter(t => t.is_deleted !== 1 && t.status === 'pending').length
+    case 'in_progress': return allTasks.value.filter(t => t.is_deleted !== 1 && t.status === 'in_progress').length
+    case 'overdue': return allTasks.value.filter(t => t.is_deleted !== 1 && t.status === 'overdue').length
+    case 'high': return allTasks.value.filter(t => t.is_deleted !== 1 && t.priority === 'high').length
+    case 'completed': return allTasks.value.filter(t => t.is_deleted !== 1 && t.is_completed === 1).length
     case 'desktop': return allTasks.value.filter(t => t.is_show_desk === 1 && t.is_deleted !== 1).length
     case 'deleted': return allTasks.value.filter(t => t.is_deleted === 1).length
     default: return 0
@@ -825,12 +832,28 @@ function getStatusTag(task) {
   return 'tag'
 }
 
+function getStatusIcon(task) {
+  if (task.is_completed === 1) return CheckCircle2
+  if (task.status === 'overdue') return AlertTriangle
+  if (task.status === 'in_progress') return Play
+  return Clock
+}
+
 function getPriorityTag(task) {
   switch (task.priority) {
     case 'high': return 'tag tag-high'
     case 'medium': return 'tag tag-medium'
     case 'low': return 'tag tag-low'
     default: return 'tag tag-pending'
+  }
+}
+
+function getPriorityIcon(priority) {
+  switch (priority) {
+    case 'high': return ArrowUp
+    case 'medium': return Minus
+    case 'low': return ArrowDown
+    default: return CircleOff
   }
 }
 
@@ -903,6 +926,23 @@ onUnmounted(() => {
 
 .toolbar-search input {
   width: 100%;
+  padding-left: 32px;
+}
+
+.search-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-secondary);
+  pointer-events: none;
 }
 
 .toolbar-actions select {
@@ -1302,5 +1342,12 @@ onUnmounted(() => {
   width: 14px;
   height: 14px;
   vertical-align: -2px;
+}
+
+.label-icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  color: var(--color-text-secondary);
 }
 </style>

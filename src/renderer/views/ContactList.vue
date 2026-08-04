@@ -2,12 +2,15 @@
   <div class="contactlist-view">
     <div class="contactlist-header">
       <div class="toolbar-search">
-        <input
-          v-model="searchKeyword"
-          type="text"
-          placeholder="搜索联系人名称..."
-          @input="onSearchInput"
-        />
+        <div class="search-input-wrap">
+          <Search class="search-icon" />
+          <input
+            v-model="searchKeyword"
+            type="text"
+            placeholder="搜索联系人名称..."
+            @input="onSearchInput"
+          />
+        </div>
         <span class="contact-count">共 {{ contacts.length }} 位联系人</span>
         <button class="btn btn-sm btn-primary" @click="openAddModal"><UserPlus class="btn-icon" /> 添加联系人</button>
       </div>
@@ -37,7 +40,7 @@
               </div>
               <div class="contact-card-meta">
                 <span class="tag"><CalendarDays class="tag-icon" /> {{ formatDate(contact.created_at) }}</span>
-                <span class="tag"><Pin class="tag-icon" /> {{ contact.source || '手动' }}</span>
+                <span class="tag"><Tag class="tag-icon" /> {{ contact.source || '手动' }}</span>
               </div>
             </div>
           </div>
@@ -56,7 +59,7 @@
                 <Eye class="btn-icon" /> 打开
               </template>
               <template v-else>
-                <Paperclip class="btn-icon" /> 时间轴
+                <CalendarDays class="btn-icon" /> 时间轴
               </template>
             </button>
             <button class="btn btn-xs btn-edit" @click.stop="openEditModal(contact)"><Pencil class="btn-icon" /></button>
@@ -127,6 +130,7 @@
         </div>
         <div class="modal-body">
           <div v-if="contactTasks.length === 0" class="empty-state">
+            <ClipboardList class="empty-state-icon" />
             <p>该联系人暂无任务</p>
           </div>
           <div v-else class="task-items">
@@ -183,11 +187,11 @@
                     </div>
                   </div>
                   <div class="task-card-meta">
-                    <span>创建: {{ formatDate(task.created_at) }}</span>
-                    <span v-if="task.due_date">截止: {{ formatDate(task.due_date) }}</span>
-                    <span v-if="task.completed_at">完成: {{ formatDate(task.completed_at) }}</span>
-                    <span v-if="task.is_completed === 1">已完成</span>
-                    <span v-if="task.is_deleted === 1">已删除</span>
+                    <span><History class="tag-icon" /> 创建: {{ formatDate(task.created_at) }}</span>
+                    <span v-if="task.due_date"><CalendarDays class="tag-icon" /> 截止: {{ formatDate(task.due_date) }}</span>
+                    <span v-if="task.completed_at"><Check class="tag-icon" /> 完成: {{ formatDate(task.completed_at) }}</span>
+                    <span v-if="task.is_completed === 1"><Check class="tag-icon" /> 已完成</span>
+                    <span v-if="task.is_deleted === 1"><Trash2 class="tag-icon" /> 已删除</span>
                   </div>
                 </div>
               </div>
@@ -201,7 +205,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { UserPlus, Pencil, Trash2, X, Eye, EyeOff, ListTodo, Paperclip, Users, CalendarDays, Pin, Check } from 'lucide-vue-next'
+import { UserPlus, Pencil, Trash2, X, Eye, EyeOff, ListTodo, Users, CalendarDays, Tag, Check, Search, History, Clock, MessageCircle, ClipboardList } from 'lucide-vue-next'
 import { DEFAULT_AVATAR_SVG_45 } from '../shared/constants.js';
 const defaultAvatar = DEFAULT_AVATAR_SVG_45;
 
@@ -623,6 +627,24 @@ onUnmounted(() => {
 .toolbar-search input {
   width: 100%;
   max-width: 400px;
+  padding-left: 32px;
+}
+
+.search-input-wrap {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-secondary);
+  pointer-events: none;
 }
 
 .contact-count {
