@@ -745,16 +745,37 @@ onUnmounted(() => {
   transition: opacity var(--transition-fast);
 }
 
-.btn-timeline {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
+.contact-card-actions .btn-edit {
+  background: var(--color-primary);
+  color: #fff;
   border: 1px solid var(--color-primary);
 }
 
+.contact-card-actions .btn-edit:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
+.btn-timeline {
+  background: var(--color-primary);
+  color: #fff;
+  border: 1px solid var(--color-primary);
+}
+
+.btn-timeline:hover:not(:disabled) {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+}
+
 .btn-timeline-open {
-  background: var(--color-success-light, #e6f7e6);
-  color: var(--color-success, #52c41a);
+  background: var(--color-success, #52c41a);
+  color: #fff;
   border: 1px solid var(--color-success, #52c41a);
+}
+
+.btn-timeline-open:hover:not(:disabled) {
+  background: var(--color-success-dark, #389e0d);
+  border-color: var(--color-success-dark, #389e0d);
 }
 
 /* 弹窗样式 */
@@ -765,6 +786,7 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;

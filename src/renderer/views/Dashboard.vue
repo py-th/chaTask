@@ -49,7 +49,7 @@
       </div>
 
       <div class="card dashboard-section">
-        <h3 class="section-title"><Tag class="section-icon" /> 消息来源分布</h3>
+        <h3 class="section-title"><MessageCircleCheck class="section-icon" /> 消息来源分布</h3>
         <div class="source-chart">
           <div v-for="item in sourceData" :key="item.label" class="source-bar-col">
             <span class="source-bar-count">{{ item.count }}</span>
@@ -206,7 +206,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { Clock, AlertTriangle, CheckCircle2, Pin, PartyPopper, BarChart3, PieChart, TrendingUp, Tag, CalendarCheck } from 'lucide-vue-next'
+import { Clock, AlertTriangle, CheckCircle2, Pin, PartyPopper, BarChart3, PieChart, TrendingUp, CalendarCheck, MessageCircleCheck } from 'lucide-vue-next'
 import { DEFAULT_AVATAR_SVG_45 } from '../shared/constants.js';
 const defaultAvatar = DEFAULT_AVATAR_SVG_45;
 

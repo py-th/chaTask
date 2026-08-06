@@ -50,7 +50,7 @@
         <div
           v-for="task in filteredTasks"
           :key="task.id"
-          :class="['task-card', 'card', { selected: selectedIds.has(task.id), deleted: task.is_deleted === 1 }]"
+          :class="['task-card', 'card', { selected: selectedIds.has(task.id), deleted: task.is_deleted === 1, desktop: task.is_show_desk === 1 }]"
           @contextmenu="showContextMenu($event, task)"
           @dblclick="openDetail(task)"
         >
@@ -64,7 +64,6 @@
             />
             <div class="avatar-wrapper">
               <img :src="task.sender_avatar || defaultAvatar" class="task-avatar" />
-              <Pin v-if="task.is_show_desk === 1" class="desktop-badge" />
             </div>
             <div class="task-card-info">
               <div class="task-card-text">
@@ -79,7 +78,7 @@
                 <span v-else-if="task.reminder_enabled === 1 && task.reminder_time" class="tag tag-pending">
                   <Bell class="tag-icon" /> {{ formatDate(task.reminder_time) }}
                 </span>
-                <span class="tag tag-pending" v-if="task.is_show_desk === 1" ><Pin class="tag-icon" /></span>
+                <span class="tag tag-desktop" v-if="task.is_show_desk === 1" ><Monitor class="tag-icon" /> 桌面</span>
                 <span class="tag tag-pending" v-if="task.source"><Tag class="tag-icon" /> {{ task.source }}</span>
                 <span class="tag tag-pending" v-if="task.due_date"><CalendarDays class="tag-icon" /> {{ formatDate(task.due_date) }}</span>
                 <span><History class="tag-icon" /> {{ formatDate(task.created_at) }}</span>
@@ -220,7 +219,7 @@
               <span>{{ detailTask.source_time ? formatDateTime(detailTask.source_time) : '无' }}</span>
             </div>
             <div class="detail-meta-item">
-              <label><Check class="label-icon" /> 完成时间</label>
+              <label><CircleCheckBig class="label-icon" /> 完成时间</label>
               <span>{{ detailTask.completed_at ? formatDateTime(detailTask.completed_at) : '无' }}</span>
             </div>
           </div>
@@ -232,7 +231,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { RotateCcw, Trash2, PinOff, Check, CheckSquare, Shuffle, X, Inbox, Pin, Bell, BellOff, CalendarDays, Clock, Search, History, MessageCircle, Tag, Play, AlertTriangle, CheckCircle2, ArrowUp, ArrowDown, Minus, CircleOff, User, FileText, Flag, Activity } from 'lucide-vue-next'
+import { RotateCcw, Trash2, PinOff, Check, CheckSquare, Shuffle, X, Inbox, Bell, BellOff, CalendarDays, Clock, Search, History, MessageCircle, Tag, CircleCheckBig, Play, AlertTriangle, CheckCircle2, ArrowUp, ArrowDown, Minus, CircleOff, User, FileText, Flag, Activity, Monitor } from 'lucide-vue-next'
 import { DEFAULT_AVATAR_SVG_45 } from '../shared/constants.js';
 const defaultAvatar = DEFAULT_AVATAR_SVG_45;
 
@@ -972,19 +971,53 @@ onUnmounted(() => {
 }
 
 .task-card {
+  position: relative;
+  z-index: 1;
   padding: 12px;
   transition: all var(--transition-fast);
+  overflow: hidden;
+}
+
+.task-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background: rgba(107, 172, 241, 0.06);
+  clip-path: inset(0 0 0 20px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
 }
 
 .task-card:hover {
   box-shadow: var(--shadow-md);
-  border-color: var(--color-primary-light);
+}
+
+.task-card:hover::before {
+  opacity: 1;
+  animation: leftFill 0.3s ease forwards;
+}
+
+@keyframes leftFill {
+  from {
+    clip-path: inset(0 0 0 20px);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
 }
 
 .task-card.selected {
   border-color: var(--color-primary);
   background: rgba(74, 144, 217, 0.04);
   box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.task-card.desktop {
+  border-left: 3px solid var(--color-primary);
 }
 
 .task-card.deleted {
@@ -1013,16 +1046,6 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.desktop-badge {
-  position: absolute;
-  top: -3px;
-  right: -3px;
-  width: 14px;
-  height: 14px;
-  color: var(--color-primary);
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
-}
-
 .task-card-info {
   flex: 1;
   min-width: 0;
@@ -1041,6 +1064,12 @@ onUnmounted(() => {
   align-items: center;
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+}
+
+.tag-desktop {
+  background: #F5F5F5;
+  color: var(--color-primary);
+  border: 1px solid #D9D9D9;
 }
 
 .task-card-actions {
@@ -1080,6 +1109,7 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
   justify-content: center;
