@@ -23,7 +23,7 @@
         </div>
       </div>
       <div class="stat-card card stat-total">
-        <Pin class="stat-icon" />
+        <NotepadText class="stat-icon" />
         <div class="stat-info">
           <div class="stat-value">{{ stats.total }}</div>
           <div class="stat-label">总数</div>
@@ -206,7 +206,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { Clock, AlertTriangle, CheckCircle2, Pin, PartyPopper, BarChart3, PieChart, TrendingUp, CalendarCheck, MessageCircleCheck } from 'lucide-vue-next'
+import { NotepadText, Clock, AlertTriangle, CheckCircle2, PartyPopper, BarChart3, PieChart, TrendingUp, CalendarCheck, MessageCircleCheck } from 'lucide-vue-next'
 import { DEFAULT_AVATAR_SVG_45 } from '../shared/constants.js';
 const defaultAvatar = DEFAULT_AVATAR_SVG_45;
 

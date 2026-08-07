@@ -80,7 +80,7 @@
                 </span>
                 <span class="tag tag-desktop" v-if="task.is_show_desk === 1" ><Monitor class="tag-icon" /> 桌面</span>
                 <span class="tag tag-pending" v-if="task.source"><Tag class="tag-icon" /> {{ task.source }}</span>
-                <span class="tag tag-pending" v-if="task.due_date"><CalendarDays class="tag-icon" /> {{ formatDate(task.due_date) }}</span>
+                <span v-if="task.due_date"><CalendarDays class="tag-icon" /> {{ formatDate(task.due_date) }}</span>
                 <span><History class="tag-icon" /> {{ formatDate(task.created_at) }}</span>
                 <span v-if="task.source_time"><MessageCircle class="tag-icon" /> {{ formatDate(task.source_time) }}</span>
                 <span v-if="task.status === 'completed' && task.completed_at"><Check class="tag-icon" /> {{ formatDate(task.completed_at) }}</span>
@@ -180,7 +180,7 @@
               <div class="date-picker-trigger" @click="openDueDatePicker">
                 <span>
                   <CalendarDays v-if="detailTask.due_date" class="meta-icon" />
-                  <CircleOff v-else class="meta-icon" />
+                  <CalendarOff v-else class="label-icon" />
                   {{ detailTask.due_date ? formatDate(detailTask.due_date) : '未设置' }}
                 </span>
                 <input
@@ -231,7 +231,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { RotateCcw, Trash2, PinOff, Check, CheckSquare, Shuffle, X, Inbox, Bell, BellOff, CalendarDays, Clock, Search, History, MessageCircle, Tag, CircleCheckBig, Play, AlertTriangle, CheckCircle2, ArrowUp, ArrowDown, Minus, CircleOff, User, FileText, Flag, Activity, Monitor } from 'lucide-vue-next'
+import { RotateCcw, Trash2, PinOff, Check, CheckSquare, Shuffle, X, Inbox, Bell, BellOff, CalendarDays, Clock, Search, History, MessageCircle, Tag, CircleCheckBig, Play, AlertTriangle, CheckCircle2, ArrowUp, ArrowDown, Minus, CalendarOff, User, FileText, Flag, Activity, Monitor } from 'lucide-vue-next'
 import { DEFAULT_AVATAR_SVG_45 } from '../shared/constants.js';
 const defaultAvatar = DEFAULT_AVATAR_SVG_45;
 
@@ -852,7 +852,7 @@ function getPriorityIcon(priority) {
     case 'high': return ArrowUp
     case 'medium': return Minus
     case 'low': return ArrowDown
-    default: return CircleOff
+    default: return CalendarOff
   }
 }
 
@@ -985,7 +985,7 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   height: 100%;
-  background: rgba(107, 172, 241, 0.06);
+  background: rgba(70, 150, 236, 0.459);
   clip-path: inset(0 0 0 20px);
   opacity: 0;
   pointer-events: none;
