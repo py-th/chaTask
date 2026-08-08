@@ -1,8 +1,31 @@
+# IDE / Editor
 .vscode/
 .trae/
+
+# Dependencies
 node_modules/
+
+# Build outputs
 out/
+dist/
+release/
+
+# Logs
+*.log
+
+# Temporary / Debug
 debug/
 temp/
-dist/
-*.log
+
+# Environment / Local config
+.env
+.env.*
+*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Compiled native binaries
+public/native/*.exe
+public/native/*.obj
