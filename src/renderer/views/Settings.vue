@@ -421,13 +421,27 @@
               <span>版本号</span>
               <span>v1.0.0</span>
             </div>
-            <div class="about-row">
+            <!--
+            div class="about-row">
               <span>技术栈</span>
               <span>Electron + Vue 3 + SQLite + ONNX</span>
-            </div>
+            </div 
+          -->
             <div class="about-row">
               <span>核心功能</span>
               <span>IM消息截图 → AI识别 → 任务创建 → 桌面便签</span>
+            </div>
+            <div class="about-row">
+              <span>项目地址</span>
+              <span>https://github.com/py-th/chaTask</span>
+            </div>
+            <div class="about-row">
+              <span>项目授权</span>
+              <span>MIT License</span>
+            </div>
+            <div class="about-row">
+              <span>项目贡献</span>
+              <span>欢迎贡献代码、报告问题、提交 pull request，交流项目相关问题[qq群：1054807633]</span>
             </div>
           </div>
         </div>
