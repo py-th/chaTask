@@ -990,6 +990,8 @@ onUnmounted(() => {
   opacity: 0;
   pointer-events: none;
   z-index: -1;
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              clip-path 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .task-card:hover {
@@ -998,16 +1000,7 @@ onUnmounted(() => {
 
 .task-card:hover::before {
   opacity: 1;
-  animation: leftFill 0.3s ease forwards;
-}
-
-@keyframes leftFill {
-  from {
-    clip-path: inset(0 0 0 20px);
-  }
-  to {
-    clip-path: inset(0 0 0 0);
-  }
+  clip-path: inset(0 0 0 0);
 }
 
 .task-card.selected {
