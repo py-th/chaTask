@@ -35,12 +35,12 @@
       <div class="card dashboard-section">
         <h3 class="section-title"><BarChart3 class="section-icon" /> 任务优先级分布</h3>
         <div class="priority-bars">
-          <div v-for="item in priorityData" :key="item.label" class="priority-bar-row">
+          <div v-for="(item, index) in priorityData" :key="item.label" class="priority-bar-row">
             <span class="priority-label">{{ item.label }}</span>
             <div class="priority-bar-track">
               <div
                 class="priority-bar-fill"
-                :style="{ width: item.percent + '%', background: item.color }"
+                :style="{ '--bar-width': item.percent + '%', '--bar-index': index, background: item.color }"
               ></div>
             </div>
             <span class="priority-count">{{ item.count }}</span>
@@ -51,12 +51,12 @@
       <div class="card dashboard-section">
         <h3 class="section-title"><MessageCircleCheck class="section-icon" /> 消息来源分布</h3>
         <div class="source-chart">
-          <div v-for="item in sourceData" :key="item.label" class="source-bar-col">
+          <div v-for="(item, index) in sourceData" :key="item.label" class="source-bar-col">
             <span class="source-bar-count">{{ item.count }}</span>
             <div class="source-bar-wrapper">
               <div
                 class="source-bar"
-                :style="{ height: item.percent + '%', background: item.color }"
+                :style="{ '--bar-height': item.percent + '%', '--bar-index': index, background: item.color }"
               ></div>
             </div>
             <span class="source-bar-label" :title="item.label">{{ item.label }}</span>
@@ -76,12 +76,18 @@
             <circle cx="60" cy="60" r="50" fill="none" stroke="var(--color-border-light)" stroke-width="16" />
             <template v-for="(segment, i) in donutSegments" :key="i">
               <circle
+                class="donut-segment"
                 cx="60" cy="60" r="50"
                 fill="none"
                 :stroke="segment.color"
                 stroke-width="16"
                 :stroke-dasharray="`${segment.dash} ${100 - segment.dash}`"
                 :stroke-dashoffset="segment.offset"
+                :style="{
+                  '--dash-array': `${segment.dash} ${100 - segment.dash}`,
+                  '--dash-offset': segment.offset,
+                  '--segment-index': i
+                }"
                 transform="rotate(-90 60 60)"
               />
             </template>
@@ -567,8 +573,11 @@ onMounted(loadData)
 
 .priority-bar-fill {
   height: 100%;
+  width: var(--bar-width, 0%);
   border-radius: 4px;
   transition: width 0.5s ease;
+  animation: growWidth 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation-delay: calc(var(--bar-index, 0) * 0.08s);
 }
 
 .priority-count {
@@ -624,8 +633,11 @@ onMounted(loadData)
 
 .source-bar {
   width: 16px;
+  height: var(--bar-height, 0%);
   border-radius: 4px 4px 0 0;
   transition: height 0.5s ease;
+  animation: growUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation-delay: calc(var(--bar-index, 0) * 0.08s);
 }
 
 .source-bar-label {
@@ -735,6 +747,11 @@ onMounted(loadData)
   height: 140px;
 }
 
+.donut-segment {
+  animation: dashDraw 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation-delay: calc(var(--segment-index, 0) * 0.15s);
+}
+
 .donut-center {
   position: absolute;
   top: 50%;
@@ -821,5 +838,34 @@ onMounted(loadData)
   width: 12px;
   height: 12px;
   vertical-align: -2px;
+}
+
+@keyframes growWidth {
+  from {
+    width: 0%;
+  }
+  to {
+    width: var(--bar-width);
+  }
+}
+
+@keyframes growUp {
+  from {
+    height: 0%;
+  }
+  to {
+    height: var(--bar-height);
+  }
+}
+
+@keyframes dashDraw {
+  from {
+    stroke-dasharray: 0 100;
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dasharray: var(--dash-array);
+    stroke-dashoffset: var(--dash-offset);
+  }
 }
 </style>

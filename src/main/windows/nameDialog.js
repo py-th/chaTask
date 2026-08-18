@@ -59,7 +59,7 @@ function showNameDialog(messages, contacts, windowName, screenshotInfo) {
     const screenshotJson = JSON.stringify(screenshotInfo || {});
 
     const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>确认发送者信息</title><style>
+<html><head><meta charset="utf-8"><title>确认任务信息</title><style>
 html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; user-select: none; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 .dialog-container { width: 100%; height: 100vh; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.15); display: flex; flex-direction: column; color: #333; }
@@ -138,7 +138,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .screenshot-stats p { margin: 0; }
 </style></head><body>
 <div class="dialog-container">
-<div class="dialog-header"><span class="dialog-title">确认发送者信息</span><button class="dialog-close" onclick="window.__cancel()">×</button></div>
+<div class="dialog-header"><span class="dialog-title">确认任务信息</span><button class="dialog-close" onclick="window.__cancel()">×</button></div>
 <div class="dialog-body" id="dialogBody"></div>
 <div class="dialog-footer">
   <span class="footer-info" id="footerInfo"></span>

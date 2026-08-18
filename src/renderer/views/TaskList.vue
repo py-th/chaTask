@@ -256,6 +256,7 @@ function showContextMenu(event, task) {
 
 const quickFilters = [
   { key: 'all', label: '全部' },
+  { key: 'today', label: '今日待办' },
   { key: 'desktop', label: '桌面便签' },
   { key: 'pending', label: '待办' },
   { key: 'in_progress', label: '进行中' },
@@ -275,8 +276,10 @@ const sourceOptions = computed(() => {
 })
 
 function getFilterCount(key) {
+  const todayStr = new Date().toISOString().slice(0, 10)
   switch (key) {
     case 'all': return allTasks.value.filter(t => t.is_deleted !== 1).length
+    case 'today': return allTasks.value.filter(t => t.is_deleted !== 1 && t.due_date && t.due_date.slice(0, 10) === todayStr).length
     case 'pending': return allTasks.value.filter(t => t.is_deleted !== 1 && t.status === 'pending').length
     case 'in_progress': return allTasks.value.filter(t => t.is_deleted !== 1 && t.status === 'in_progress').length
     case 'overdue': return allTasks.value.filter(t => t.is_deleted !== 1 && t.status === 'overdue').length
@@ -304,6 +307,11 @@ const filteredTasks = computed(() => {
       // 所有非回收站过滤器都排除已删除任务
       tasks = tasks.filter(t => t.is_deleted !== 1)
       switch (currentFilter.value) {
+        case 'today': {
+          const todayStr = new Date().toISOString().slice(0, 10)
+          tasks = tasks.filter(t => t.due_date && t.due_date.slice(0, 10) === todayStr)
+          break
+        }
         case 'pending': tasks = tasks.filter(t => t.status === 'pending'); break
         case 'in_progress': tasks = tasks.filter(t => t.status === 'in_progress'); break
         case 'overdue': tasks = tasks.filter(t => t.status === 'overdue'); break
