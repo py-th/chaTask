@@ -1,6 +1,6 @@
 # ChaTask
 
-一款基于 Electron + Vue 3 的桌面任务管理应用，支持桌面便签、截图识别创建任务、联系人管理、重复提醒等功能。
+一款基于 Electron + Vue 3 + SQLite + ONNX 的桌面任务管理应用，主要特点是截图抓取各种 IM 应用的消息生成桌面任务便签，支持普通便签和时间轴便签、支持创建任务、联系人管理、重复提醒等功能。
 
 ## 功能特性
 
@@ -56,32 +56,37 @@ npm run build:linux
 
 打包输出目录为 `release/${version}`。
 
-## 项目结构
+## 截图识别模型训练
 
+- **环境搭建**：安装 Anaconda + 创建虚拟环境 + 安装 PyTorch + 安装 YOLOv8 库（ultralytics、labelImg、opencv-python）
+- **收集并标注数据集**：收集IM各种截图后，打开 LabelImg 对数据集标注，把标注结果存放到指定文件夹里（每张图片会生成一个同名的 `.txt` 文件，里面就是 YOLO 格式的标注信息）
+- **整理数据集**：为了让 YOLO 能识别你的数据集，必须按照特定的文件夹结构来组织。请严格遵循以下结构：
+
+```bash
+my_dataset/                # 项目根目录，名字任意
+├── images/                # 存放所有图片
+│   ├── train/             # 训练用图片
+│   └── val/               # 验证用图片
+└── labels/                # 存放所有标注 (.txt) 文件
+    ├── train/             # 训练用标注 (与 train/ 里的图片对应)
+    └── val/               # 验证用标注 (与 val/ 里的图片对应)
+	
+# 将至少 80% 的图片和标注放入 `train` 文件夹，剩下的放入 `val` 文件夹
 ```
-chaTask/
-├── build/                  # 应用图标资源
-├── public/
-│   ├── models/             # ONNX 模型文件
-│   ├── native/             # 原生 C++ 工具源码与编译产物
-│   └── resource/           # 图片、音频等静态资源
-├── scripts/                # 构建辅助脚本
-├── src/
-│   ├── database/           # SQLite 数据库与数据仓库
-│   ├── main/               # Electron 主进程
-│   │   ├── ipc/            # IPC 通信处理
-│   │   ├── menus/          # 原生菜单
-│   │   ├── services/       # 业务服务
-│   │   ├── templates/      # 窗口 HTML 模板
-│   │   ├── utils/          # 工具函数
-│   │   └── windows/        # 窗口管理
-│   ├── preload/            # 预加载脚本
-│   ├── renderer/           # 渲染进程（Vue 前端）
-│   └── shared/             # 主/渲染进程共享代码
-├── .gitignore
-├── electron-builder.json5  # 打包配置
-├── electron.vite.config.js # Vite 配置
-└── package.json
+- **训练与导出模型**：打开终端，确保当前在 `my_dataset` 所在的目录。激活 `yolo` 环境，然后输入以下命令
+
+```bash
+yolo task=detect mode=train model=yolov8n.pt data=D:/chat_dataset/dataset.yaml epochs=100 imgsz=640 batch=16
+    
+- `model=yolov8n.pt`：使用轻量级的 nano 模型开始训练。   
+- `epochs=100`：让模型对整个数据集学习 100 遍。
+- `imgsz=640`：将图片统一缩放为 640x640 像素输入模型。   
+- `batch=16`：一次处理 16 张图片。
+```
+训练完成后，在项目根目录下会生成一个 `runs/detect/train/weights/` 文件夹，里面就是训练好的模型 `best.pt`。将它导出为 ONNX 格式
+
+```bash
+yolo mode=export model=runs/detect/train/weights/best.pt format=onnx
 ```
 
 ## 原生工具编译

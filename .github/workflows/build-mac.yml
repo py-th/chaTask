@@ -1,0 +1,48 @@
+# 在 GitHub Actions 的 macOS 运行机上打包 Mac 安装包
+# 触发方式：手动触发，或推送 v 开头的 tag 时自动触发
+name: Build macOS
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-mac:
+    # macOS 运行机，当前为 Apple Silicon (arm64)
+    # 如需打包 Intel (x64) 版本，可改为 runs-on: macos-13
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # 使用 build/icon.ico 生成 build/icon.icns
+      - name: Generate macOS icon
+        run: npm run generate-icons
+
+      - name: Build macOS app
+        run: npm run build:mac
+        env:
+          # 关闭 electron-builder 的自动发布检测
+          # --publish never 已在 package.json 中设置
+          CI: true
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dist
+          path: |
+            release/**/*.dmg
+            release/**/*.dmg.blockmap
+          if-no-files-found: error

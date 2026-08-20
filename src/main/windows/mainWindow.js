@@ -36,10 +36,11 @@ function createMainWindow() {
     }
   });
   Menu.setApplicationMenu(null);
-  win.loadURL('http://localhost:5173');
-  // 开发环境 默认打开控制台
   if (process.env.NODE_ENV === 'development') {
+    win.loadURL('http://localhost:5173');
     win.webContents.openDevTools();
+  } else {
+    win.loadFile(path.join(__dirname, '../../renderer/index.html'));
   }
   return win;
 }

@@ -4,13 +4,18 @@ const { app } = require('electron');
 
 const settingsPath = path.join(app.getPath('userData'), 'settings.json');
 
+// 兼容开发与生产环境：生产包中模型位于 resources/models，开发环境位于 public/models
+const modelsDir = app.isPackaged
+  ? path.join(process.resourcesPath, 'models')
+  : path.join(process.cwd(), 'public', 'models');
+
 const builtinDefaults = {
-  modelPath_avatar_text: path.join(process.cwd(), 'public/models/best_avatar_text.onnx'),
-  modelPath_sender_date: path.join(process.cwd(), 'public/models/best_sender_date.onnx'),
+  modelPath_avatar_text: path.join(modelsDir, 'best_avatar_text.onnx'),
+  modelPath_sender_date: path.join(modelsDir, 'best_sender_date.onnx'),
   rapidOCR: {
-    detModelPath: path.join(process.cwd(), 'public/models/ch_PP-OCRv5_det_mobile.onnx'),
-    recModelPath: path.join(process.cwd(), 'public/models/ch_PP-OCRv5_rec_mobile.onnx'),
-    dictionaryPath: path.join(process.cwd(), 'public/models/ppocrv5_mobile_dict.txt'),
+    detModelPath: path.join(modelsDir, 'ch_PP-OCRv5_det_mobile.onnx'),
+    recModelPath: path.join(modelsDir, 'ch_PP-OCRv5_rec_mobile.onnx'),
+    dictionaryPath: path.join(modelsDir, 'ppocrv5_mobile_dict.txt'),
   },
   yolo: {
     inputSize: 640,

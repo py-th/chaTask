@@ -4,12 +4,16 @@
 {
   "appId": "com.chatask.app",
   "productName": "ChaTask",
+  "extraMetadata": {
+    "main": "out/main/index.js"
+  },
   "copyright": "Copyright © 2026",
   "asar": true,
   "directories": {
     "output": "release/${version}",
     "buildResources": "build"
   },
+  "afterPack": "scripts/after-pack.js",
   "files": [
     "out/**/*",
     "public/resource/**/*"
@@ -22,6 +26,10 @@
     {
       "from": "public/native",
       "to": "native"
+    },
+    {
+      "from": "public/resource",
+      "to": "resource"
     }
   ],
   "win": {
@@ -32,7 +40,8 @@
       }
     ],
     "icon": "build/icon.ico",
-    "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
+    "artifactName": "${productName}-Windows-${version}-Setup.${ext}",
+    "signAndEditExecutable": false
   },
   "nsis": {
     "oneClick": false,

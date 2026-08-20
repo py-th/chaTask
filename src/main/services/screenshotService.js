@@ -1,15 +1,14 @@
 // src/main/utils/screenshotService.js
-const { desktopCapturer, screen, BrowserWindow } = require('electron');
+const { desktopCapturer, screen, BrowserWindow, app } = require('electron');
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFile, exec } = require('child_process');
+const { getResourcePath } = require('../utils/resourcePath');
 
 // 定义覆盖层 HTML 的路径
 const OVERLAY_HTML_PATH = path.join(__dirname, '../templates/screenshot-overlay.html');
-// Windows 专用工具路径
-const WIN_TOOL_PATH = path.join(__dirname, '../../../public/native/win_api_tool.exe');
 
 class ScreenshotUtils {
     constructor() {
@@ -18,8 +17,9 @@ class ScreenshotUtils {
         this.cachedWindows = [];       // 窗口列表 (用于匹配)
         this.dpr = 1;
         this.platform = os.platform();
-        this.tempDir = path.join(__dirname, '../../../temp');
-        if (!fs.existsSync(this.tempDir)) fs.mkdirSync(this.tempDir);
+        // 临时目录使用系统 temp，避免打包后写入应用安装目录
+        this.tempDir = path.join(app.getPath('temp'), 'chatask');
+        if (!fs.existsSync(this.tempDir)) fs.mkdirSync(this.tempDir, { recursive: true });
     }
 
     /**
@@ -237,13 +237,14 @@ class ScreenshotUtils {
     // ==========================================
     async handleWindowsScreenshot(centerX, centerY) {
         // 1. 调用 exe 获取所有窗口信息
-        if (!fs.existsSync(WIN_TOOL_PATH)) {
-            console.error(`[screenshot] ❌ 找不到原生工具: ${WIN_TOOL_PATH}`);
+        const winToolPath = getResourcePath('native', 'win_api_tool.exe');
+        if (!fs.existsSync(winToolPath)) {
+            console.error(`[screenshot] ❌ 找不到原生工具: ${winToolPath}`);
             return null;
         }
 
         return new Promise((resolve) => {
-            execFile(WIN_TOOL_PATH, [centerX.toString(), centerY.toString()], async (error, stdout, stderr) => {
+            execFile(winToolPath, [centerX.toString(), centerY.toString()], async (error, stdout, stderr) => {
                 if (error) {
                     console.error(`[screenshot] 执行原生工具失败: ${error.message}`);
                     return resolve(null);
