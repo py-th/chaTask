@@ -9,6 +9,7 @@
   },
   "copyright": "Copyright © 2026",
   "asar": true,
+  "electronLanguages": ["zh-CN", "en-US"],
   "directories": {
     "output": "release/${version}",
     "buildResources": "build"

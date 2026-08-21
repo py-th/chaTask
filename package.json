@@ -23,6 +23,7 @@
     "electron-builder": "^26.8.1",
     "electron-vite": "^5.0.0",
     "icor": "^1.0.2",
+    "lucide-vue-next": "^1.0.0",
     "pe-library": "^2.0.1",
     "resedit": "^3.0.2",
     "vue": "^3.5.32"
@@ -31,9 +32,13 @@
     "@repeato/ocr": "^1.5.16",
     "better-sqlite3": "12.8.0",
     "electron-updater": "^6.8.9",
-    "lucide-vue-next": "^1.0.0",
     "onnxruntime-node": "1.24.3",
     "sharp": "^0.34.5",
     "uuid": "^13.0.0"
+  },
+  "overrides": {
+    "@repeato/ocr": {
+      "onnxruntime-node": "$onnxruntime-node"
+    }
   }
 }
