@@ -51,7 +51,7 @@ class StickyMenu {
 
     template.push(
       {
-        label: '隐藏 🙈',
+        label: '隐藏',
         click: async (_, win) => {
           await updateTask(taskId, { is_show_desk: 0 });
           if (win && !win.isDestroyed()) {

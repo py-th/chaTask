@@ -513,8 +513,6 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
     }
   });
 
-  // ========== 时间轴便签 IPC ==========
-
   // ========== 时间轴便签状态与入口 IPC ==========
 
   // 获取所有时间轴便签记录以及当前已打开的名称集合
@@ -859,13 +857,18 @@ ipcMain.on('sticky-drag-end', (event, noteId) => {
         }
       }
     });
-    template.push({
+    /*
+    //工具箱各项功能暂未实现,根据后续需求扩展添加
+    template.push(
+      {
       label: '工具箱',
       click: () => {
           // 后续功能扩展
           console.log('桌面倒计时，番茄时钟，定时关机');
         }
-    });
+    }
+  );
+  */
     template.push({
       label: '隐藏',
       click: () => {
