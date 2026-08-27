@@ -20,7 +20,7 @@
 - [Vite](https://vitejs.dev/) / [electron-vite](https://electron-vite.org/) - 构建工具
 - [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) - 本地 SQLite 数据库
 - [ONNX Runtime](https://onnxruntime.ai/) - 本地模型推理
-- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) / Tesseract - OCR 文字识别
+- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) - OCR 文字识别
 
 ## 开发环境
 
