@@ -1,10 +1,12 @@
 # ChaTask
 
-一款基于 Electron + Vue 3 + SQLite + ONNX 的桌面任务管理应用，主要特点是截图抓取各种 IM 应用的消息生成桌面任务便签，支持普通便签和时间轴便签、支持创建任务、联系人管理、重复提醒等功能。
+一款基于 Electron + Vue 3 + SQLite + ONNX 的桌面任务管理应用，主要特点是截图抓取各种主流 IM 应用的消息生成桌面任务便签，支持普通便签和时间轴便签、支持创建任务、联系人管理、重复提醒等功能。
+针对微信、QQ、企业微信、钉钉、飞书等主流IM聊天软件场景开发。解决日常办公、沟通中，想将聊天信息快速提取文字，并将其转成待办任务事项而开发，项目集成轻量化OCR识别和YOLO训练模型智能化提取头像和文本的能力，精准提取纯文本内容，支持实时复制、本地保存、批量识别，跨平台适配Windows/Mac/Linux主流电脑系统。
 
 ## 功能特性
 
-- **多视图任务管理**：列表、看板、四象限、日历、时间轴等多种任务视图
+- **操作简单**：只需使用快捷键 `Ctrl+Alt+S` 截图需要提取的消息（需包括头像和文本），即可自动提取头像、文本、时间等信息，确认后自动把发送者，头像，文本等信息转成待办任务便签贴到桌面上
+- **多视图任务管理**：列表、看板、四象限、日历、时间轴等多种任务视图（四象限、日历、时间轴3种模式待开发）
 - **桌面便签**：支持普通便签和时间轴便签，可贴边隐藏、折叠、置顶
 - **截图识别**：通过快捷键截图，利用 OCR / YOLO 自动识别任务内容、发送者和日期
 - **联系人管理**：维护联系人信息，自动匹配截图中的发送者
@@ -20,7 +22,7 @@
 - [Vite](https://vitejs.dev/) / [electron-vite](https://electron-vite.org/) - 构建工具
 - [better-sqlite3](https://github.com/WiseLibs/better-sqlite3) - 本地 SQLite 数据库
 - [ONNX Runtime](https://onnxruntime.ai/) - 本地模型推理
-- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) / Tesseract - OCR 文字识别
+- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) - OCR 文字识别
 
 ## 开发环境
 
@@ -104,4 +106,8 @@ yolo mode=export model=runs/detect/train/weights/best.pt format=onnx
 
 ## 许可证
 
-ISC
+本项目基于 MIT License 开源，可免费学习、使用、二次修改，商用请保留开源声明。
+
+## 支持
+
+如果本项目对你有帮助，欢迎 Star ⭐ 支持一下，持续更新优化更多实用功能！
