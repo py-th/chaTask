@@ -119,6 +119,34 @@ module.exports = async (context) => {
     );
   }
 
+  // 5. 修改 EXE 的版本信息，避免 Windows 通知、任务栏、属性页显示 "Electron"
+  try {
+    const versionInfos = ResEdit.Resource.VersionInfo.fromEntries(res.entries);
+    const version = context.packager.appInfo.version;
+    const productName = context.packager.appInfo.productName;
+    for (const vi of versionInfos) {
+      vi.setStringValues(
+        { lang: 1033, codepage: 1200 },
+        {
+          FileDescription: productName,
+          ProductName: productName,
+          OriginalFilename: `${productName}.exe`,
+          InternalName: productName,
+          CompanyName: '',
+          LegalCopyright: ''
+        }
+      );
+      if (version) {
+        vi.setFileVersion(version);
+        vi.setProductVersion(version);
+      }
+      vi.outputToResourceEntries(res.entries);
+    }
+    console.log(`[after-pack] 已更新 EXE 版本信息: ${productName} v${version}`);
+  } catch (err) {
+    console.warn('[after-pack] 更新 EXE 版本信息失败:', err.message);
+  }
+
   // 写回 exe
   res.outputResource(exe);
   const newBuffer = Buffer.from(exe.generate());

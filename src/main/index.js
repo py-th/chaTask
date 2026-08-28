@@ -64,7 +64,9 @@ function registerDynamicShortcuts(shortcutConfig) {
 app.whenReady().then(async () => {
   app.setName('ChaTask');
   if (process.platform === 'win32') {
-    app.setAppUserModelId(process.execPath);
+    // 必须与 electron-builder.json5 里的 appId 保持一致，
+    // 否则 Windows 通知标题会显示为默认的 "Electron"
+    app.setAppUserModelId('com.chatask.app');
   }
   
   mainWindow = createMainWindow();
